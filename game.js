@@ -1,7 +1,8 @@
 import * as THREE from './three.module.js';
 // ================= CONFIG (tune here) =================
 const CFG={
- player:{hp:1000,speed:9,legTurn:6,torsoTurn:7},
+ player:{hp:1000,speed:9,legTurn:6,torsoTurn:14},
+ cam:{dist:7,height:5.4,side:2.2,lookAhead:12,pitchLift:5},
  gun:{mag:60,reload:2.5,fireInterval:0.09,dmg:14,spread:0.03},
  rocket:{max:4,recharge:3.0,cooldown:0.35,dmg:140,splash:4},
  enemy:{hp:400,speed:6,legTurn:4,torsoTurn:2.5,mag:24,reload:3.0,burstInterval:0.15,burstPause:[1.2,2.4],dmg:9,
@@ -24,6 +25,7 @@ const obst=[];// {x,z,hx,hz,h}
 function wall(x,z,w,d,h,c=0x8a8a80){const m=new THREE.Mesh(boxG,M(c));m.scale.set(w,h,d);m.position.set(x,h/2,z);S.add(m);obst.push({x,z,hx:w/2,hz:d/2,h,m});}
 wall(0,-A,A*2,2,6,0x555);wall(0,A,A*2,2,6,0x555);wall(-A,0,2,A*2,6,0x555);wall(A,0,2,A*2,6,0x555);
 [[0,0,8,8,7],[-25,-20,12,3,5],[25,20,12,3,5],[-25,22,3,12,5],[25,-22,3,12,5],[0,-35,14,3,5],[0,35,14,3,5],[-40,0,3,10,6],[40,0,3,10,6],[-12,12,4,4,4],[12,-12,4,4,4],[14,14,4,4,4],[-14,-14,4,4,4]].forEach(o=>wall(...o,0x9a8f78));
+const obstMeshes=obst.map(o=>o.m);
 function blocked(x,z,r){for(const o of obst)if(Math.abs(x-o.x)<o.hx+r&&Math.abs(z-o.z)<o.hz+r)return o;return null;}
 // line of sight: sample
 function los(a,b){const d=b.clone().sub(a),L=d.length(),n=Math.ceil(L/1.5);for(let i=1;i<n;i++){const p=a.clone().addScaledVector(d,i/n);for(const o of obst)if(p.y<o.h&&Math.abs(p.x-o.x)<o.hx&&Math.abs(p.z-o.z)<o.hz)return false;}return true;}
@@ -62,7 +64,7 @@ function boom(p,s,c=0xff8800){const m=new THREE.Mesh(fxG,new THREE.MeshBasicMate
 function muzzle(u,i){const p=new THREE.Vector3();u.guns[i].getWorldPosition(p);const f=new THREE.Vector3(Math.sin(u.tYaw),0,Math.cos(u.tYaw));return p.addScaledVector(f,1.5);}
 // aim direction for player: from camera through crosshair
 const ray=new THREE.Raycaster();
-function playerAim(){ray.setFromCamera(new THREE.Vector2(0,0.16),C);const tg=[...E.map(e=>e.g),...obst.map(o=>o.m),ground];const h=ray.intersectObjects(tg,true).find(h=>h.distance>12);return h?h.point:ray.ray.at(120,new THREE.Vector3());}
+function playerAim(){ray.setFromCamera(new THREE.Vector2(0,0.16),C);const tg=[...E.map(e=>e.g),...obst.map(o=>o.m),ground];const h=ray.intersectObjects(tg,true).find(h=>h.distance>CFG.cam.dist+2);return h?h.point:ray.ray.at(120,new THREE.Vector3());}
 // input: keyboard/mouse
 addEventListener('keydown',e=>{inp.keys[e.code]=true;if(e.code==='KeyR')manualReload();});addEventListener('keyup',e=>inp.keys[e.code]=false);
 const cv=R.domElement;cv.addEventListener('mousedown',e=>{if(document.pointerLockElement!==cv&&cv.requestPointerLock){cv.requestPointerLock();}if(e.button===0)inp.mMG=true;if(e.button===2)inp.mRK=true;});
@@ -98,10 +100,9 @@ function update(dt){const k=inp.keys;let mx=inp.mx+((k.KeyD?1:0)-(k.KeyA?1:0)),m
  const G=CFG.gun,RK=CFG.rocket;P.fireCd-=dt;P.rkCd-=dt;
  if(P.reload>0){P.reload-=dt;if(P.reload<=0){P.reload=0;P.ammo=G.mag;}}
  if(P.rk<RK.max){P.rkRe-=dt;if(P.rkRe<=0){P.rk++;P.rkRe=P.rk<RK.max?RK.recharge:0;}}
- const aligned=Math.abs(wrap(P.yaw-P.tYaw))<0.35;
- const pt=(inp.mg||inp.mMG||k.Space)&&aligned?playerAim():null;
- if(pt&&P.fireCd<=0&&P.ammo>0&&!P.reload){P.fireCd=G.fireInterval;P.ammo--;const i=P.ammo%2,f=muzzle(P,i);const d=pt.clone().sub(f).normalize();d.x+=(Math.random()-.5)*G.spread;d.y+=(Math.random()-.5)*G.spread;shoot(f,d.normalize(),'p',false);if(P.ammo===0)P.reload=G.reload;}
- if((inp.rk||inp.mRK||k.KeyQ)&&aligned&&P.rkCd<=0&&P.rk>0){const t=playerAim();P.rkCd=RK.cooldown;if(P.rk===RK.max)P.rkRe=RK.recharge;P.rk--;const f=new THREE.Vector3();P.pod.getWorldPosition(f);shoot(f,t.clone().sub(f).normalize(),'p',true);}
+ const pt=(inp.mg||inp.mMG||k.Space)?playerAim():null;
+ if(pt&&P.fireCd<=0&&P.ammo>0&&!P.reload){P.fireCd=G.fireInterval;P.ammo--;const i=P.ammo%2,f=muzzle(P,i);const d=torsoDir(f,pt);d.x+=(Math.random()-.5)*G.spread;d.y+=(Math.random()-.5)*G.spread;shoot(f,d.normalize(),'p',false);if(P.ammo===0)P.reload=G.reload;}
+ if((inp.rk||inp.mRK||k.KeyQ)&&P.rkCd<=0&&P.rk>0){const t=playerAim();P.rkCd=RK.cooldown;if(P.rk===RK.max)P.rkRe=RK.recharge;P.rk--;const f=new THREE.Vector3();P.pod.getWorldPosition(f);shoot(f,torsoDir(f,t),'p',true);}
  // AI
  const pp=P.g.position;for(const e of E){const ep=e.g.position;const toP=tmp.copy(pp).sub(ep);const dist=toP.length();const eye=ep.clone().setY(3.3),pe=pp.clone().setY(3.3);const see=los(eye,pe);
   e.think-=dt;if(e.think<=0){e.think=1.5+Math.random()*2;
@@ -127,7 +128,15 @@ function update(dt){const k=inp.keys;let mx=inp.mx+((k.KeyD?1:0)-(k.KeyA?1:0)),m
  if(P.hp<=0){boom(pp.clone().setY(3),6);P.hp=0;end(false);}else if(!E.length)end(true);
  hud();}
 function updFx(dt){for(let i=FX.length-1;i>=0;i--){const f=FX[i];f.t+=dt*3;f.m.scale.setScalar(f.s*f.t);f.m.material.opacity=1-f.t;if(f.t>=1){S.remove(f.m);f.m.material.dispose();FX.splice(i,1);}}}
-function cam(){if(!P)return;const p=P.g.position;const b=new THREE.Vector3(-Math.sin(P.yaw),0,-Math.cos(P.yaw));C.position.set(p.x+b.x*11,7+P.pitch*8,p.z+b.z*11);C.lookAt(p.x-b.x*10,4.5-P.pitch*12,p.z-b.z*10);}
+// shots follow the torso heading (yaw) with vertical aim from the crosshair target
+function torsoDir(f,pt){const d=pt.clone().sub(f),h=Math.hypot(d.x,d.z);return new THREE.Vector3(Math.sin(P.tYaw)*h,d.y,Math.cos(P.tYaw)*h).normalize();}
+const camRay=new THREE.Raycaster(),cO=new THREE.Vector3(),cD=new THREE.Vector3();
+function cam(){if(!P)return;const K=CFG.cam,p=P.g.position;const b=new THREE.Vector3(-Math.sin(P.yaw),0,-Math.cos(P.yaw)),r=new THREE.Vector3(-b.z,0,b.x);
+ // r points to the mech's left in view; negate for right-shoulder offset
+ cO.set(p.x,K.height,p.z);const want=new THREE.Vector3(p.x+b.x*K.dist-r.x*K.side,K.height+P.pitch*K.pitchLift,p.z+b.z*K.dist-r.z*K.side);
+ cD.copy(want).sub(cO);const L=cD.length();cD.normalize();camRay.set(cO,cD);camRay.far=L;const h=camRay.intersectObjects(obstMeshes,false)[0];
+ if(h)want.copy(cO).addScaledVector(cD,Math.max(1.2,h.distance-0.4));
+ C.position.copy(want);C.lookAt(p.x-b.x*K.lookAhead-r.x*K.side,3.5-P.pitch*12,p.z-b.z*K.lookAhead-r.z*K.side);}
 const hpf=document.getElementById('hpf'),info=document.getElementById('info');
 const bMG=document.getElementById('bMG'),bRK=document.getElementById('bRK'),gunBar=document.getElementById('gunf'),rkPips=document.getElementById('rkp');
 function manualReload(){if(P&&!over&&!P.reload&&P.ammo<CFG.gun.mag)P.reload=CFG.gun.reload;}
