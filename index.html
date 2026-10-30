@@ -70,12 +70,16 @@ canvas{display:block}
 #coins{font-size:18px;min-width:300px;margin:10px 0;background:#0008;border-radius:12px;padding:10px 16px}#coins:empty{display:none}
 .cr,.ct{display:flex;justify-content:space-between;gap:30px;padding:3px 0;opacity:0;animation:cin .35s forwards}.cr b{color:#fc6}.ct{border-top:1px solid #fff4;margin-top:4px;font-size:24px;animation-delay:.2s}.ct b{color:#fc6}
 .cb{font-size:15px;opacity:.8;text-align:right}@keyframes cin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+#mini{position:absolute;top:12px;right:12px;width:150px;height:150px;border-radius:10px}
+#mapban{position:absolute;top:24%;left:50%;transform:translateX(-50%);font-size:38px;font-weight:bold;text-align:center;text-shadow:0 0 8px #000;opacity:0;letter-spacing:2px}#mapban small{display:block;font-size:15px;opacity:.8;letter-spacing:4px}
+@keyframes ban{0%{opacity:0;transform:translate(-50%,10px)}15%,75%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+.mapsel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.mapsel b{width:100%;font-size:13px;opacity:.8}#mc .mapsel button{font-size:12px;padding:9px 10px;flex:1 1 30%}#mc .mapsel button.on{background:#fa4;color:#000}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
-<div id="teams"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
+<div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
 <div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">R</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=9"></script></body></html>
+<script type="module" src="game.js?v=10"></script></body></html>
