@@ -797,7 +797,7 @@ function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';co
   Object.keys(Ws).filter(k=>fits(k,sl)).map(k=>`<div class="card ${k===pickSel?'sel':''} ${k===cur[slotSel]?'eq':''}" data-pick="${k}"><div class="wi">${wIcon(k)}</div>${szTag(k)}<b>${Ws[k].name}</b>${lockTag(k)}</div>`).join('')+`</div>`;
   const w=upWpn(pickSel);h+=`<div class="det"><h3>${w.name} ${pickSel===cur[slotSel]?'<small>— equipped</small>':''}</h3>${wStats(w)}<p>${w.desc}</p>${buyBox(pickSel)}</div>
   <div class="row"><button data-go="mech">◀ BACK</button><button class="go" data-go="deploy" ${cur.some(isLocked)?'disabled':''}>DEPLOY</button></div>`;}
- mc.innerHTML=h;}
+ mc.className=menuStep==='weapon'?'lo':'';mc.innerHTML=h;/*v13 sticky menu bar*/}
 function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();}
 function showUI(){menu.style.display=mode==='menu'?'flex':'none';$('hud').style.display=mode==='play'?'block':'none';$('msg').style.display=mode==='over'?'flex':'none';
  const t=TOUCH&&mode==='play'?'':'none';for(const id of['joy','bMG','bAB','bRL','bFL','bFR'])$(id).style.display=t;$('hint').style.display=TOUCH||mode!=='play'?'none':'';

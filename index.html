@@ -40,7 +40,7 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 .mb.alt{background:#ddd}
 #hint{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.6;pointer-events:none}
 #menu{position:fixed;inset:0;display:flex;pointer-events:none}
-#mc{pointer-events:auto;width:min(46%,520px);min-width:330px;height:100%;box-sizing:border-box;padding:24px;background:linear-gradient(90deg,#0d1420ee,#0d142099);overflow-y:auto;touch-action:pan-y}
+#mc{pointer-events:auto;width:min(46%,520px);min-width:330px;height:100%;box-sizing:border-box;padding:calc(18px + env(safe-area-inset-top)) 20px 0 calc(20px + env(safe-area-inset-left));background:linear-gradient(90deg,#0d1420ee,#0d142099);overflow-y:auto;touch-action:pan-y}
 #mc h1{font-size:46px;margin:30px 0 4px;letter-spacing:3px;color:#fc6}#mc .sub{opacity:.8}
 #mc h2{margin:4px 0 12px;font-size:22px;color:#fc6}#mc h3{margin:6px 0 10px}
 #mc button{font-size:20px;font-weight:bold;padding:14px 22px;border-radius:12px;border:0;background:#556;color:#fff}
@@ -53,6 +53,10 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 .st{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.st span{width:80px}.st em{width:70px;font-style:normal;text-align:right}
 .sb{flex:1;height:10px;background:#fff2;border-radius:5px;overflow:hidden}.sb i{display:block;height:100%;background:#fa4}
 .row{display:flex;justify-content:space-between;gap:10px}
+#mc>.row:last-child{position:sticky;bottom:0;z-index:5;margin:8px -20px 0 calc(-20px - env(safe-area-inset-left));padding:10px 20px calc(12px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));background:#0d1420f5;border-top:1px solid #fff2}
+#mc>:last-child:not(.row){margin-bottom:calc(20px + env(safe-area-inset-bottom))}
+.slot{padding:4px 8px}.slot div{font-size:14px;margin-top:1px}.lo .det{margin:8px 0;padding:8px 10px}.lo .st{margin:1px 0}
+@media (max-height:800px){#mc h2{margin:4px 0}.det p{margin:4px 0}}
 #teams{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;font-weight:bold;font-size:18px;text-shadow:0 0 3px #000}
 #teams b{padding:3px 12px;border-radius:8px}#teams .tb{background:#1a5fa0cc}#teams .tr{background:#a02a20cc}#teams .tk{background:#0008;font-size:14px;line-height:22px}
 #cap{position:absolute;top:46px;left:50%;transform:translateX(-50%);width:300px;font-size:12px;font-weight:bold;text-shadow:0 0 3px #000;display:none}
@@ -91,4 +95,4 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=12"></script></body></html>
+<script type="module" src="game.js?v=13"></script></body></html>
