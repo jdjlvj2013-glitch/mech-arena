@@ -14,6 +14,7 @@ canvas{display:block}
 #ammo .bar{width:200px;height:8px;background:#0008;border:1px solid #fff8;margin:3px 0 6px}#gunf,#abf{height:100%;background:#ff6}
 #xh{position:absolute;left:50%;top:42%;width:26px;height:26px;margin:-13px;border:2px solid #fffa;border-radius:50%}
 #xh:after{content:'';position:absolute;left:11px;top:11px;width:4px;height:4px;background:#f44;border-radius:50%}
+#xh.hit{border-color:#fff!important;transform:scale(1.35)}#xh.hit:before{content:"✕";position:absolute;left:-9px;top:-14px;width:44px;text-align:center;font-size:34px;line-height:50px;color:#f33;font-weight:bold}
 #rng{position:absolute;left:50%;top:calc(42% + 20px);transform:translateX(-50%);font-size:12px;font-weight:bold;text-shadow:0 0 3px #000}
 #lock{position:absolute;width:64px;height:64px;margin:-32px;border:3px solid #fd4;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#fff;text-shadow:0 0 3px #000}
 #joy{position:absolute;left:30px;bottom:30px;width:150px;height:150px;border-radius:50%;background:#fff2;border:2px solid #fff5;pointer-events:auto}
@@ -51,4 +52,4 @@ canvas{display:block}
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><small id="ml"></small><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=5"></script></body></html>
+<script type="module" src="game.js?v=6"></script></body></html>

@@ -1,7 +1,7 @@
 import * as THREE from './three.module.js';
 // ======================= CONFIG (tune here) =======================
 const CFG={
- cam:{dist:7,height:5.4,side:2.2,lookAhead:12,pitchLift:5},
+ cam:{dist:7,height:5.4,side:2.2,lookAhead:12,aimMaxYaw:0.6,aimMaxPitch:0.5,aimTurn:20,pitchLift:5},
  gravity:26, torsoTurn:14, legTurn:6,
  mechs:{
   guardian:{name:'Guardian',hp:1300,speed:7.5,color:0x3a6fd5,enemyColor:0xa8322a,
@@ -16,12 +16,13 @@ const CFG={
  },
  weapons:{
   minigun:{name:'Minigun',desc:'Huge fire rate, low damage per bullet. Spins up. Damage falls off past 60% range.',
-   dmg:8,interval:0.045,spin:0.5,range:45,falloff:0.6,mag:150,reload:3.0,spread:0.05,speed:130,aiBurst:20},
+   dmg:8,interval:0.045,spin:0.5,range:45,falloff:0.6,mag:150,reload:3.0,spread:0.012,speed:160,aiBurst:20},
   railgun:{name:'Railgun',desc:'Slow, precise, hits very hard at long range.',
-   dmg:130,interval:1.1,range:110,mag:6,reload:3.5,spread:0.003,speed:240,aiBurst:1},
+   dmg:130,interval:1.1,range:110,mag:6,reload:3.5,spread:0,speed:240,hitscan:true,aiBurst:1},
   hornet:{name:'Hornet Lock-On',desc:'Hold the crosshair on an enemy in range to lock, then fire homing rockets. Unlocked shots fly straight.',
    dmg:65,interval:0.28,range:55,mag:8,reload:4.0,spread:0.01,speed:42,splash:3.5,homing:true,lockTime:0.9,lockCone:0.2,turnRate:3.2,aiBurst:2},
  },
+ hitbox:{hx:1.5,y0:0.2,y1:5.4,shield:2.6},
  enemy:{count:[3,5],hpMul:0.42,speedMul:0.75,dmgMul:0.55,fireMul:1.5,spread:0.07,torsoTurn:2.5,legTurn:4,burstPause:[1.3,2.6]},
 };
 // ==================================================================
@@ -134,7 +135,7 @@ function animLegs(u,mvx,mvz,sp,dt,legTurn){let dir=1;
  for(const j of u.jets)j.visible=air&&u.vy>-2;
  if(u.shield)u.shield.visible=u.shieldOn;
  if(u.hp<u.max*.35){u.smokeT-=dt;if(u.smokeT<=0){u.smokeT=.12;const p=new THREE.Vector3();u.top.getWorldPosition(p);p.y+=1.5;fx(p,.6,0x333333,{vy:3,grow:2.5,life:1.4,op:.6});}}
- u.lower.rotation.y=u.legYaw;u.top.rotation.y=u.tYaw;u.lower.rotation.z=Math.sin(u.walk)*0.04*u.amp;for(const g of u.guns)g.rotation.x=u.gp;}
+ u.lower.rotation.y=u.legYaw;u.top.rotation.y=u.tYaw;u.lower.rotation.z=Math.sin(u.walk)*0.04*u.amp;if(u.team!=='p')for(const g of u.guns)g.rotation.x=u.gp;}
 // ---------- state ----------
 let P,E=[],B=[],FX=[],mode='menu',clock=0;
 const inp={mx:0,mz:0,fire:false,keys:{}};
@@ -160,9 +161,10 @@ const fxG=new THREE.SphereGeometry(1,8,6),sparkG=new THREE.BoxGeometry(.12,.12,.
 function fx(p,s,c,o={}){const m=new THREE.Mesh(o.box?sparkG:fxG,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o.op||1,depthWrite:false}));m.position.copy(p);m.scale.setScalar(s*.2);S.add(m);FX.push({m,t:0,s,v:o.v||new THREE.Vector3(0,o.vy||0,0),grow:o.grow??1,life:o.life||.33,op:o.op||1,g:o.box?-20:0});}
 function boom(p,s,c=0xff8800){fx(p,s,c);}
 function sparks(p,c=0xffe070){for(let i=0;i<4;i++)fx(p,1,c,{box:1,grow:0,life:.35,v:new THREE.Vector3((Math.random()-.5)*12,Math.random()*8,(Math.random()-.5)*12)});}
-function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].getWorldPosition(p);const f=new THREE.Vector3(Math.sin(u.tYaw),0,Math.cos(u.tYaw));return p.addScaledVector(f,u.mz);}
-function fireWeapon(u,aimPt,homing){const W=u.W;u.fireCd=W.interval*(u.team==='e'?CFG.enemy.fireMul:1)/(W.spin?Math.max(.3,u.spin):1);u.ammo--;
- const f=muzzle(u,u.ammo%2);const d=u.team==='p'?torsoDir(f,aimPt):aimPt.clone().sub(f).normalize();
+function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return u.guns[i].localToWorld(p.set(0,0,u.mz));}
+const STATS={shots:0,hits:0};
+function fireWeapon(u,aimPt,homing){if(u.team==='p')STATS.shots++;const W=u.W;u.fireCd=W.interval*(u.team==='e'?CFG.enemy.fireMul:1)/(W.spin?Math.max(.3,u.spin):1);u.ammo--;
+ const f=muzzle(u,u.ammo%2);const d=aimPt.clone().sub(f).normalize();
  const s=W.spread+(u.team==='e'?CFG.enemy.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  shoot(f,d,u,homing);if(u.ammo<=0)u.reload=W.reload;}
 // damage, with Guardian frontal shield
@@ -182,7 +184,8 @@ function tickUnit(u,dt){const T=u.T;u.abCd=Math.max(0,u.abCd-dt);u.fireCd-=dt;
 function speedOf(u){return u.speed*(u.shieldOn?u.T.shield.slow:1)*(u.air&&u.T.jump?u.T.jump.airSpeed:1);}
 // player aim
 const ray=new THREE.Raycaster();const AIMNDC=new THREE.Vector2(0,0.16);
-function playerAim(){ray.setFromCamera(AIMNDC,C);const tg=[...E.map(e=>e.g),...obstMeshes,ground];const h=ray.intersectObjects(tg,true).find(h=>h.distance>CFG.cam.dist+2);return h?h.point:ray.ray.at(150,new THREE.Vector3());}
+function playerAim(){ray.setFromCamera(AIMNDC,C);const tg=[...E.map(e=>e.g),...obstMeshes,ground];const h=ray.intersectObjects(tg,true).find(h=>h.distance>C.position.distanceTo(P.g.position)+1);aimOnEnemy=!!(h&&E.some(e=>{let o=h.object;while(o){if(o===e.g)return true;o=o.parent;}return false;}));return h?h.point:ray.ray.at(150,new THREE.Vector3());}
+let aimOnEnemy=false,hitMarkT=0;
 // ---------- input ----------
 const ABKEYS=['KeyE','ShiftLeft','ShiftRight','Space'];
 addEventListener('keydown',e=>{if(!inp.keys[e.code]&&ABKEYS.includes(e.code))ability(P);inp.keys[e.code]=true;if(e.code==='KeyR')manualReload();if(e.code==='Space')e.preventDefault();});addEventListener('keyup',e=>inp.keys[e.code]=false);
@@ -220,9 +223,9 @@ function update(dt){clock+=dt;const k=inp.keys;let mx=inp.mx+((k.KeyD?1:0)-(k.Ke
  animLegs(P,v.x,v.z,sp*spd,dt,CFG.legTurn);
  const W=P.W,firing=inp.fire||inp.mFire||k.KeyF;
  if(W.spin)P.spin=firing&&!P.reload?Math.min(1,P.spin+dt/W.spin):Math.max(0,P.spin-dt);
- updateLock(dt);
+ updateLock(dt);cam();const AP=playerAim();aimGuns(P,AP,dt);
  if(firing&&P.fireCd<=0&&P.ammo>0&&!P.reload){const locked=W.homing&&P.lockTgt&&P.lockT>=W.lockTime;
-  fireWeapon(P,playerAim(),locked?P.lockTgt:null);}
+  aimGuns(P,AP,1);fireWeapon(P,AP,locked?P.lockTgt:null);}
  // ---- AI ----
  const pp=P.g.position;for(const e of E){const ep=e.g.position;tickUnit(e,dt);const W=e.W;const toP=new THREE.Vector3().copy(pp).sub(ep);const dist=toP.length();
   const eye=ep.clone().setY(ep.y+3.3),pe=pp.clone().setY(pp.y+3.3);const see=los(eye,pe);
@@ -242,12 +245,9 @@ function update(dt){clock+=dt;const k=inp.keys;let mx=inp.mx+((k.KeyD?1:0)-(k.Ke
  for(let i=B.length-1;i>=0;i--){const b=B[i],p=b.m.position,W=b.W,sp=W.speed;let hit=false,hitU=null;
   if(b.homing&&b.homing.hp>0){const tp=b.homing.g.position.clone();tp.y+=3;const want=tp.sub(p).normalize();const cur=b.v.clone().normalize();cur.lerp(want,Math.min(1,W.turnRate*dt)).normalize();b.v.copy(cur).multiplyScalar(sp);b.m.lookAt(p.clone().add(b.v));
    if(Math.random()<.5)fx(p.clone(),.5,0xaaaaaa,{life:.4,op:.5,grow:2});}
-  const steps=W.speed>150?5:3;
-  for(let s=0;s<steps&&!hit;s++){p.addScaledVector(b.v,dt/steps);b.dist+=sp*dt/steps;
-   if(p.y<0||Math.abs(p.x)>A||Math.abs(p.z)>A){hit=true;break;}
-   for(const o of obst)if(p.y<o.h&&Math.abs(p.x-o.x)<o.hx&&Math.abs(p.z-o.z)<o.hz){hit=true;break;}
-   if(hit)break;
-   const targets=b.owner==='p'?E:[P];for(const u of targets){const q=u.g.position,r=u.shieldOn?2.6:1.7;if(p.y>q.y&&p.y<q.y+5.4&&Math.hypot(p.x-q.x,p.z-q.z)<r){hitU=u;hit=true;break;}}}
+  const p0=p.clone(),L=W.hitscan?W.range-b.dist:Math.min(sp*dt,W.range-b.dist+.01);const dir=b.v.clone().normalize();
+  const sw=sweep(p0,dir,L,b.owner);if(sw){p.addScaledVector(dir,sw.t);b.dist+=sw.t;hit=true;hitU=sw.u;if(hitU&&b.owner==='p'){STATS.hits++;hitMarkT=.18;}}else{p.addScaledVector(dir,L);b.dist+=L;}
+  if(W.hitscan&&!b.beam){b.beam=1;beam(p0,p.clone(),b.owner==='p'?0x80e8ff:0xff6060);if(!hit)b.dist=W.range;}
   let mult=1;if(W.falloff&&b.dist>W.range*W.falloff)mult=1-.5*(b.dist-W.range*W.falloff)/(W.range*(1-W.falloff));
   const expired=b.dist>=W.range;
   if(hit||expired){const pos=p.clone();
@@ -258,7 +258,7 @@ function update(dt){clock+=dt;const k=inp.keys;let mx=inp.mx+((k.KeyD?1:0)-(k.Ke
  for(let i=E.length-1;i>=0;i--)if(E[i].hp<=0){const p=E[i].g.position.clone();p.y+=3;boom(p,6);boom(p.clone().setY(p.y+2),4,0x444444);S.remove(E[i].g);if(P.lockTgt===E[i])P.lockTgt=null;E.splice(i,1);}
  if(P.hp<=0){boom(pp.clone().setY(pp.y+3),6);P.hp=0;end(false);}else if(!E.length)end(true);
  hud();}
-function updFx(dt){for(let i=FX.length-1;i>=0;i--){const f=FX[i];f.t+=dt/f.life;f.v.y+=f.g*dt;f.m.position.addScaledVector(f.v,dt);if(f.grow)f.m.scale.setScalar(f.s*(.2+f.t*f.grow));else f.m.scale.setScalar(f.s*(1-f.t));f.m.material.opacity=f.op*(1-f.t);if(f.t>=1){S.remove(f.m);f.m.material.dispose();FX.splice(i,1);}}}
+function updFx(dt){for(let i=FX.length-1;i>=0;i--){const f=FX[i];f.t+=dt/f.life;f.v.y+=f.g*dt;f.m.position.addScaledVector(f.v,dt);if(f.keep){}else if(f.grow)f.m.scale.setScalar(f.s*(.2+f.t*f.grow));else f.m.scale.setScalar(f.s*(1-f.t));f.m.material.opacity=f.op*(1-f.t);if(f.t>=1){S.remove(f.m);f.m.material.dispose();FX.splice(i,1);}}}
 // lock-on: enemy nearest the crosshair, within cone, range and line of sight
 const lockEl=$('lock'),scr=new THREE.Vector3();
 function updateLock(dt){const W=P.W;if(!W.homing){lockEl.style.display='none';return;}
@@ -290,7 +290,8 @@ function hud(){const W=P.W,T=P.T;hpf.style.width=(P.hp/P.max*100)+'%';
  else if(T.jump){if(P.abCd>0){af=1-P.abCd/T.jump.cd;at=`JUMP COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='JUMP READY';}
  else{const t=clock-P.lastHit;af=P.hp>=P.max?1:Math.min(1,t/T.regen.delay);at=P.hp>=P.max?'REGEN: FULL':(af>=1?`REGENERATING +${T.regen.rate}/s`:`REGEN IN ${(T.regen.delay-t).toFixed(1)}s`);ac=af>=1?'#6f9':'#678';}
  abBar.style.width=af*100+'%';abBar.style.background=ac;$('abt').textContent=at;ring(bAB,af,ac+'8');
- if((hudN++&3)===0){const ap=playerAim(),d=ap.distanceTo(P.g.position);const inR=d<=W.range;rng.textContent=`${Math.round(d)}m / ${W.range}m${inR?'':' OUT OF RANGE'}`;rng.style.color=inR?'#8f8':'#f66';$('xh').style.borderColor=inR?'#fffa':'#f668';}}
+ if((hudN++&3)===0){const ap=playerAim(),d=ap.distanceTo(P.g.position);const inR=d<=W.range;rng.textContent=`${Math.round(d)}m / ${W.range}m${inR?'':' OUT OF RANGE'}`;rng.style.color=inR?'#8f8':'#f66';$('xh').style.borderColor=aimOnEnemy?(inR?'#f33':'#f668'):(inR?'#fffa':'#fff6');}
+ $('xh').classList.toggle('hit',hitMarkT>0);hitMarkT-=1/60;}
 // ---------- MENU ----------
 const menu=$('menu'),mc=$('mc');let menuStep='title';
 const statMax={hp:1300,speed:10};const bar=(l,v,t)=>`<div class="st"><span>${l}</span><div class="sb"><i style="width:${Math.max(4,v*100)}%"></i></div><em>${t}</em></div>`;
@@ -323,4 +324,24 @@ function menuClick(e){const el=e.target.closest('[data-go],[data-mech],[data-wpn
 menu.addEventListener('click',menuClick);
 $('again').addEventListener('click',()=>newGame());$('tomenu').addEventListener('click',()=>goMenu());
 goMenu();requestAnimationFrame(loop);
-window.__game={hurt,get E(){return E},get P(){return P},get B(){return B},get mode(){return mode},ability:()=>ability(P),newGame,goMenu,get loadout(){return loadout},setLoadout:(m,w)=>{loadout={mech:m,weapon:w};}};
+window.__game={hurt,STATS,C,cam,obst,obstMeshes,get E(){return E},get P(){return P},get B(){return B},get mode(){return mode},ability:()=>ability(P),newGame,goMenu,get loadout(){return loadout},setLoadout:(m,w)=>{loadout={mech:m,weapon:w};}};
+
+// barrel convergence: rotate each gun pivot so its +Z points at the aim point
+const _l=new THREE.Vector3();
+function aimGuns(u,pt,dt){const K=CFG.cam;u.top.updateMatrixWorld(true);for(const g of u.guns){g.rotation.order='YXZ';
+ _l.copy(pt);g.parent.worldToLocal(_l);_l.sub(g.position);const yaw=Math.max(-K.aimMaxYaw,Math.min(K.aimMaxYaw,Math.atan2(_l.x,_l.z)));
+ const pit=Math.max(-K.aimMaxPitch,Math.min(K.aimMaxPitch,Math.atan2(-_l.y,Math.hypot(_l.x,_l.z))));const k=Math.min(1,dt*K.aimTurn);
+ g.rotation.y+=(yaw-g.rotation.y)*k;g.rotation.x+=(pit-g.rotation.x)*k;}}
+
+// swept segment tests (slab method) -> earliest hit along [o, o+d*L]
+function rayBox(o,d,mn,mx,L){let t0=0,t1=L;for(const a of['x','y','z']){const v=d[a];if(Math.abs(v)<1e-9){if(o[a]<mn[a]||o[a]>mx[a])return -1;continue;}
+ let ta=(mn[a]-o[a])/v,tb=(mx[a]-o[a])/v;if(ta>tb)[ta,tb]=[tb,ta];t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return -1;}return t0;}
+const _mn=new THREE.Vector3(),_mx=new THREE.Vector3();
+function sweep(o,d,L,owner){let best=null;const H=CFG.hitbox;
+ if(d.y<0){const tg=-o.y/d.y;if(tg>=0&&tg<=L)best={t:tg,u:null};}
+ for(const ob of obst){_mn.set(ob.x-ob.hx,-1,ob.z-ob.hz);_mx.set(ob.x+ob.hx,ob.h,ob.z+ob.hz);const t=rayBox(o,d,_mn,_mx,L);if(t>=0&&(!best||t<best.t))best={t,u:null};}
+ for(const u of owner==='p'?E:[P]){const q=u.g.position,r=u.shieldOn?H.shield:H.hx;_mn.set(q.x-r,q.y+H.y0,q.z-r);_mx.set(q.x+r,q.y+H.y1,q.z+r);const t=rayBox(o,d,_mn,_mx,L);if(t>=0&&(!best||t<best.t))best={t,u};}
+ if(!best){const e=o.clone().addScaledVector(d,L);if(Math.abs(e.x)>A||Math.abs(e.z)>A)best={t:L,u:null};}
+ return best;}
+const beamG=new THREE.BoxGeometry(.12,.12,1);
+function beam(a,b,c){const m=new THREE.Mesh(beamG,new THREE.MeshBasicMaterial({color:c,transparent:true,depthWrite:false}));const l=a.distanceTo(b);m.position.copy(a).lerp(b,.5);m.scale.z=l;m.lookAt(b);S.add(m);FX.push({m,t:0,s:1,v:new THREE.Vector3(),grow:0,life:.2,op:.9,g:0,keep:1});}
