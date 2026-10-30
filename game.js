@@ -56,6 +56,60 @@ const dl=new THREE.DirectionalLight(0xfff0d8,2.6);dl.position.set(30,50,20);dl.c
 {const sc=dl.shadow.camera;sc.left=sc.bottom=-28;sc.right=sc.top=28;sc.near=1;sc.far=140;dl.shadow.mapSize.set(1024,1024);dl.shadow.bias=-0.0008;dl.shadow.normalBias=0.04;}
 S.add(dl,dl.target);
 const SUN=new THREE.Vector3(30,50,20).normalize();
+// ======================= PROGRESSION: coins, upgrades, unlocks, paints =======================
+CFG.mechs.phantom={name:'Phantom',hp:900,speed:9.5,mass:0.95,color:0x6b4fa8,enemyColor:0x9a2a50,ability:'DASH',
+ desc:'Stealth raider. Fires a burst of thrusters for a lightning-fast dash in the direction you are moving.',dash:{speed:34,dur:0.22,cd:5}};
+CFG.weapons.shotgun={name:'Scattergun',desc:'Close-range shotgun: 9 heavy pellets per blast. Devastating up close, useless far away.',
+ dmg:15,pellets:9,interval:0.8,range:28,mag:6,reload:3.2,spread:0.11,speed:150,aiBurst:1,kick:0.7,jolt:0.07};
+CFG.econ={win:100,loss:25,kill:20,capture:60,duelMul:{easy:0.7,normal:1,hard:1.5},
+ upCost:[0,150,300,550,900],// cost to go from level i to i+1 (index = current level)
+ locked:{phantom:800,shotgun:700},paintCost:250,enemyScale:0.15};
+CFG.paints={default:{name:'Factory',col:null},desert:{name:'Desert Camo',col:0xb59a68,camo:[0x8a7048,0xd8c08a]},
+ arctic:{name:'Arctic Camo',col:0xdfe6ea,camo:[0x9aa7b0,0xffffff]},jungle:{name:'Jungle Camo',col:0x4c6a34,camo:[0x2b3d1f,0x7a8a4a]},
+ gold:{name:'Gold',col:0xd4a530,metal:0.9},stealth:{name:'Stealth Black',col:0x26262c,rough:0.8}};
+// upgrade stats per level (level 1 = base, max 5)
+const UPS={mech:{armor:{name:'Armor',per:0.08},speed:{name:'Speed',per:0.04},ability:{name:'Ability',per:0.10}},
+ wpn:{dmg:{name:'Damage',per:0.08},rate:{name:'Fire rate',per:0.06},reload:{name:'Reload',per:0.08},range:{name:'Range',per:0.08}}};
+const SAVE_KEY='mechArena.save.v1';
+function freshSave(){return {v:1,coins:0,earned:0,wins:0,lv:{},unlocked:[],paints:['default'],paint:{}};}
+let SAVE=freshSave();try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.v===1)SAVE=Object.assign(freshSave(),s);}catch(e){}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+const lvl=(k,s)=>(SAVE.lv[k]&&SAVE.lv[k][s])||1;
+const isLocked=k=>k in CFG.econ.locked&&!SAVE.unlocked.includes(k);
+const upCost=(k,s)=>{const l=lvl(k,s);return l>=5?0:CFG.econ.upCost[l];};
+function buyUp(k,s){const c=upCost(k,s);if(!c||SAVE.coins<c)return false;SAVE.coins-=c;(SAVE.lv[k]=SAVE.lv[k]||{})[s]=lvl(k,s)+1;persist();return true;}
+function buyUnlock(k){const c=CFG.econ.locked[k];if(!isLocked(k)||SAVE.coins<c)return false;SAVE.coins-=c;SAVE.unlocked.push(k);persist();return true;}
+function buyPaint(k){if(SAVE.paints.includes(k)||SAVE.coins<CFG.econ.paintCost)return false;SAVE.coins-=CFG.econ.paintCost;SAVE.paints.push(k);persist();return true;}
+function resetProgress(){SAVE=freshSave();persist();loadout={mech:'guardian',weapon:'minigun'};saveLoadout();}
+// derived (upgraded) stat blocks
+function mechAt(k,L){const b=CFG.mechs[k],T=JSON.parse(JSON.stringify(b));T.color=b.color;T.enemyColor=b.enemyColor;const a=L.armor-1,s=L.speed-1,ab=L.ability-1,P=UPS.mech;
+ T.hp=Math.round(b.hp*(1+P.armor.per*a));T.speed=+(b.speed*(1+P.speed.per*s)).toFixed(2);
+ if(T.shield)T.shield.hp=Math.round(b.shield.hp*(1+P.ability.per*ab));
+ if(T.jump)T.jump.cd=+(b.jump.cd*(1-0.08*ab)).toFixed(2);
+ if(T.regen)T.regen.rate=Math.round(b.regen.rate*(1+0.12*ab));
+ if(T.dash)T.dash.cd=+(b.dash.cd*(1-0.08*ab)).toFixed(2);return T;}
+function wpnAt(k,L){const b=CFG.weapons[k],W=Object.assign({},b),P=UPS.wpn;
+ W.dmg=+(b.dmg*(1+P.dmg.per*(L.dmg-1))).toFixed(1);W.interval=+(b.interval*(1-P.rate.per*(L.rate-1))).toFixed(4);
+ W.reload=+(b.reload*(1-P.reload.per*(L.reload-1))).toFixed(2);
+ if(b.homing)W.lockTime=+(b.lockTime*(1-0.10*(L.range-1))).toFixed(2);else W.range=Math.round(b.range*(1+P.range.per*(L.range-1)));return W;}
+const levelsOf=(k,kind)=>Object.fromEntries(Object.keys(UPS[kind]).map(s=>[s,lvl(k,s)]));
+const upMech=k=>mechAt(k,levelsOf(k,'mech')),upWpn=k=>wpnAt(k,levelsOf(k,'wpn'));
+// 0..1 progress of the equipped loadout (for modest enemy scaling)
+function progress(){const a=Object.values(levelsOf(loadout.mech,'mech')),b=Object.values(levelsOf(loadout.weapon,'wpn'));return [...a,...b].reduce((s,x)=>s+x-1,0)/((a.length+b.length)*4);}
+// paint
+const camoTex={};function camo(k){if(camoTex[k])return camoTex[k];const p=CFG.paints[k],c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
+ const hex=n=>'#'+n.toString(16).padStart(6,'0');g.fillStyle=hex(p.col);g.fillRect(0,0,64,64);let sd=k.length*977;const r=()=>(sd=(sd*16807)%2147483647)/2147483647;
+ for(const col of p.camo)for(let i=0;i<9;i++){g.fillStyle=hex(col);g.beginPath();g.ellipse(r()*64,r()*64,4+r()*9,3+r()*6,r()*3,0,7);g.fill();}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;return camoTex[k]=t;}
+function applyPaint(u,k){const p=CFG.paints[k];if(!p||!p.col)return;const m=u.mats[0];m.color.setHex(p.camo?0xffffff:p.col);if(p.camo){m.map=camo(k);}
+ if(p.metal!==undefined)m.metalness=p.metal;if(p.rough!==undefined)m.roughness=p.rough;m.needsUpdate=true;}
+const paintOf=k=>SAVE.paint[k]||'default';
+// match reward
+function reward(win,why){const E=CFG.econ,md=settings.mode,mul=md==='duel'?E.duelMul[settings.diff]:1,rows=[];
+ rows.push([win?'Victory':'Participation',win?E.win:E.loss]);if(STATS.kills)rows.push([`Kills ×${STATS.kills}`,STATS.kills*E.kill]);
+ if(win&&why==='Enemy base captured')rows.push(['Base captured',E.capture]);
+ let tot=rows.reduce((s,r)=>s+r[1],0);if(mul!==1){const x=Math.round(tot*mul)-tot;rows.push([`${CFG.diff[settings.diff].name} difficulty ×${mul}`,x]);tot+=x;}
+ SAVE.coins+=tot;SAVE.earned+=tot;if(win)SAVE.wins++;persist();return {rows,tot};}
 const A=60;// half size
 function tex(w,h,draw,rep){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;if(rep){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);}return t;}
 // gradient sky
@@ -138,7 +192,7 @@ function mech(team,type,wpn){const T=CFG.mechs[type];const col=team==='b'?T.colo
  const hip=new THREE.Mesh(boxG,dk);hip.scale.set(2,.5,1);hip.position.y=LEG.hipY;lower.add(hip);
  const top=new THREE.Group();top.position.y=2.6;g.add(top);
  const add=(par,geo,mt,sx,sy,sz,x,y,z)=>{const o=new THREE.Mesh(geo,mt);o.scale.set(sx,sy,sz);o.position.set(x,y,z);par.add(o);return o;};
- const tw={guardian:[2.7,1.7,1.9],strider:[1.9,1.3,1.5],mender:[2.2,1.5,1.6]}[type];
+ const tw={guardian:[2.7,1.7,1.9],strider:[1.9,1.3,1.5],mender:[2.2,1.5,1.6],phantom:[2.0,1.15,1.8]}[type];
  add(top,boxG,m,tw[0],tw[1],tw[2],0,.8,0);
  add(top,boxG,dk,tw[0]*.7,.9,.25,0,.75,tw[2]/2+.05);
  add(top,boxG,tm.stripe,tw[0]+.05,.18,tw[2]+.05,0,.8+tw[1]/2-.2,0);
@@ -152,13 +206,15 @@ function mech(team,type,wpn){const T=CFG.mechs[type];const col=team==='b'?T.colo
  let shield=null,jets=[];
  if(type==='guardian'){shield=add(top,shieldG,shieldMat,1,1,1,0,.8,0);shield.visible=false;add(top,boxG,MS.metal,.4,1.2,.4,-tw[0]/2-.1,.4,.6);}
  if(type==='strider'){for(const s of[-1,1]){add(top,thrG,MS.metal,1,1,1,s*.55,.7,-1.05);const j=add(top,flashG,jetMat,1.2,1.4,1.2,s*.55,-.3,-1.05);j.rotation.x=Math.PI;j.visible=false;jets.push(j);}}
+ if(type==='phantom'){for(const s of[-1,1]){const f=add(top,boxG,m,.12,.9,1.2,s*.7,1.5,-.6);f.rotation.z=s*.5;add(top,thrG,MS.metal,.8,.8,.8,s*.6,.5,-1.0);const j=add(top,flashG,jetMat,1,1.6,1,s*.6,.5,-1.6);j.rotation.x=-Math.PI/2;j.visible=false;jets.push(j);}}
  if(type==='mender'){add(top,coreG,coreMat,1,1,1,0,.75,.95);add(top,ringG,coreMat,1,1,1,0,.75,.95);}
- const guns=[],flash=[],spinners=[],kickers=[];const mz={minigun:2.0,railgun:3.0,hornet:.9}[wpn];
+ const guns=[],flash=[],spinners=[],kickers=[];const mz={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7}[wpn];
  const coil=wpn==='railgun'?new THREE.MeshStandardMaterial({color:0x2a5070,emissive:0x50c0ff,emissiveIntensity:.2,metalness:.5,roughness:.3}):null;
  for(const s of[-1,1]){const pv=new THREE.Group();pv.position.set(s*(tw[0]/2+.35),.7,0);const kb=new THREE.Group();pv.add(kb);kickers.push(kb);
   if(wpn==='minigun'){add(kb,boxG,dk,.6,.6,.9,0,0,.1);const sp=new THREE.Group();sp.position.z=1.2;kb.add(sp);spinners.push(sp);
    for(let k=0;k<3;k++){const a=k*2.09,b=add(sp,barrelG,MS.metal,.6,1.1,.6,Math.cos(a)*.15,Math.sin(a)*.15,0);b.rotation.x=Math.PI/2;}}
   else if(wpn==='railgun'){add(kb,boxG,dk,.45,.6,1.3,0,0,.1);const b=add(kb,barrelG,MS.metal,1.3,2,1.3,0,0,1.7);b.rotation.x=Math.PI/2;for(const z of[1.1,1.8])add(kb,coilG,coil,1,1,1,0,0,z);}
+  else if(wpn==='shotgun'){add(kb,boxG,dk,.6,.55,1.1,0,0,.1);for(const x of[-.14,.14]){const b=add(kb,barrelG,MS.metal,1.5,1.2,1.5,x,0,1.1);b.rotation.x=Math.PI/2;}add(kb,boxG,MS.metal,.5,.12,.5,0,-.3,.9);}
   else{add(kb,boxG,M(0x665544),.85,.85,1.1,0,.1,.1);for(let r=0;r<2;r++)for(let c=0;c<2;c++){const tb=add(kb,tubeG,MS.dark,1,1,1,-.2+c*.4,-.1+r*.4,.68);tb.rotation.x=Math.PI/2;}}
   const fl=add(pv,flashG,MS.flash,1,1,1,0,0,mz+.4);fl.rotation.x=-Math.PI/2;fl.visible=false;flash.push(fl);top.add(pv);guns.push(pv);}
  g.traverse(o=>{if(o.isMesh&&o.material!==shieldMat&&o.material!==jetMat&&o.material!==MS.flash)o.castShadow=true;});
@@ -218,7 +274,7 @@ function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.
  if(u.coil){const ch=u.reload?0:Math.max(0,1-u.fireCd/u.W.interval);u.coil.emissiveIntensity=0.15+3*ch*ch;}
  if(u.ventT>0){u.ventT-=dt;if(Math.random()<.5){u.vent.getWorldPosition(_w);fx(_w,.5,0xdde4ea,{vy:3.5,grow:2.5,life:.8,op:.45});}}
  if(u.flashT>0){u.flashT-=dt;if(u.flashT<=0)u.flash.forEach(f=>f.visible=false);}
- for(const j of u.jets){j.visible=u.air&&u.vy>-4;j.scale.y=1.2+Math.random()*.8;}
+ for(const j of u.jets){j.visible=(u.air&&u.vy>-4)||u.dashT>0;j.scale.y=1.2+Math.random()*.8;}
  if(u.air&&u.vy>-4&&u.jets.length&&Math.random()<.6){u.jets[0].getWorldPosition(_w);fx(_w,.5,0xffaa55,{vy:-6,grow:2,life:.35,op:.7});}
  // shield unfold/retract
  if(u.shield){const t=u.shieldOn?1:0,r=1/u.T.shield.unfold;u.shA+=Math.sign(t-u.shA)*Math.min(Math.abs(t-u.shA),r*dt);u.shield.visible=u.shA>0.02;u.shield.scale.set(Math.max(.05,u.shA),0.25+0.75*u.shA,Math.max(.05,u.shA));}
@@ -247,11 +303,12 @@ const foes=t=>U.filter(x=>x.alive&&x.team!==t),mates=t=>U.filter(x=>x.alive&&x.t
 const LS='mechArenaLoadout',LS2='mechArenaSettings';let loadout={mech:'guardian',weapon:'minigun'};try{const l=JSON.parse(localStorage.getItem(LS));if(l&&CFG.mechs[l.mech]&&CFG.weapons[l.weapon])loadout=l;}catch(e){}
 let settings={mode:'team',diff:'normal',gfx:'high'};try{Object.assign(settings,JSON.parse(localStorage.getItem(LS2))||{});}catch(e){}
 function saveLoadout(){try{localStorage.setItem(LS,JSON.stringify(loadout));localStorage.setItem(LS2,JSON.stringify(settings));}catch(e){}}
-function makeUnit(team,type,wpn,prof){const T=CFG.mechs[type],W=CFG.weapons[wpn],pr=prof?CFG.diff[prof]:null;const u=mech(team,type,wpn);
+function makeUnit(team,type,wpn,prof){const me=team==='b'&&!prof,T=me?upMech(type):CFG.mechs[type],W=me?upWpn(wpn):CFG.weapons[wpn];let pr=prof?Object.assign({},CFG.diff[prof]):null;
+ if(pr&&team==='r'){const k=1+CFG.econ.enemyScale*progress();pr.hpMul*=k;pr.dmgMul*=k;pr.scale=k;}const u=mech(team,type,wpn);
  Object.assign(u,{team,type,wpn,T,W,prof:pr,alive:true,hp:T.hp*(pr?pr.hpMul:1),speed:T.speed*(pr?pr.speedMul:1),ammo:W.mag,reload:0,fireCd:0,spin:0,
   shieldOn:false,shA:0,shieldHP:T.shield?T.shield.hp:0,shieldT:0,abCd:0,vy:0,air:false,lastHit:-99,lockT:0,lockTgt:null,cd:1+Math.random()*2,burst:0,think:0,goal:null,
   vel:new THREE.Vector3(),acc:new THREE.Vector3(),jg:new THREE.Vector3(),jgV:new THREE.Vector3(),fl:new THREE.Vector3(),kick:[0,0],jolt:0,sway:0,dip:0,crouch:0,jumpWind:0,
-  stagT:0,ventT:0,kills:0,seeT:0,strafeD:1,strafeT:0,scanT:0,tgt:null,dieSide:Math.random()<.5?-1:1,yaw:0,pitch:.05});u.max=u.hp;return u;}
+  stagT:0,dashT:0,ventT:0,kills:0,seeT:0,strafeD:1,strafeT:0,scanT:0,tgt:null,dieSide:Math.random()<.5?-1:1,yaw:0,pitch:.05});u.max=u.hp;return u;}
 // nameplates: team-colored name + hp bar (canvas sprite)
 function makePlate(u,ally){const c=document.createElement('canvas');c.width=256;c.height=64;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthWrite:false,fog:false}));s.scale.set(3.4,.85,1);s.position.y=6.7;u.g.add(s);u.plate=s;u.pc=c;u.pt=t;u.ally=ally;u.plHp=-1;updPlate(u);}
@@ -279,15 +336,15 @@ function clearWorld(){for(const u of U)S.remove(u.g);if(P&&!U.includes(P))S.remo
 const rk=o=>{const k=Object.keys(o);return k[Math.floor(Math.random()*k.length)];};
 function spawn(u,x,z,yaw){u.g.position.set(x,0,z);u.tYaw=u.legYaw=u.yaw=yaw;initFeet(u);U.push(u);}
 function newGame(){clearWorld();clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;const md=settings.mode;
- P=makeUnit('b',loadout.mech,loadout.weapon,null);P.isPlayer=true;spawn(P,0,48,Math.PI);P.pitch=.05;camYaw=Math.PI;
+ P=makeUnit('b',loadout.mech,loadout.weapon,null);P.isPlayer=true;applyPaint(P,paintOf(loadout.mech));spawn(P,0,48,Math.PI);P.pitch=.05;camYaw=Math.PI;
  const team=md!=='duel';
  if(team){const roles=md==='base'?['att','def']:['esc','esc'];[[-7,50],[7,50]].forEach(([x,z],i)=>{const a=makeUnit('b',rk(CFG.mechs),rk(CFG.weapons),CFG.allyProfile);a.role=roles[i];spawn(a,x,z,Math.PI);makePlate(a,true);});}
  const n=team?3:1,eroles=md==='base'?['def','att','att']:['hunt','hunt','hunt'];
  for(let i=0;i<n;i++){const e=makeUnit('r',rk(CFG.mechs),rk(CFG.weapons),md==='duel'?settings.diff:CFG.enemyProfile);e.role=eroles[i];const sp=[[0,-48],[-7,-50],[7,-50]][i];spawn(e,sp[0],sp[1],0);makePlate(e,false);}
  showBases(md==='base');mode='play';showUI();}
 // ---------- projectiles & effects ----------
-const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1)};
-const PM={minigun:new THREE.MeshBasicMaterial({color:0xffee66}),railgun:new THREE.MeshBasicMaterial({color:0x80e8ff}),hornet:new THREE.MeshBasicMaterial({color:0xffaa22})};
+const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1),shotgun:new THREE.BoxGeometry(.1,.1,.7)};
+const PM={minigun:new THREE.MeshBasicMaterial({color:0xffee66}),railgun:new THREE.MeshBasicMaterial({color:0x80e8ff}),hornet:new THREE.MeshBasicMaterial({color:0xffaa22}),shotgun:new THREE.MeshBasicMaterial({color:0xffcc88})};
 function shoot(from,dir,u,homing){const W=u.W;const m=new THREE.Mesh(PG[u.wpn],PM[u.wpn]);m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
  B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1),homing});}
 const fxG=new THREE.SphereGeometry(1,8,6),sparkG=new THREE.BoxGeometry(.12,.12,.12),debG=new THREE.BoxGeometry(.5,.35,.6);
@@ -315,10 +372,10 @@ function sfx(k){if(!AC||AC.state!=='running')return;const t=AC.currentTime,o=AC.
 function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return u.guns[i].localToWorld(p.set(0,0,u.mz));}
 function fireWeapon(u,aimPt,homing){if(u===P)STATS.shots++;const W=u.W,pr=u.prof;u.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,u.spin):1);u.ammo--;
  const gi=u.ammo%2,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
- const s=W.spread+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
+ const s=(W.pellets?0:W.spread)+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  u.kick[gi]=Math.min(1,u.kick[gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);if(u.wpn==='railgun')u.ventT=.7;
  if(u===P){flashLight(f,u.wpn==='railgun'?4:1.5);shake(W.jolt*2);}
- shoot(f,d,u,homing);if(u.ammo<=0)u.reload=W.reload;}
+ for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing);}if(u.ammo<=0)u.reload=W.reload;}
 function frontal(u,pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,l=Math.hypot(dx,dz)||1;return (dx*Math.sin(u.tYaw)+dz*Math.cos(u.tYaw))/l>0.25;}
 function dropShield(u){if(!u.shieldOn)return;u.shieldOn=false;u.abCd=u.T.shield.cd;}
 function hurt(u,d,pos,src){if(!u||!u.alive)return;if(u.shieldOn&&pos&&frontal(u,pos)){u.shieldHP-=d;sparks(pos,0x80e0ff);if(u.shieldHP<=0)dropShield(u);return;}
@@ -333,7 +390,9 @@ function killUnit(u,src){if(!u.alive)return;u.alive=false;u.hp=0;u.dying=0;if(u.
  if(u===P&&mode==='play'){const a=mates('b')[0];if(a)SPEC=a;}}
 function ability(u){if(!u||!u.alive||mode!=='play')return;const T=u.T;
  if(T.shield){if(u.shieldOn)dropShield(u);else if(u.abCd<=0){u.shieldOn=true;u.shieldT=T.shield.dur;u.shieldHP=T.shield.hp;}}
- else if(T.jump){if(!u.air&&u.abCd<=0&&u.jumpWind<=0){u.jumpWind=CFG.gait.crouchJump;u.abCd=T.jump.cd;}}}
+ else if(T.jump){if(!u.air&&u.abCd<=0&&u.jumpWind<=0){u.jumpWind=CFG.gait.crouchJump;u.abCd=T.jump.cd;}}
+ else if(T.dash&&u.abCd<=0&&!u.air){let x=u.vel.x,z=u.vel.z,l=Math.hypot(x,z);if(l<.5){x=Math.sin(u.tYaw);z=Math.cos(u.tYaw);l=1;}u.dashD={x:x/l,z:z/l};u.dashT=T.dash.dur;u.abCd=T.dash.cd;u.crouch=Math.max(u.crouch,.5);
+  fx(u.g.position.clone().setY(.4),2.2,0x9a927e,{grow:2.5,life:.5,op:.5});if(u===P){shake(.18);sfx('step');}}}
 function tickUnit(u,dt){const T=u.T;u.abCd=Math.max(0,u.abCd-dt);u.fireCd-=dt;u.stagT=Math.max(0,u.stagT-dt);
  if(u.jumpWind>0){u.jumpWind-=dt;if(u.jumpWind<=0){u.vy=T.jump.vel;u.air=true;fx(u.g.position.clone().setY(u.g.position.y+.5),2,0xffaa44);fx(u.g.position.clone().setY(u.g.position.y+.3),2.5,0x9a927e,{grow:2,life:.6,op:.5});}}
  if(u.reload>0){u.reload-=dt;if(u.reload<=0){u.reload=0;u.ammo=u.W.mag;}}
@@ -344,7 +403,8 @@ function tickUnit(u,dt){const T=u.T;u.abCd=Math.max(0,u.abCd-dt);u.fireCd-=dt;u.
    fx(p.clone().setY(gy+.3),2.2,0x9a927e,{grow:2.5,life:.6,op:.55});if(u===P){shake(CFG.cam.shakeLand*Math.min(1,iv/15));sfx('step');}}}}
 function speedOf(u){return u.speed*(u.shieldOn?u.T.shield.slow:1)*(u.air&&u.T.jump?u.T.jump.airSpeed:1)*(u.stagT>0?CFG.move.staggerSlow:1)*(u.jumpWind>0?0.3:1);}
 // inertia: velocity ramps toward the wanted velocity, heavier mechs ramp slower
-function drive(u,wx,wz,dt){const K=CFG.move,m=u.T.mass||1,sp=speedOf(u),tx=wx*sp,tz=wz*sp,v=u.vel;const ox=v.x,oz=v.z;
+function drive(u,wx,wz,dt){if(u.dashT>0){u.dashT-=dt;const s=u.T.dash.speed;wx=u.dashD.x;wz=u.dashD.z;u.vel.set(wx*s,0,wz*s);const p=u.g.position,nx=p.x+u.vel.x*dt,nz=p.z+u.vel.z*dt;if(!blocked(nx,p.z,1.6,p.y))p.x=nx;if(!blocked(p.x,nz,1.6,p.y))p.z=nz;p.x=Math.max(-A+2,Math.min(A-2,p.x));p.z=Math.max(-A+2,Math.min(A-2,p.z));if(u.dashT<=0)u.vel.multiplyScalar(.35);return;}
+ const K=CFG.move,m=u.T.mass||1,sp=speedOf(u),tx=wx*sp,tz=wz*sp,v=u.vel;const ox=v.x,oz=v.z;
  const dx=tx-v.x,dz=tz-v.z,dl=Math.hypot(dx,dz),rate=(Math.hypot(tx,tz)>Math.hypot(v.x,v.z)?K.accel:K.decel)/m*(u.air?.4:1)*dt;
  if(dl>rate){v.x+=dx/dl*rate;v.z+=dz/dl*rate;}else{v.x=tx;v.z=tz;}
  const p=u.g.position,r=1.6,nx=p.x+v.x*dt,nz=p.z+v.z*dt;if(!blocked(nx,p.z,r,p.y))p.x=nx;else v.x=0;if(!blocked(p.x,nz,r,p.y))p.z=nz;else v.z=0;
@@ -395,7 +455,7 @@ function aiTick(u,dt){const pr=u.prof,W=u.W,p=u.g.position,eye=eyeOf(u,new THREE
    else if(t){const a=Math.atan2(p.x-t.g.position.x,p.z-t.g.position.z)+(Math.random()-.5)*1.6,r=Math.min(40,Math.max(14,W.range*.6))+Math.random()*6;u.goal=new THREE.Vector3(t.g.position.x+Math.sin(a)*r,0,t.g.position.z+Math.cos(a)*r);}
    else u.goal=new THREE.Vector3((Math.random()-.5)*60,0,(Math.random()-.5)*60);}
   // abilities
-  if(Math.random()<pr.ability){if(u.T.jump&&t&&(!see||clock-u.lastHit<1))ability(u);}
+  if(Math.random()<pr.ability){if(u.T.jump&&t&&(!see||clock-u.lastHit<1))ability(u);if(u.T.dash&&t&&clock-u.lastHit<.6)ability(u);}
   if(pr.ability>=1&&u.T.shield&&u.shieldOn&&!(clock-u.lastHit<1.5))dropShield(u);}
  if(u.T.shield&&!u.shieldOn&&u.abCd<=0&&clock-u.lastHit<.4&&t&&see&&Math.random()<pr.ability*dt*20)ability(u);
  // move (+ strafing while engaged)
@@ -419,7 +479,11 @@ function outcome(){const md=settings.mode,b=mates('b').length,r=mates('r').lengt
 function end(win,why){mode='over';showUI();const md=settings.mode;$('mt').textContent=win?'VICTORY':'DEFEAT';$('mt').style.color=win?'#6f9':'#f66';
  $('mm').textContent=`${CFG.modes[md].name} ${CFG.modes[md].sub}${md==='duel'?' · '+CFG.diff[settings.diff].name:''}`;$('ml').textContent=why;
  $('mk').textContent=`Kills: ${STATS.kills}  ·  Team kills: ${U.filter(u=>u.team==='b').reduce((a,u)=>a+u.kills,0)}  ·  Accuracy: ${STATS.shots?Math.round(STATS.hits/STATS.shots*100):0}%`;
- document.exitPointerLock&&document.exitPointerLock();inp.fire=false;inp.mFire=false;}
+ document.exitPointerLock&&document.exitPointerLock();inp.fire=false;inp.mFire=false;
+ const rw=reward(win,why);LAST_REWARD=rw;const ce=$('coins');ce.innerHTML=rw.rows.map((r,i)=>`<div class="cr" style="animation-delay:${i*.25}s"><span>${r[0]}</span><b>${r[1]>=0?'+':''}${r[1]}</b></div>`).join('')+`<div class="ct"><span>TOTAL</span><b>🪙 +<i id="cup">0</i></b></div><div class="cb">Balance: 🪙 <i id="cbal">${SAVE.coins-rw.tot}</i></div>`;
+ const t0=performance.now(),dur=1200+rw.rows.length*250,b0=SAVE.coins-rw.tot;cancelAnimationFrame(cupRAF);
+ const step=n=>{const f=Math.min(1,(n-t0)/dur),e=1-Math.pow(1-f,3);$('cup').textContent=Math.round(rw.tot*e);$('cbal').textContent=Math.round(b0+rw.tot*e);if(f<1)cupRAF=requestAnimationFrame(step);};cupRAF=requestAnimationFrame(step);}
+let LAST_REWARD=null,cupRAF=0;
 let last=performance.now(),menuA=0,fpsT=0,fpsN=0,fps=60,lowT=0;
 function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
  fpsT+=dt;fpsN++;if(fpsT>=.5){fps=fpsN/fpsT;fpsT=fpsN=0;if(mode==='play'&&settings.gfx==='high'&&!window.__noAuto){lowT=fps<CFG.gfx.autoFallbackFps?lowT+.5:0;if(lowT>=CFG.gfx.autoWindow){setGfx('low');toast('Low fps: graphics switched to LOW');}}}
@@ -496,6 +560,7 @@ function hud(){const W=P.W,T=P.T;hudN++;
  else{gunBar.style.width=P.ammo/W.mag*100+'%';gunBar.style.background='#ff6';$('gunt').textContent=`${W.name} ${P.ammo}/${W.mag}`;ring(bMG,P.ammo/W.mag,'#f448');bMG.textContent=P.ammo;}
  let af=1,at='',ac='#6cf';
  if(T.shield){if(P.shieldOn){af=Math.min(P.shieldT/T.shield.dur,P.shieldHP/T.shield.hp);at=`SHIELD UP ${Math.ceil(P.shieldHP)} HP · ${P.shieldT.toFixed(1)}s`;}else if(P.abCd>0){af=1-P.abCd/T.shield.cd;at=`SHIELD COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='SHIELD READY';}
+ else if(T.dash){if(P.abCd>0){af=1-P.abCd/T.dash.cd;at=`DASH COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='DASH READY';}
  else if(T.jump){if(P.abCd>0){af=1-P.abCd/T.jump.cd;at=`JUMP COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='JUMP READY';}
  else{const t=clock-P.lastHit;af=P.hp>=P.max?1:Math.min(1,t/T.regen.delay);at=P.hp>=P.max?'REGEN: FULL':(af>=1?`REGENERATING +${T.regen.rate}/s`:`REGEN IN ${(T.regen.delay-t).toFixed(1)}s`);ac=af>=1?'#6f9':'#678';}
  abBar.style.width=af*100+'%';abBar.style.background=ac;$('abt').textContent=at;ring(bAB,af,ac+'8');
@@ -504,37 +569,71 @@ function hud(){const W=P.W,T=P.T;hudN++;
 // ---------- MENU ----------
 const menu=$('menu'),mc=$('mc');let menuStep='title';
 const statMax={hp:1300,speed:10};const bar=(l,v,t)=>`<div class="st"><span>${l}</span><div class="sb"><i style="width:${Math.max(4,v*100)}%"></i></div><em>${t}</em></div>`;
-function preview(){if(P)S.remove(P.g);P=makeUnit('b',loadout.mech,loadout.weapon,null);P.g.position.set(0,0,48);P.tYaw=P.legYaw=Math.PI;P.yaw=Math.PI;P.pitch=.05;initFeet(P);animMech(P,.016);}
+function preview(){if(P)S.remove(P.g);P=makeUnit('b',loadout.mech,loadout.weapon,null);applyPaint(P,paintOf(loadout.mech));P.g.position.set(0,0,48);P.tYaw=P.legYaw=Math.PI;P.yaw=Math.PI;P.pitch=.05;initFeet(P);animMech(P,.016);}
 function menuTick(dt){menuA+=dt*.35;if(!P)return;const p=P.g.position;P.tYaw=Math.PI+Math.sin(menuA*.8)*.6;P.legYaw=Math.PI;P.spin=P.W.spin?1:0;animMech(P,dt);
  const a=Math.PI*0.75+menuA*0.3;const cx=p.x+Math.sin(a)*9,cz=p.z+Math.cos(a)*9;C.position.set(cx,4.5,cz);
  const lx=-Math.cos(a),lz=Math.sin(a);const side=innerWidth>700?2.8:0;C.lookAt(p.x+lx*side,3,p.z+lz*side);dl.position.set(p.x+SUN.x*60,SUN.y*60,p.z+SUN.z*60);dl.target.position.set(p.x,0,p.z);}
+let gtab='mech',gsel=null,resetArm=false;
+const coinTag=()=>`<div class="coinbal">🪙 <b id="bal">${SAVE.coins}</b></div>`;
+const lockTag=k=>isLocked(k)?`<small class="lk">🔒 🪙${CFG.econ.locked[k]}</small>`:'';
+const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰'})[k];
+function abText(m){return m.shield?`${m.shield.hp} HP / ${m.shield.dur}s, ${m.shield.cd}s cooldown`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:`+${m.regen.rate} HP/s after ${m.regen.delay}s`;}
+function buyBox(k){const c=CFG.econ.locked[k];return isLocked(k)?`<div class="buy"><span>🔒 Locked</span>${SAVE.coins>=c?`<button class="go" data-buy="${k}">UNLOCK 🪙${c}</button>`:`<button disabled>🪙${c} — need ${c-SAVE.coins} more</button>`}</div>`:'';}
+// garage stat rows: label, current, next
+function mechRows(k){const L=levelsOf(k,'mech'),T=mechAt(k,L),out=[];
+ for(const s of Object.keys(UPS.mech)){const n=Object.assign({},L);n[s]=Math.min(5,L[s]+1);const N=mechAt(k,n);
+  const f=s==='armor'?[T.hp,N.hp,' HP']:s==='speed'?[T.speed,N.speed,' m/s']:T.shield?[T.shield.hp,N.shield.hp,' shield HP']:T.jump?[T.jump.cd,N.jump.cd,'s jump cd']:T.dash?[T.dash.cd,N.dash.cd,'s dash cd']:[T.regen.rate,N.regen.rate,' HP/s regen'];
+  out.push([s,s==='ability'?`Ability (${T.ability})`:UPS.mech[s].name,L[s],f]);}return out;}
+function wpnRows(k){const L=levelsOf(k,'wpn'),W=wpnAt(k,L),out=[];
+ for(const s of Object.keys(UPS.wpn)){const n=Object.assign({},L);n[s]=Math.min(5,L[s]+1);const N=wpnAt(k,n);
+  const f=s==='dmg'?[W.dmg,N.dmg,W.pellets?' ×'+W.pellets:' /hit']:s==='rate'?[(1/W.interval).toFixed(1),(1/N.interval).toFixed(1),' /s']:s==='reload'?[W.reload,N.reload,'s reload']:W.homing?[W.lockTime,N.lockTime,'s lock']:[W.range,N.range,' m'];
+  out.push([s,s==='range'&&W.homing?'Lock time':UPS.wpn[s].name,L[s],f]);}return out;}
+function garage(){const Ms=CFG.mechs,Ws=CFG.weapons;let h=`<div class="gh"><h2>GARAGE</h2>${coinTag()}</div><div class="tabs">`+[['mech','MECHS'],['wpn','WEAPONS'],['paint','PAINT']].map(([k,n])=>`<button data-gtab="${k}" class="${gtab===k?'on':''}">${n}</button>`).join('')+`</div>`;
+ const list=gtab==='wpn'?Ws:Ms;if(!list[gsel])gsel=gtab==='wpn'?loadout.weapon:loadout.mech;
+ h+=`<div class="cards">`+Object.entries(list).map(([k,m])=>`<div class="card ${k===gsel?'sel':''}" data-gsel="${k}">${gtab==='wpn'?`<div class="wi">${wIcon(k)}</div>`:`<div class="sw" style="background:#${m.color.toString(16).padStart(6,'0')}"></div>`}<b>${m.name}</b>${lockTag(k)}</div>`).join('')+`</div><div class="det">`;
+ if(isLocked(gsel))h+=`<h3>${list[gsel].name}</h3><p>${list[gsel].desc}</p>${buyBox(gsel)}`;
+ else if(gtab==='paint'){const cur=paintOf(gsel);h+=`<h3>${Ms[gsel].name} paint</h3><div class="paints">`+Object.entries(CFG.paints).map(([k,p])=>{const own=SAVE.paints.includes(k),c=p.col??Ms[gsel].color,bg=p.camo?`repeating-linear-gradient(45deg,#${c.toString(16).padStart(6,'0')} 0 8px,#${p.camo[0].toString(16).padStart(6,'0')} 8px 14px,#${p.camo[1].toString(16).padStart(6,'0')} 14px 18px)`:'#'+c.toString(16).padStart(6,'0');
+  return `<div class="pt ${k===cur?'sel':''}" data-paint="${k}"><i style="background:${bg}"></i><span>${p.name}</span><small>${k===cur?'EQUIPPED':own?'tap to equip':'🔒 🪙'+CFG.econ.paintCost}</small></div>`;}).join('')+`</div>`;}
+ else{const rows=gtab==='wpn'?wpnRows(gsel):mechRows(gsel),kind=gtab==='wpn'?'wpn':'mech';h+=`<h3>${list[gsel].name} upgrades</h3>`;
+  for(const [s,name,l,f] of rows){const c=upCost(gsel,s);h+=`<div class="up"><div><b>${name}</b><div class="pips">${[1,2,3,4,5].map(i=>`<i class="${i<=l?'on':''}"></i>`).join('')}</div><small>${l<5?`${f[0]}${f[2]} → <em>${f[1]}${f[2]}</em>`:`${f[0]}${f[2]} · MAX`}</small></div>`+
+   (l>=5?`<button disabled>MAX</button>`:`<button class="${SAVE.coins>=c?'go':''}" data-up="${s}" ${SAVE.coins>=c?'':'disabled'}>Lv${l+1} · 🪙${c}</button>`)+`</div>`;}}
+ h+=`</div><div class="row"><button data-go="title">◀ BACK</button><button class="${resetArm?'danger':''}" data-reset="1">${resetArm?'TAP AGAIN TO ERASE ALL':'Reset progress'}</button></div>`;return h;}
 function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';const md=Md[settings.mode];
  const gq=`<div class="gq">Graphics: <button data-gfx="high" class="${settings.gfx==='high'?'on':''}">HIGH</button><button data-gfx="low" class="${settings.gfx==='low'?'on':''}">LOW</button></div>`;
- if(menuStep==='title'){h=`<h1>MECH ARENA</h1><p class="sub">Choose a mode, your mech and weapon, then deploy.</p>
-  <button class="big" data-go="mode">PLAY</button><button class="big alt" data-go="deploy">QUICK DEPLOY<br><small>${md.name}${settings.mode==='duel'?' ('+CFG.diff[settings.diff].name+')':''} · ${Ms[loadout.mech].name} + ${Ws[loadout.weapon].name}</small></button>${gq}`;}
+ if(menuStep==='title'){h=`<h1>MECH ARENA</h1>${coinTag()}<p class="sub">Win matches to earn coins. Upgrade and unlock gear in the Garage.</p>
+  <button class="big" data-go="mode">PLAY</button><button class="big alt" data-go="deploy">QUICK DEPLOY<br><small>${md.name}${settings.mode==='duel'?' ('+CFG.diff[settings.diff].name+')':''} · ${Ms[loadout.mech].name} + ${Ws[loadout.weapon].name}</small></button>
+  <button class="big gar" data-go="garage">🔧 GARAGE</button>${gq}`;}
+ else if(menuStep==='garage')h=garage();
  else if(menuStep==='mode'){h=`<h2>1 · SELECT MODE</h2><div class="cards">`+Object.entries(Md).map(([k,m])=>`<div class="card ${k===settings.mode?'sel':''}" data-mode="${k}"><div class="md">${m.sub}</div><b>${m.name}</b></div>`).join('')+`</div>
-  <div class="det"><h3>${md.name} <small>— ${md.sub}</small></h3><p>${md.desc}</p>${settings.mode==='duel'?`<div class="dif">`+Object.entries(CFG.diff).map(([k,d])=>`<button data-diff="${k}" class="${k===settings.diff?'on':''}">${d.name.toUpperCase()}</button>`).join('')+`</div><p class="ab">${({easy:'Slow reactions, wide spread, weaker armor and damage.',normal:'Leads moving targets, strafes a little.',hard:'Fast reactions, accurate leads, strafes, uses cover and abilities smartly.'})[settings.diff]}</p>`:''}</div>
+  <div class="det"><h3>${md.name} <small>— ${md.sub}</small></h3><p>${md.desc}</p>${settings.mode==='duel'?`<div class="dif">`+Object.entries(CFG.diff).map(([k,d])=>`<button data-diff="${k}" class="${k===settings.diff?'on':''}">${d.name.toUpperCase()}</button>`).join('')+`</div><p class="ab">Coin reward ×${CFG.econ.duelMul[settings.diff]}</p>`:''}</div>
   <div class="row"><button data-go="title">BACK</button><button class="go" data-go="mech">NEXT ▶</button></div>`;}
- else if(menuStep==='mech'){h=`<h2>2 · SELECT MECH</h2><div class="cards">`+Object.entries(Ms).map(([k,m])=>`<div class="card ${k===loadout.mech?'sel':''}" data-mech="${k}"><div class="sw" style="background:#${m.color.toString(16).padStart(6,'0')}"></div><b>${m.name}</b><small>${m.ability}</small></div>`).join('')+`</div>`;
-  const m=Ms[loadout.mech];const ab=m.shield?`${m.shield.hp} HP / ${m.shield.dur}s, ${m.shield.cd}s cooldown`:m.jump?`${m.jump.cd}s cooldown`:`+${m.regen.rate} HP/s after ${m.regen.delay}s`;
-  h+=`<div class="det"><h3>${m.name} <small>— ${m.ability}</small></h3>${bar('ARMOR',m.hp/statMax.hp,m.hp)}${bar('SPEED',m.speed/statMax.speed,m.speed)}<p>${m.desc}</p><p class="ab">Ability: ${ab}</p></div>
-  <div class="row"><button data-go="mode">◀ BACK</button><button class="go" data-go="weapon">NEXT ▶</button></div>`;}
- else{h=`<h2>3 · SELECT WEAPON</h2><div class="cards">`+Object.entries(Ws).map(([k,w])=>`<div class="card ${k===loadout.weapon?'sel':''}" data-wpn="${k}"><div class="wi">${k==='minigun'?'⁂':k==='railgun'?'━':'➹'}</div><b>${w.name}</b></div>`).join('')+`</div>`;
-  const w=Ws[loadout.weapon];const rate=1/w.interval,dps=w.dmg*rate;
-  h+=`<div class="det"><h3>${w.name}</h3>${bar('DAMAGE',w.dmg/130,w.dmg+' / hit')}${bar('FIRE RATE',Math.min(1,rate/22),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/110,w.range+' m')}${bar('DPS',dps/180,Math.round(dps))}
-  <p>${w.desc}</p><p class="ab">Magazine ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p></div>
-  <div class="row"><button data-go="mech">◀ BACK</button><button class="go" data-go="deploy">DEPLOY</button></div>`;}
+ else if(menuStep==='mech'){h=`<div class="gh"><h2>2 · SELECT MECH</h2>${coinTag()}</div><div class="cards">`+Object.entries(Ms).map(([k,m])=>`<div class="card ${k===loadout.mech?'sel':''}" data-mech="${k}"><div class="sw" style="background:#${m.color.toString(16).padStart(6,'0')}"></div><b>${m.name}</b><small>${m.ability}</small>${lockTag(k)}</div>`).join('')+`</div>`;
+  const m=upMech(loadout.mech);
+  h+=`<div class="det"><h3>${m.name} <small>— ${m.ability}</small></h3>${bar('ARMOR',m.hp/1500,m.hp)}${bar('SPEED',m.speed/11,m.speed)}<p>${m.desc}</p><p class="ab">Ability: ${abText(m)}</p>${buyBox(loadout.mech)}</div>
+  <div class="row"><button data-go="mode">◀ BACK</button><button class="go" data-go="weapon" ${isLocked(loadout.mech)?'disabled':''}>NEXT ▶</button></div>`;}
+ else{h=`<div class="gh"><h2>3 · SELECT WEAPON</h2>${coinTag()}</div><div class="cards">`+Object.entries(Ws).map(([k,w])=>`<div class="card ${k===loadout.weapon?'sel':''}" data-wpn="${k}"><div class="wi">${wIcon(k)}</div><b>${w.name}</b>${lockTag(k)}</div>`).join('')+`</div>`;
+  const w=upWpn(loadout.weapon);const rate=1/w.interval,dps=w.dmg*(w.pellets||1)*rate;
+  h+=`<div class="det"><h3>${w.name}</h3>${bar('DAMAGE',w.dmg*(w.pellets||1)/140,w.dmg+(w.pellets?' ×'+w.pellets:' / hit'))}${bar('FIRE RATE',Math.min(1,rate/24),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/120,w.range+' m')}${bar('DPS',dps/200,Math.round(dps))}
+  <p>${w.desc}</p><p class="ab">Magazine ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p>${buyBox(loadout.weapon)}</div>
+  <div class="row"><button data-go="mech">◀ BACK</button><button class="go" data-go="deploy" ${isLocked(loadout.weapon)?'disabled':''}>DEPLOY</button></div>`;}
  mc.innerHTML=h;}
 function goMenu(){clearWorld();showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();}
 function showUI(){menu.style.display=mode==='menu'?'flex':'none';$('hud').style.display=mode==='play'?'block':'none';$('msg').style.display=mode==='over'?'flex':'none';
  const t=TOUCH&&mode==='play'?'':'none';for(const id of['joy','bMG','bAB','bRL'])$(id).style.display=t;$('hint').style.display=TOUCH||mode!=='play'?'none':'';
  if(mode==='play'){bAB.textContent=P.T.ability;bAB.classList.toggle('passive',!!P.T.regen);}}
-function menuClick(e){const el=e.target.closest('[data-go],[data-mech],[data-wpn],[data-mode],[data-diff],[data-gfx]');if(!el)return;const d=el.dataset;
+function menuClick(e){const el=e.target.closest('[data-go],[data-mech],[data-wpn],[data-mode],[data-diff],[data-gfx],[data-gtab],[data-gsel],[data-up],[data-buy],[data-paint],[data-reset]');if(!el||el.disabled)return;const d=el.dataset;
+ if(!d.reset)resetArm=false;
  if(d.mech){loadout.mech=d.mech;saveLoadout();preview();}
  if(d.wpn){loadout.weapon=d.wpn;saveLoadout();preview();}
  if(d.mode){settings.mode=d.mode;saveLoadout();}if(d.diff){settings.diff=d.diff;saveLoadout();}
  if(d.gfx){setGfx(d.gfx);}
- if(d.go){if(d.go==='deploy'){saveLoadout();newGame();return;}menuStep=d.go;}
+ if(d.gtab){gtab=d.gtab;gsel=null;}
+ if(d.gsel){gsel=d.gsel;if(gtab!=='wpn'&&!isLocked(gsel)){loadout.mech=gsel;saveLoadout();preview();}else if(gtab==='wpn'&&!isLocked(gsel)){loadout.weapon=gsel;saveLoadout();preview();}}
+ if(d.up){if(buyUp(gsel,d.up)){toast('Upgraded!');preview();}}
+ if(d.buy){if(buyUnlock(d.buy)){toast(`${(CFG.mechs[d.buy]||CFG.weapons[d.buy]).name} unlocked!`);preview();}}
+ if(d.paint){const k=d.paint;if(SAVE.paints.includes(k)||buyPaint(k)){SAVE.paint[gsel]=k;persist();preview();}}
+ if(d.reset){if(resetArm){resetArm=false;resetProgress();gsel=null;preview();toast('Progress reset');}else resetArm=true;}
+ if(d.go){if(d.go==='garage'){gsel=null;}if(d.go==='deploy'){if(isLocked(loadout.mech)||isLocked(loadout.weapon)){toast('Unlock your selected gear in the Garage first');menuStep='mech';renderMenu();return;}saveLoadout();newGame();return;}menuStep=d.go;}
  renderMenu();}
 menu.addEventListener('click',menuClick);
 $('again').addEventListener('click',()=>newGame());$('tomenu').addEventListener('click',()=>goMenu());
@@ -542,7 +641,7 @@ setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
 window.__game={THREE_V:THREE.Vector3,hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout={mech:m,weapon:w};},
  startMatch:(md,df)=>{settings.mode=md;if(df)settings.diff=df;newGame();},setBaseProg:(t,v)=>{BASES[t].prog=v;},
- killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null)};
+ killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),get SAVE(){return SAVE},buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},renderMenu,go:s=>{menuStep=s;renderMenu();}};
 // barrel convergence: rotate each gun pivot so its +Z points at the aim point
 const _l=new THREE.Vector3();
 function aimGuns(u,pt,dt){const K=CFG.cam;u.top.updateMatrixWorld(true);for(const g of u.guns){g.rotation.order='YXZ';

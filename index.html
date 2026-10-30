@@ -55,6 +55,21 @@ canvas{display:block}
 .dif{display:flex;gap:8px;margin:12px 0}.dif button{flex:1}#mc .dif button.on{background:#fa4;color:#000}
 .gq{margin-top:14px;display:flex;gap:8px;align-items:center;font-size:14px}#mc .gq button{font-size:15px;padding:8px 14px}#mc .gq button.on{background:#6cf;color:#000}
 .card .md{font-size:22px;font-weight:bold;color:#fc6}
+
+.coinbal{display:inline-block;background:#0007;border:2px solid #fc6;border-radius:20px;padding:6px 14px;font-size:20px;color:#fc6}
+.gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.gh h2{margin:0!important}
+.tabs{display:flex;gap:8px;margin-bottom:10px}#mc .tabs button{flex:1;font-size:16px;padding:12px}#mc .tabs button.on{background:#6cf;color:#000}
+.card .lk{color:#fc6;font-weight:bold}.card .sw{height:16px;border-radius:6px;margin:0 6px 6px}.card .wi{font-size:24px}
+.up{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #fff2}.up small{font-size:14px;opacity:.9}.up em{color:#7f7;font-style:normal;font-weight:bold}
+#mc .up button{font-size:16px;padding:12px 14px;min-width:120px}#mc button[disabled]{opacity:.45}
+.pips{display:flex;gap:4px;margin:5px 0}.pips i{width:22px;height:8px;border-radius:3px;background:#fff3}.pips i.on{background:#fa4}
+.paints{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pt{background:#fff1;border:3px solid #fff2;border-radius:10px;padding:8px;text-align:center;font-size:13px}.pt.sel{border-color:#fa4}
+.pt i{display:block;height:34px;border-radius:6px;margin-bottom:5px}.pt small{display:block;opacity:.8;margin-top:2px}
+.buy{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;color:#fc6;font-weight:bold}
+#mc button.danger{background:#c33}#mc button.big.gar{background:#6cf;color:#000}
+#coins{font-size:18px;min-width:300px;margin:10px 0;background:#0008;border-radius:12px;padding:10px 16px}#coins:empty{display:none}
+.cr,.ct{display:flex;justify-content:space-between;gap:30px;padding:3px 0;opacity:0;animation:cin .35s forwards}.cr b{color:#fc6}.ct{border-top:1px solid #fff4;margin-top:4px;font-size:24px;animation-delay:.2s}.ct b{color:#fc6}
+.cb{font-size:15px;opacity:.8;text-align:right}@keyframes cin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
@@ -62,5 +77,5 @@ canvas{display:block}
 <div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">R</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
-<div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=8"></script></body></html>
+<div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
+<script type="module" src="game.js?v=9"></script></body></html>
