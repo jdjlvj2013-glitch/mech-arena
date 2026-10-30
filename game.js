@@ -134,7 +134,7 @@ function mech(team,type,wpn){const T=CFG.mechs[type];const col=team==='b'?T.colo
   const ank=new THREE.Group();ank.rotation.order='ZXY';ank.position.y=-LEG.L2;const aj=new THREE.Mesh(jointG,jm);aj.scale.setScalar(.8);ank.add(aj);knee.add(ank);
   const ft=new THREE.Mesh(boxG,dk);ft.scale.set(.8,LEG.foot,1.4);ft.position.set(0,-LEG.foot/2-.1,.2);ank.add(ft);
   const toe=new THREE.Mesh(boxG,m);toe.scale.set(.82,.12,.4);toe.position.set(0,-.05,.75);ank.add(toe);
-  lower.add(hipJ);legs.push({hip:hipJ,knee,ank,prod,s,foot:new THREE.Vector3(),from:new THREE.Vector3(),to:new THREE.Vector3(),sw:-1,dur:.3});}
+  lower.add(hipJ);legs.push({hip:hipJ,knee,ank,prod,pis2,thA,thV:0,thR:0,s,foot:new THREE.Vector3(),from:new THREE.Vector3(),to:new THREE.Vector3(),sw:-1,dur:.3});}
  const hip=new THREE.Mesh(boxG,dk);hip.scale.set(2,.5,1);hip.position.y=LEG.hipY;lower.add(hip);
  const top=new THREE.Group();top.position.y=2.6;g.add(top);
  const add=(par,geo,mt,sx,sy,sz,x,y,z)=>{const o=new THREE.Mesh(geo,mt);o.scale.set(sx,sy,sz);o.position.set(x,y,z);par.add(o);return o;};
@@ -176,7 +176,11 @@ function ik(u,L){// ankle target in lower-local space -> hip roll/pitch + knee b
  const r=Math.atan2(_v.x,-_v.y),a=Math.hypot(_v.x,_v.y),d=Math.min(L1+L2-0.002,Math.max(0.4,Math.hypot(a,_v.z)));
  const th=Math.atan2(-_v.z,a),be=Math.acos(Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d))),k=Math.PI-Math.acos(Math.max(-1,Math.min(1,(L1*L1+L2*L2-d*d)/(2*L1*L2))));
  L.hip.rotation.set(th-be,0,r);L.knee.rotation.x=k;L.ank.rotation.set(-(th-be+k),0,-r);
- L.prod.scale.y=0.55+0.55*k;L.prod.position.y=-LEG.L1*0.55-L.prod.scale.y*0.25;}
+ L.prod.scale.y=0.55+0.55*k;L.prod.position.y=-LEG.L1*0.55-L.prod.scale.y*0.25;
+ const ak=-(th-be+k);L.pis2.scale.y=Math.max(.35,0.9+0.5*ak);}
+function legLag(u,L,dt){// thigh armor plate trails the hip swing (spring)
+ const hx=L.hip.rotation.x,dv=(hx-(L.hx0===undefined?hx:L.hx0))/Math.max(dt,1e-3);L.hx0=hx;
+ L.thV+=(-160*L.thR-10*L.thV-dv*0.9)*dt;L.thR+=L.thV*dt;L.thR=Math.max(-.5,Math.min(.5,L.thR));L.thA.rotation.x=L.thR;}
 function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.x,v.z);
  if(u.dying!==undefined)return deathAnim(u,dt);
  // legs face movement (walk backwards if moving away from torso)
@@ -200,7 +204,7 @@ function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.
  const rx=Math.cos(u.legYaw)*u.sway,rz=-Math.sin(u.legYaw)*u.sway;
  u.lower.position.set(rx,off,rz);u.top.position.set(rx*.8,2.6+off,rz*.8);
  u.lower.rotation.set(0,u.legYaw,-u.sway*0.25);
- u.lower.updateMatrixWorld(true);if(!u.air)for(const L of u.legs)ik(u,L);
+ u.lower.updateMatrixWorld(true);if(!u.air)for(const L of u.legs)ik(u,L);for(const L of u.legs)legLag(u,L,dt);
  // torso: yaw from spring, recoil jolt + hit flinch + stagger lurch
  u.jolt=Math.max(0,u.jolt-dt*4*Math.max(.1,u.jolt*10));u.fl.x-=u.fl.x*Math.min(1,dt*7);u.fl.z-=u.fl.z*Math.min(1,dt*7);
  u.top.rotation.order='YXZ';u.top.rotation.set(-u.jolt+u.fl.x+u.crouch*0.12,u.tYaw,u.fl.z-u.sway*0.15);
@@ -222,12 +226,17 @@ function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.
  if(u.plate)updPlate(u);}
 function footstep(u,f){if(FX.length<CFG.fx.maxFx*.8)fx(_w.set(f.x,f.y+.2,f.z),.9*(u.T.mass||1),0x9a927e,{grow:2.2,life:.5,op:.45});
  if(u===P){shake(CFG.cam.shakeStep*(u.T.mass||1));sfx('step');}}
-function deathAnim(u,dt){const t=u.dying+=dt,f=Math.min(1,t/0.9);
- for(const L of u.legs){L.hip.rotation.set(-0.9*f,0,L.s*.25*f);L.knee.rotation.x=1.9*f;L.ank.rotation.set(-1.0*f,0,0);}
- u.lower.position.y=-1.15*f;u.top.position.y=2.6-1.3*f;u.top.rotation.set(0.5*f,u.tYaw,u.dieSide*0.35*f,'YXZ');
- if(t<0.9){if(Math.random()<.35){u.top.getWorldPosition(_w);sparks(_w.addScaledVector(rnd3(),1.2));}}
+function deathAnim(u,dt){const t=u.dying+=dt,ease=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3);
+ // staggered collapse: hit-side knee buckles first, the other follows, torso pitches over and bounces on the ground
+ const s=u.dieSide,a=ease((t-0.05)/0.5),b=ease((t-0.3)/0.55),f=Math.max(a,b)*0.5+Math.min(a,b)*0.5;
+ for(const L of u.legs){const q=L.s===s?a:b;L.hip.rotation.set(-1.0*q,0,L.s*(.12+.25*q));L.knee.rotation.x=0.3+1.8*q;L.ank.rotation.set(-0.9*q,0,0);L.prod.scale.y=0.55+0.55*(0.3+1.8*q);}
+ const fall=ease((t-0.35)/0.6),bounce=t>0.95&&t<1.4?Math.sin((t-0.95)/0.45*Math.PI)*0.12*(1.4-t):0;
+ u.lower.position.y=-1.15*f;u.lower.rotation.z=s*0.18*f;u.top.position.y=2.6-1.3*f-0.35*fall+bounce;
+ u.top.rotation.set(0.15*a+0.45*fall,u.tYaw+s*0.25*fall,s*(0.15*a+0.35*fall),'YXZ');
+ for(const g of u.guns)g.rotation.x=0.7*fall;u.antP.rotation.set(-0.8*fall,0,s*0.6*fall);
+ if(t<0.95){if(Math.random()<.45){u.top.getWorldPosition(_w);sparks(_w.addScaledVector(rnd3(),1.4));}if(!u.pop&&t>0.25){u.pop=1;u.top.getWorldPosition(_w);boom(_w.clone().addScaledVector(rnd3(),1),1,0xff8030);}}
  else if(!u.wreck){u.wreck=true;u.top.getWorldPosition(_w);explode(_w.clone(),1.4);for(const m of u.mats){m.color.multiplyScalar(0.28);m.metalness=0.3;}
-  for(const g of u.guns)g.rotation.x=0.6;if(u.plate)u.plate.visible=false;if(u.shield)u.shield.visible=false;u.jets.forEach(j=>j.visible=false);}
+  if(u.plate)u.plate.visible=false;if(u.shield)u.shield.visible=false;u.jets.forEach(j=>j.visible=false);if(u===P)shake(0.5);}
  else{u.smokeT-=dt;if(u.smokeT<=0){u.smokeT=CFG.fx.smokeWreck;u.top.getWorldPosition(_w);_w.y+=1;fx(_w,.9,0x2a2a2a,{vy:2.5,grow:3,life:2.2,op:.55});if(Math.random()<.15)sparks(_w,0xff9040);}}}
 const rnd3=()=>new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5);
 // ---------- state ----------
@@ -319,7 +328,7 @@ function hurt(u,d,pos,src){if(!u||!u.alive)return;if(u.shieldOn&&pos&&frontal(u,
  if(d>=H.staggerDmg){u.stagT=H.staggerT;u.fl.x*=1.5;}
  if(u===P)shake(CFG.cam.shakeHit*Math.min(2,d/40));
  if(u.hp<=0)killUnit(u,src);}
-function killUnit(u,src){if(!u.alive)return;u.alive=false;u.hp=0;u.dying=0;u.shieldOn=false;u.flash.forEach(f=>f.visible=false);
+function killUnit(u,src){if(!u.alive)return;u.alive=false;u.hp=0;u.dying=0;if(u.plate)u.plate.visible=false;u.shieldOn=false;u.flash.forEach(f=>f.visible=false);
  if(src&&src!==u){src.kills++;if(src===P)STATS.kills++;}for(const x of U)if(x.lockTgt===u)x.lockTgt=null;
  if(u===P&&mode==='play'){const a=mates('b')[0];if(a)SPEC=a;}}
 function ability(u){if(!u||!u.alive||mode!=='play')return;const T=u.T;
@@ -530,7 +539,7 @@ function menuClick(e){const el=e.target.closest('[data-go],[data-mech],[data-wpn
 menu.addEventListener('click',menuClick);
 $('again').addEventListener('click',()=>newGame());$('tomenu').addEventListener('click',()=>goMenu());
 setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
-window.__game={hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
+window.__game={THREE_V:THREE.Vector3,hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout={mech:m,weapon:w};},
  startMatch:(md,df)=>{settings.mode=md;if(df)settings.diff=df;newGame();},setBaseProg:(t,v)=>{BASES[t].prog=v;},
  killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null)};
