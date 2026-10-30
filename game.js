@@ -19,6 +19,8 @@ S.add(new THREE.HemisphereLight(0xffffff,0x445533,1.1));const dl=new THREE.Direc
 const A=60;// half size
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(A*2,A*2),new THREE.MeshLambertMaterial({color:0x6b7a55}));ground.rotation.x=-Math.PI/2;S.add(ground);
 const grid=new THREE.GridHelper(A*2,24,0x445,0x556);grid.position.y=0.02;S.add(grid);
+const LEG={hipY:2.5,L1:1.2,L2:1.2,foot:.25,idleKnee:.25,strideRate:1.5};
+const jointG=new THREE.SphereGeometry(.34,8,6),pistonG=new THREE.CylinderGeometry(.09,.09,1,6);
 const M=c=>new THREE.MeshLambertMaterial({color:c});
 const boxG=new THREE.BoxGeometry(1,1,1);
 const obst=[];// {x,z,hx,hz,h}
@@ -31,9 +33,19 @@ function blocked(x,z,r){for(const o of obst)if(Math.abs(x-o.x)<o.hx+r&&Math.abs(
 function los(a,b){const d=b.clone().sub(a),L=d.length(),n=Math.ceil(L/1.5);for(let i=1;i<n;i++){const p=a.clone().addScaledVector(d,i/n);for(const o of obst)if(p.y<o.h&&Math.abs(p.x-o.x)<o.hx&&Math.abs(p.z-o.z)<o.hz)return false;}return true;}
 // mech builder
 function mech(col){const g=new THREE.Group(),m=M(col),dk=M(0x333333);
- const lower=new THREE.Group();g.add(lower);const legs=[];for(const s of[-1,1]){const l=new THREE.Group();l.position.set(s*0.8,2.4,0);const th=new THREE.Mesh(boxG,dk);th.scale.set(.5,1.3,.6);th.position.y=-.6;const sh=new THREE.Mesh(boxG,m);sh.scale.set(.6,1.3,.7);sh.position.y=-1.7;const ft=new THREE.Mesh(boxG,dk);ft.scale.set(.8,.3,1.3);ft.position.set(0,-2.3,.2);l.add(th,sh,ft);lower.add(l);legs.push(l);}
+ const lower=new THREE.Group();g.add(lower);const legs=[],jm=M(0x888888);
+ for(const s of[-1,1]){// hip joint -> thigh -> knee joint -> shin -> ankle joint -> foot
+  const hipJ=new THREE.Group();hipJ.position.set(s*0.85,LEG.hipY,0);hipJ.add(new THREE.Mesh(jointG,jm));
+  const th=new THREE.Mesh(boxG,dk);th.scale.set(.45,LEG.L1,.55);th.position.y=-LEG.L1/2;hipJ.add(th);
+  const pis=new THREE.Mesh(pistonG,jm);pis.position.set(0,-LEG.L1/2,-.38);hipJ.add(pis);
+  const knee=new THREE.Group();knee.position.y=-LEG.L1;knee.add(new THREE.Mesh(jointG,jm));hipJ.add(knee);
+  const sh=new THREE.Mesh(boxG,m);sh.scale.set(.55,LEG.L2,.65);sh.position.y=-LEG.L2/2;knee.add(sh);
+  const pis2=new THREE.Mesh(pistonG,jm);pis2.position.set(0,-LEG.L2/2,.4);knee.add(pis2);
+  const ank=new THREE.Group();ank.position.y=-LEG.L2;const aj=new THREE.Mesh(jointG,jm);aj.scale.setScalar(.8);ank.add(aj);knee.add(ank);
+  const ft=new THREE.Mesh(boxG,dk);ft.scale.set(.8,LEG.foot,1.4);ft.position.set(0,-LEG.foot/2-.1,.2);ank.add(ft);
+  lower.add(hipJ);legs.push({hip:hipJ,knee,ank});}
  const top=new THREE.Group();top.position.y=2.6;g.add(top);
- const hip=new THREE.Mesh(boxG,dk);hip.scale.set(2,.5,1);hip.position.y=2.4;lower.add(hip);
+ const hip=new THREE.Mesh(boxG,dk);hip.scale.set(2,.5,1);hip.position.y=LEG.hipY;lower.add(hip);
  const t=new THREE.Mesh(boxG,m);t.scale.set(2.2,1.5,1.6);t.position.y=.8;top.add(t);
  const cab=new THREE.Mesh(boxG,M(0x222a33));cab.scale.set(1,.5,.4);cab.position.set(0,1.1,.75);top.add(cab);
  const guns=[];for(const s of[-1,1]){const pv=new THREE.Group();pv.position.set(s*1.4,.7,0);const gp=new THREE.Mesh(boxG,dk);gp.scale.set(.5,.5,1.8);gp.position.z=.6;pv.add(gp);top.add(pv);guns.push(pv);}
@@ -42,11 +54,15 @@ function mech(col){const g=new THREE.Group(),m=M(col),dk=M(0x333333);
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 function turn(cur,tgt,rate,dt){const d=wrap(tgt-cur);return cur+Math.sign(d)*Math.min(Math.abs(d),rate*dt);}
 // legs face movement; if moving >110deg away from torso, legs face opposite and walk backwards
+// keyframed walk: hip swing + knee lift on forward swing, ankle keeps foot flat; body height solved so planted foot touches ground
+function legPose(L,ph,amp){const hip=-0.42*amp*Math.sin(ph),knee=LEG.idleKnee+amp*(0.25+0.95*Math.max(0,Math.cos(ph)));
+ L.hip.rotation.x=hip;L.knee.rotation.x=knee;L.ank.rotation.x=-(hip+knee);return LEG.L1*Math.cos(hip)+LEG.L2*Math.cos(hip+knee);}
 function animLegs(u,mvx,mvz,sp,dt,legTurn){let dir=1;
- if(sp>0.1){let my=Math.atan2(mvx,mvz);if(Math.abs(wrap(my-u.tYaw))>1.9){my+=Math.PI;dir=-1;}u.legYaw=turn(u.legYaw,my,legTurn,dt);u.walk+=dir*sp*dt*1.1;}
- const tgtA=sp>0.1?Math.sin(u.walk)*0.55:0;for(let i=0;i<2;i++){const want=i?-tgtA:tgtA;u.legs[i].rotation.x+=(want-u.legs[i].rotation.x)*Math.min(1,dt*12);}
- u.lower.rotation.y=u.legYaw;u.top.rotation.y=u.tYaw;const bob=sp>0.1?Math.abs(Math.cos(u.walk))*0.18:0;u.top.position.y+=(2.6+bob-u.top.position.y)*Math.min(1,dt*10);
- u.top.rotation.z=sp>0.1?Math.sin(u.walk)*0.03:0;for(const g of u.guns)g.rotation.x=u.gp;}
+ if(sp>0.1){let my=Math.atan2(mvx,mvz);if(Math.abs(wrap(my-u.tYaw))>1.9){my+=Math.PI;dir=-1;}u.legYaw=turn(u.legYaw,my,legTurn,dt);u.walk+=dir*sp*dt*LEG.strideRate;}
+ u.amp=(u.amp||0)+((sp>0.1?Math.min(1,sp/6):0)-(u.amp||0))*Math.min(1,dt*6);
+ const h=Math.max(legPose(u.legs[0],u.walk,u.amp),legPose(u.legs[1],u.walk+Math.PI,u.amp));
+ const off=h+LEG.foot+.1-LEG.hipY;u.lower.position.y=off;u.top.position.y=2.6+off;
+ u.lower.rotation.y=u.legYaw;u.top.rotation.y=u.tYaw;u.lower.rotation.z=Math.sin(u.walk)*0.04*u.amp;for(const g of u.guns)g.rotation.x=u.gp;}
 // state
 let P,E=[],B=[],FX=[],over=false;
 const inp={mx:0,mz:0,mg:false,rk:false,keys:{}};
