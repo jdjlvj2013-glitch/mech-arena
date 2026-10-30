@@ -19,10 +19,13 @@ canvas{display:block}
 #aim{position:absolute;right:0;top:0;width:55%;height:100%;pointer-events:auto}
 #msg{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000a;font-size:44px;font-weight:bold}
 #msg button{margin-top:20px;font-size:26px;padding:14px 40px;border-radius:12px;border:0;background:#fa4;color:#000;font-weight:bold}
+#ammo{position:absolute;top:64px;left:14px;font-size:14px;text-shadow:0 0 3px #000}#ammo .bar{width:180px;height:8px;background:#0008;border:1px solid #fff8;margin:3px 0 6px}#gunf{height:100%;background:#ff6}
+.pip{display:inline-block;width:12px;height:18px;border:1px solid #fff;margin-left:4px;vertical-align:middle;position:relative;background:#0006}.pip i{position:absolute;bottom:0;left:0;right:0}
+#bRL{right:60px;bottom:180px;width:60px;height:60px;background:#48f3;border-color:#8af}
 #hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.6}
 </style></head><body>
-<div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div><div id="xh"></div>
-<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">GUN</div><div class="btn" id="bRK">ROCKET</div>
+<div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div><div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div>ROCKETS <span id="rkp"></span></div></div><div id="xh"></div>
+<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">GUN</div><div class="btn" id="bRK">ROCKET</div><div class="btn" id="bRL">R</div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/Space gun · RMB/Q rockets · R reload</div></div>
 <div id="msg"><div id="mt"></div><button id="rs">RESTART</button></div>
-<script type="module" src="game.js"></script></body></html>
+<script type="module" src="game.js?v=2"></script></body></html>
