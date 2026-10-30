@@ -89,6 +89,10 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 #mapban{position:absolute;top:24%;left:50%;transform:translateX(-50%);font-size:38px;font-weight:bold;text-align:center;text-shadow:0 0 8px #000;opacity:0;letter-spacing:2px}#mapban small{display:block;font-size:15px;opacity:.8;letter-spacing:4px}
 @keyframes ban{0%{opacity:0;transform:translate(-50%,10px)}15%,75%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
 .mapsel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.mapsel b{width:100%;font-size:13px;opacity:.8}#mc .mapsel button{font-size:12px;padding:9px 10px;flex:1 1 30%}#mc .mapsel button.on{background:#fa4;color:#000}
+.wb{margin:2px 0 6px;font-size:17px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wb b{color:#fc6}.wb .sw2{flex:0 0 auto;font-size:14px;padding:8px 12px;background:#335}
+.pin{width:100%;box-sizing:border-box;font-size:20px;padding:12px;border-radius:10px;border:2px solid #fff3;background:#0008;color:#fff;margin:8px 0}.pcode{height:70px;font-size:12px;font-family:monospace;word-break:break-all}
+.pst{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.pst div{background:#fff1;border-radius:8px;padding:6px;text-align:center}.pst b{display:block;font-size:17px;color:#fc6}.pst small{font-size:11px;opacity:.75}
+.plist{display:flex;flex-direction:column;gap:6px}.pl{display:flex;align-items:center;gap:6px;background:#0005;border-radius:10px;padding:8px;border:2px solid transparent}.pl.sel{border-color:#fa4}.pl>div{flex:1 1 40%;min-width:0}.pl small{display:block;opacity:.7;font-size:12px}.pl button{flex:0 0 auto;font-size:13px;padding:8px 10px}.pl .pin{flex:1;margin:0;font-size:16px;padding:8px}.prow{display:flex;gap:8px;align-items:center}.prow .pin{flex:1}.prow button{flex:0 0 auto}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
@@ -97,4 +101,4 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=15"></script></body></html>
+<script type="module" src="game.js?v=16"></script></body></html>
