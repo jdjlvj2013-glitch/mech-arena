@@ -7,26 +7,48 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:system-ui,sans-serif;color:#fff}
 canvas{display:block}
 #hud{position:fixed;inset:0;pointer-events:none}
-#hp{position:absolute;top:14px;left:14px;width:240px;height:18px;background:#300;border:2px solid #fff;border-radius:4px}
+#hp{position:absolute;top:14px;left:14px;width:260px;height:18px;background:#300;border:2px solid #fff;border-radius:4px}
 #hpf{height:100%;width:100%;background:linear-gradient(#5f5,#2a2)}
 #info{position:absolute;top:40px;left:14px;font-size:15px;text-shadow:0 0 3px #000}
-#xh{position:absolute;left:50%;top:42%;width:26px;height:26px;margin:-13px;border:2px solid #fff8;border-radius:50%}
+#ammo{position:absolute;top:64px;left:14px;font-size:14px;text-shadow:0 0 3px #000}
+#ammo .bar{width:200px;height:8px;background:#0008;border:1px solid #fff8;margin:3px 0 6px}#gunf,#abf{height:100%;background:#ff6}
+#xh{position:absolute;left:50%;top:42%;width:26px;height:26px;margin:-13px;border:2px solid #fffa;border-radius:50%}
 #xh:after{content:'';position:absolute;left:11px;top:11px;width:4px;height:4px;background:#f44;border-radius:50%}
+#rng{position:absolute;left:50%;top:calc(42% + 20px);transform:translateX(-50%);font-size:12px;font-weight:bold;text-shadow:0 0 3px #000}
+#lock{position:absolute;width:64px;height:64px;margin:-32px;border:3px solid #fd4;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#fff;text-shadow:0 0 3px #000}
 #joy{position:absolute;left:30px;bottom:30px;width:150px;height:150px;border-radius:50%;background:#fff2;border:2px solid #fff5;pointer-events:auto}
 #knob{position:absolute;left:45px;top:45px;width:60px;height:60px;border-radius:50%;background:#fff6}
 .btn{position:absolute;border-radius:50%;background:#f003;border:3px solid #f66;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;text-align:center}
-#bMG{right:40px;bottom:50px;width:110px;height:110px}
-#bRK{right:170px;bottom:40px;width:84px;height:84px;background:#f803;border-color:#fa4}
+#bMG{right:40px;bottom:50px;width:120px;height:120px;font-size:18px}
+#bAB{right:180px;bottom:40px;width:90px;height:90px;border-color:#6cf}
+#bAB.passive{opacity:.75;border-style:dashed;border-color:#6f9}
+#bRL{right:60px;bottom:195px;width:60px;height:60px;background:#48f3;border-color:#8af}
 #aim{position:absolute;right:0;top:0;width:55%;height:100%;pointer-events:auto}
 #msg{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000a;font-size:44px;font-weight:bold}
-#msg button{margin-top:20px;font-size:26px;padding:14px 40px;border-radius:12px;border:0;background:#fa4;color:#000;font-weight:bold}
-#ammo{position:absolute;top:64px;left:14px;font-size:14px;text-shadow:0 0 3px #000}#ammo .bar{width:180px;height:8px;background:#0008;border:1px solid #fff8;margin:3px 0 6px}#gunf{height:100%;background:#ff6}
-.pip{display:inline-block;width:12px;height:18px;border:1px solid #fff;margin-left:4px;vertical-align:middle;position:relative;background:#0006}.pip i{position:absolute;bottom:0;left:0;right:0}
-#bRL{right:60px;bottom:180px;width:60px;height:60px;background:#48f3;border-color:#8af}
-#hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.6}
+#msg small{font-size:16px;opacity:.8;margin-top:6px}
+.mb{margin-top:16px;font-size:24px;padding:14px 40px;border-radius:12px;border:0;background:#fa4;color:#000;font-weight:bold;min-width:260px}
+.mb.alt{background:#ddd}
+#hint{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.6;pointer-events:none}
+#menu{position:fixed;inset:0;display:flex;pointer-events:none}
+#mc{pointer-events:auto;width:min(46%,520px);min-width:330px;height:100%;box-sizing:border-box;padding:24px;background:linear-gradient(90deg,#0d1420ee,#0d142099);overflow-y:auto;touch-action:pan-y}
+#mc h1{font-size:46px;margin:30px 0 4px;letter-spacing:3px;color:#fc6}#mc .sub{opacity:.8}
+#mc h2{margin:4px 0 12px;font-size:22px;color:#fc6}#mc h3{margin:6px 0 10px}
+#mc button{font-size:20px;font-weight:bold;padding:14px 22px;border-radius:12px;border:0;background:#556;color:#fff}
+#mc button.big{display:block;width:100%;margin:18px 0;padding:20px;font-size:26px;background:#fa4;color:#000}#mc button.big.alt{background:#ccd}
+#mc button.go{background:#fa4;color:#000}
+.cards{display:flex;gap:10px}.card{flex:1;background:#fff1;border:3px solid #fff3;border-radius:12px;padding:10px 6px;text-align:center;font-size:15px}
+.card.sel{border-color:#fa4;background:#fa42}.card small{display:block;opacity:.8;margin-top:3px}
+.sw{width:44px;height:44px;border-radius:8px;margin:0 auto 6px;border:2px solid #fff6}.wi{font-size:34px;line-height:44px}
+.det{margin:14px 0;background:#0005;border-radius:12px;padding:12px}.det p{margin:8px 0;font-size:14px;opacity:.9}.ab{color:#9cf}
+.st{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.st span{width:80px}.st em{width:70px;font-style:normal;text-align:right}
+.sb{flex:1;height:10px;background:#fff2;border-radius:5px;overflow:hidden}.sb i{display:block;height:100%;background:#fa4}
+.row{display:flex;justify-content:space-between;gap:10px}
 </style></head><body>
-<div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div><div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div>ROCKETS <span id="rkp"></span></div></div><div id="xh"></div>
-<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">GUN</div><div class="btn" id="bRK">ROCKET</div><div class="btn" id="bRL">R</div>
-<div id="hint">WASD move · mouse aim (click to lock) · LMB/Space gun · RMB/Q rockets · R reload</div></div>
-<div id="msg"><div id="mt"></div><button id="rs">RESTART</button></div>
-<script type="module" src="game.js?v=4"></script></body></html>
+<div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
+<div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
+<div id="xh"></div><div id="rng"></div><div id="lock"></div>
+<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">R</div></div>
+<div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
+<div id="menu"><div id="mc"></div></div>
+<div id="msg"><div id="mt"></div><small id="ml"></small><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
+<script type="module" src="game.js?v=5"></script></body></html>
