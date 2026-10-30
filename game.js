@@ -250,68 +250,118 @@ const TM={p:{stripe:M(0xf0f0f0),visor:new THREE.MeshBasicMaterial({color:0x40e0f
 const shieldMat=new THREE.MeshBasicMaterial({color:0x60d8ff,transparent:true,opacity:.35,depthWrite:false,side:THREE.DoubleSide});
 const jetMat=new THREE.MeshBasicMaterial({color:0xffa030}),coreMat=new THREE.MeshBasicMaterial({color:0x60ff90}),coilMat=new THREE.MeshBasicMaterial({color:0x50c0ff});
 const thrG=new THREE.CylinderGeometry(.3,.38,1.2,8),coreG=new THREE.SphereGeometry(.32,8,6),ringG=new THREE.TorusGeometry(.6,.07,4,12),coilG=new THREE.TorusGeometry(.3,.06,4,10),shieldG=new THREE.CylinderGeometry(3,3,4,10,1,true,-0.75,1.5);
-// ---------- mech builder: team 'b'|'r', type key, weapon key ----------
+// ---------- mech builder v11: per-frame structure (legs/arms/hardpoints/detail). team 'b'|'r', type key, weapon key ----------
 const TMK={b:'p',r:'e'};
-function mech(team,type,wpn){const T=CFG.mechs[type];const col=team==='b'?T.color:T.enemyColor;const g=new THREE.Group(),m=M(col,{metal:.45,rough:.55}),dk=M(0x2a2a2c,{metal:.7,rough:.5}),tm=TM[TMK[team]];
- const lower=new THREE.Group();g.add(lower);const legs=[],jm=M(0x8a8d90,{metal:.9,rough:.3}),rod=M(0xd0d4d8,{metal:1,rough:.15});
- for(const s of[-1,1]){const hipJ=new THREE.Group();hipJ.rotation.order='ZXY';hipJ.position.set(s*0.85,LEG.hipY,0);hipJ.add(new THREE.Mesh(jointG,jm));
-  const th=new THREE.Mesh(boxG,dk);th.scale.set(.45,LEG.L1,.55);th.position.y=-LEG.L1/2;hipJ.add(th);
-  const thA=new THREE.Mesh(boxG,m);thA.scale.set(.55,LEG.L1*.6,.2);thA.position.set(0,-LEG.L1*.4,.33);hipJ.add(thA);
-  // hydraulic piston: cylinder on thigh, rod scaled with knee angle
-  const cyl=new THREE.Mesh(pistonG,jm);cyl.scale.set(1.6,.55,1.6);cyl.position.set(s*.32,-LEG.L1*.3,-.38);hipJ.add(cyl);
-  const prod=new THREE.Mesh(pistonG,rod);prod.position.set(s*.32,-LEG.L1*.75,-.38);hipJ.add(prod);
-  const knee=new THREE.Group();knee.position.y=-LEG.L1;knee.add(new THREE.Mesh(jointG,jm));hipJ.add(knee);
-  const sh=new THREE.Mesh(boxG,m);sh.scale.set(.55,LEG.L2,.65);sh.position.y=-LEG.L2/2;knee.add(sh);
-  const pis2=new THREE.Mesh(pistonG,rod);pis2.position.set(0,-LEG.L2/2,.4);knee.add(pis2);
-  const ank=new THREE.Group();ank.rotation.order='ZXY';ank.position.y=-LEG.L2;const aj=new THREE.Mesh(jointG,jm);aj.scale.setScalar(.8);ank.add(aj);knee.add(ank);
-  const ft=new THREE.Mesh(boxG,dk);ft.scale.set(.8,LEG.foot,1.4);ft.position.set(0,-LEG.foot/2-.1,.2);ank.add(ft);
-  const toe=new THREE.Mesh(boxG,m);toe.scale.set(.82,.12,.4);toe.position.set(0,-.05,.75);ank.add(toe);
-  lower.add(hipJ);legs.push({hip:hipJ,knee,ank,prod,pis2,thA,thV:0,thR:0,s,foot:new THREE.Vector3(),from:new THREE.Vector3(),to:new THREE.Vector3(),sw:-1,dur:.3});}
- const hip=new THREE.Mesh(boxG,dk);hip.scale.set(2,.5,1);hip.position.y=LEG.hipY;lower.add(hip);
- const top=new THREE.Group();top.position.y=2.6;g.add(top);
- const add=(par,geo,mt,sx,sy,sz,x,y,z)=>{const o=new THREE.Mesh(geo,mt);o.scale.set(sx,sy,sz);o.position.set(x,y,z);par.add(o);return o;};
- const tw={guardian:[2.7,1.7,1.9],strider:[1.9,1.3,1.5],mender:[2.2,1.5,1.6],phantom:[2.0,1.15,1.8]}[type];
- add(top,boxG,m,tw[0],tw[1],tw[2],0,.8,0);
- add(top,boxG,dk,tw[0]*.7,.9,.25,0,.75,tw[2]/2+.05);
- add(top,boxG,tm.stripe,tw[0]+.05,.18,tw[2]+.05,0,.8+tw[1]/2-.2,0);
- add(top,boxG,dk,1.05,.55,.45,0,.8+tw[1]/2+.25,.55);add(top,boxG,tm.visor,.85,.18,.05,0,.8+tw[1]/2+.3,.79);
- // emissive running lights + vents
- const lm=team==='b'?LIGHT_B:LIGHT_R;for(const s of[-1,1])add(top,boxG,lm,.12,.12,.06,s*tw[0]*.36,.8+tw[1]*.25,tw[2]/2+.2);
- const vent=add(top,boxG,dk,tw[0]*.5,.15,.5,0,.8+tw[1]/2+.02,-tw[2]*.3);
- // shoulder pads on lag pivots (secondary motion)
- const pads=[];const pad=type==='guardian'?[1.2,.55,1.8]:[.8,.35,1.3];for(const s of[-1,1]){const pv=new THREE.Group();pv.position.set(s*(tw[0]/2+.1),1.45,0);top.add(pv);const sp=add(pv,boxG,m,...pad,s*.15,.15,0);sp.rotation.z=s*-.3;pads.push(pv);}
- const antP=new THREE.Group();antP.position.set(.7,1.75,-.5);top.add(antP);add(antP,antG,MS.metal,1,1,1,0,.65,0);add(antP,jointG,tm.visor,.25,.25,.25,0,1.3,0);
- let shield=null,jets=[];
- if(type==='guardian'){shield=add(top,shieldG,shieldMat,1,1,1,0,.8,0);shield.visible=false;add(top,boxG,MS.metal,.4,1.2,.4,-tw[0]/2-.1,.4,.6);}
- if(type==='strider'){for(const s of[-1,1]){add(top,thrG,MS.metal,1,1,1,s*.55,.7,-1.05);const j=add(top,flashG,jetMat,1.2,1.4,1.2,s*.55,-.3,-1.05);j.rotation.x=Math.PI;j.visible=false;jets.push(j);}}
- if(type==='phantom'){for(const s of[-1,1]){const f=add(top,boxG,m,.12,.9,1.2,s*.7,1.5,-.6);f.rotation.z=s*.5;add(top,thrG,MS.metal,.8,.8,.8,s*.6,.5,-1.0);const j=add(top,flashG,jetMat,1,1.6,1,s*.6,.5,-1.6);j.rotation.x=-Math.PI/2;j.visible=false;jets.push(j);}}
- if(type==='mender'){add(top,coreG,coreMat,1,1,1,0,.75,.95);add(top,ringG,coreMat,1,1,1,0,.75,.95);}
- const guns=[],flash=[],spinners=[],kickers=[];const mz={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7}[wpn];
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const cableG=new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0,0,0),V3(.12,-.3,-.12),V3(.05,-.65,-.1),V3(0,-.85,0)]),8,.045,4);
+const ventGT=tex(64,32,(g,w,h)=>{g.fillStyle='#222';g.fillRect(0,0,w,h);g.fillStyle='#555';for(let y=3;y<h;y+=6)g.fillRect(3,y,w-6,2);});
+const ventMat=new THREE.MeshStandardMaterial({map:ventGT,metalness:.7,roughness:.5});
+const cableMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.6,metalness:.2});
+const decalMats={};function decalMat(team,type){const k=team+type;if(decalMats[k])return decalMats[k];
+ const t=tex(128,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.save();g.beginPath();g.rect(0,0,52,h);g.clip();for(let i=-4;i<10;i++){g.fillStyle=i%2?'#111':'#f0c020';g.beginPath();g.moveTo(i*14,0);g.lineTo(i*14+14,0);g.lineTo(i*14-18,h);g.lineTo(i*14-32,h);g.fill();}g.restore();
+  g.fillStyle=team==='b'?'#e8f4ff':'#ffe0d8';g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText({guardian:'G-01',strider:'S-27',mender:'M-09',phantom:'P-X'}[type],90,34);});
+ return decalMats[k]=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2});}
+const planeG=new THREE.PlaneGeometry(1,1),droneG=new THREE.OctahedronGeometry(.32,0),rotorG=new THREE.TorusGeometry(.38,.04,4,12),dishG=new THREE.CylinderGeometry(.45,.1,.18,10),clawG=new THREE.ConeGeometry(.12,.55,4);
+// leg specs: x/z hip offset, hx/hz foot home offset (lower-local), l1/l2 bone lengths, rev = reverse (digitigrade) knee, grp = gait group (legs in a group step together), w = thickness
+const FRAMES={
+ guardian:{legs:[{x:-1.15,z:.95,hx:-1.75,hz:1.35,grp:0},{x:1.15,z:-.95,hx:1.75,hz:-1.35,grp:0,rev:1},{x:1.15,z:.95,hx:1.75,hz:1.35,grp:1},{x:-1.15,z:-.95,hx:-1.75,hz:-1.35,grp:1,rev:1}].map(l=>({...l,l1:1.05,l2:1.3,w:1.15})),
+  tw:[3.0,1.35,2.5],hips:[2.5,.6,2.2]},
+ strider:{legs:[-1,1].map((s,i)=>({x:s*.8,z:0,hx:s*.95,hz:.1,grp:i,l1:1.0,l2:1.55,rev:1,w:.8})),tw:[1.8,1.2,1.7],hips:[1.7,.45,.9]},
+ mender:{legs:[-1,1].map((s,i)=>({x:s*.95,z:0,hx:s*1.05,hz:.15,grp:i,l1:1.2,l2:1.2,w:1.2})),tw:[2.0,1.9,1.7],hips:[2.1,.55,1.1]},
+ phantom:{legs:[-1,1].map((s,i)=>({x:s*.7,z:0,hx:s*.8,hz:.1,grp:i,l1:1.28,l2:1.22,w:.7})),tw:[1.7,1.05,2.1],hips:[1.5,.4,.8]}};
+function mech(team,type,wpn){const T=CFG.mechs[type],F=FRAMES[type];const col=team==='b'?T.color:T.enemyColor;const hi=typeof settings==='undefined'||settings.gfx!=='low';
+ const g=new THREE.Group(),m=M(col,{metal:.45,rough:.55}),dk=M(0x2a2a2c,{metal:.7,rough:.5}),tm=TM[TMK[team]],lm=team==='b'?LIGHT_B:LIGHT_R;
+ const add=(par,geo,mt,sx,sy,sz,x,y,z,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(geo,mt);o.scale.set(sx,sy,sz);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);par.add(o);return o;};
+ const grp=(par,x,y,z)=>{const o=new THREE.Group();o.position.set(x,y,z);par.add(o);return o;};
+ const lower=new THREE.Group();g.add(lower);const legs=[],jm=M(0x8a8d90,{metal:.9,rough:.3}),rod=M(0xd0d4d8,{metal:1,rough:.15});const jets=[];
+ // ---- legs ----
+ for(const d of F.legs){const s=Math.sign(d.x),w=d.w,rv=d.rev?-1:1;const hipJ=new THREE.Group();hipJ.rotation.order='ZXY';hipJ.position.set(d.x,LEG.hipY,d.z);add(hipJ,jointG,jm,w,w,w,0,0,0);
+  add(hipJ,boxG,dk,.45*w,d.l1,.55*w,0,-d.l1/2,0);const thA=add(hipJ,boxG,m,.55*w,d.l1*.6,.2,0,-d.l1*.4,.33*rv);
+  add(hipJ,pistonG,jm,1.6,.55,1.6,s*.32*w,-d.l1*.3,-.38*rv);const prod=add(hipJ,pistonG,rod,1,1,1,s*.32*w,-d.l1*.75,-.38*rv);
+  if(hi)add(hipJ,cableG,cableMat,1,d.l1,1,-s*.3*w,-.05,-.2*rv);
+  const knee=grp(hipJ,0,-d.l1,0);add(knee,jointG,jm,w,w,w,0,0,0);
+  add(knee,boxG,m,.55*w,d.l2,.65*w,0,-d.l2/2,0);const pis2=add(knee,pistonG,rod,1,1,1,0,-d.l2/2,.4*rv);
+  if(d.rev){add(knee,boxG,dk,.35*w,.5,.5,0,.1,-.35);add(knee,boxG,m,.62*w,.25,.75*w,0,-d.l2*.8,0);}// reverse-knee spur + calf band
+  if(hi)add(knee,boxG,lm,.08,.08,.04,0,-d.l2*.25,.34*w*rv+.02*rv);
+  const ank=new THREE.Group();ank.rotation.order='ZXY';ank.position.y=-d.l2;add(ank,jointG,jm,.8*w,.8*w,.8*w,0,0,0);knee.add(ank);
+  if(type==='strider'){for(const a of[-.45,0,.45])add(ank,clawG,dk,1,1,1,Math.sin(a)*.35,-.25,.35+Math.cos(a)*.15,Math.PI/2,0,0);add(ank,clawG,dk,.8,.8,.8,0,-.25,-.45,-Math.PI/2,0,0);add(ank,boxG,m,.5,.2,.6,0,-.15,.05);
+   const j=add(knee,flashG,jetMat,.7,1,.7,0,-d.l2*.55,-.45);j.rotation.x=Math.PI;j.visible=false;jets.push(j);add(knee,thrG,MS.metal,.5,.5,.5,0,-d.l2*.4,-.45);}
+  else if(type==='guardian'){add(ank,cylG,dk,.55,.3,.55,0,-.22,0);add(ank,boxG,m,1.2,.12,1.2,0,-.05,0);}// elephant pad foot
+  else if(type==='phantom'){add(ank,boxG,dk,.35,LEG.foot,1.5,0,-LEG.foot/2-.1,.25);add(ank,boxG,m,.38,.1,.5,0,-.05,.95,-.3,0,0);}
+  else{add(ank,boxG,dk,.9,LEG.foot,1.4,0,-LEG.foot/2-.1,.2);add(ank,boxG,m,.92,.12,.4,0,-.05,.75);}
+  lower.add(hipJ);legs.push({hip:hipJ,knee,ank,prod,pis2,thA,thV:0,thR:0,s,hx:d.hx,hz:d.hz,l1:d.l1,l2:d.l2,rev:!!d.rev,grp:d.grp,foot:new THREE.Vector3(),from:new THREE.Vector3(),to:new THREE.Vector3(),sw:-1,dur:.3});}
+ const hp=F.hips;add(lower,boxG,dk,hp[0],hp[1],hp[2],0,LEG.hipY,0);if(hi)add(lower,boxG,ventMat,hp[0]*.5,.05,hp[2]*.5,0,LEG.hipY+hp[1]/2+.01,0);
+ // ---- torso ----
+ const top=new THREE.Group();top.position.y=2.6;g.add(top);const tw=F.tw,cy=.8,tY=cy+tw[1]/2;
+ const pads=[],arms=[],drones=[];let shield=null,vent,antP,coreM=null;
+ if(type==='guardian'){// heavy hull: slab torso, sloped glacis, side skirts, low turret head
+  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,m,tw[0]*.9,.9,.7,0,cy+.15,tw[2]/2+.2,-.6,0,0);add(top,boxG,dk,tw[0]*.7,.5,.3,0,cy-.45,tw[2]/2+.1);
+  add(top,boxG,tm.stripe,tw[0]+.05,.16,tw[2]+.05,0,tY-.15,0);for(const s of[-1,1])add(top,boxG,m,.25,1.0,tw[2]*.9,s*(tw[0]/2+.12),cy-.2,0,0,0,s*.12);
+  add(top,boxG,dk,1.3,.5,1.0,0,tY+.25,.35);add(top,boxG,tm.visor,1.1,.14,.05,0,tY+.3,.86);vent=add(top,boxG,ventMat,1.6,.12,.8,0,tY+.01,-.7);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.1),tY+.05,0);add(pv,boxG,m,1.2,.5,1.9,s*.15,.15,0,0,0,s*-.25);pads.push(pv);}
+  // shield arm (left): shoulder joint + strut + heavy plate on a lag pivot
+  const sa=grp(top,-tw[0]/2-.35,cy+.2,.2);add(sa,jointG,jm,1.3,1.3,1.3,0,0,0);add(sa,boxG,dk,.35,.35,1.2,-.25,0,.2);
+  const sp=add(sa,boxG,m,.25,2.3,2.4,-.62,-.35,.45);add(sa,boxG,tm.stripe,.27,.2,2.42,-.62,.6,.45);if(hi){const dc=add(sa,planeG,decalMat(team,type),1.6,.8,1,-.76,-.45,.45,0,-Math.PI/2,0);}
+  arms.push({pv:sa,kind:'shield'});
+  shield=add(top,shieldG,shieldMat,1.15,1,1.15,0,.8,0);shield.visible=false;}
+ else if(type==='strider'){// hunched predator cockpit, forward nose, dorsal jet pack
+  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,m,1.3,.7,1.1,0,cy-.05,tw[2]/2+.45,.25,0,0);add(top,boxG,tm.visor,1.0,.16,.05,0,cy+.12,tw[2]/2+1.0,.25,0,0);
+  add(top,boxG,tm.stripe,.3,tw[1]+.05,tw[2]+.05,0,cy,0);add(top,boxG,dk,1.2,.6,.8,0,cy+.1,-tw[2]/2-.3);vent=add(top,boxG,ventMat,.8,.1,.6,0,cy+.41,-tw[2]/2-.3);
+  for(const s of[-1,1]){add(top,thrG,MS.metal,1,1,1,s*.55,cy-.1,-tw[2]/2-.55);const j=add(top,flashG,jetMat,1.2,1.4,1.2,s*.55,cy-1.1,-tw[2]/2-.55,Math.PI,0,0);j.visible=false;jets.unshift(j);
+   const pv=grp(top,s*(tw[0]/2+.05),tY,0);add(pv,boxG,m,.6,.3,1.1,s*.1,.1,0,0,0,s*-.4);pads.push(pv);}}
+ else if(type==='mender'){// tall support frame: rounded core, repair core + ring, sensor mast, two manipulator arms, repair drones
+  add(top,cylG,m,tw[0]/2,tw[1],tw[0]/2,0,cy+.1,0);add(top,boxG,m,tw[0]*.85,.6,tw[2],0,cy-.6,0);add(top,boxG,tm.stripe,tw[0]+.02,.15,.4,0,cy+.55,0);
+  coreM=add(top,coreG,coreMat,1.1,1.1,1.1,0,cy+.1,tw[2]/2+.1);add(top,ringG,coreMat,1.1,1.1,1.1,0,cy+.1,tw[2]/2+.1);
+  add(top,boxG,dk,.9,.5,.5,0,tY+.4,.45);add(top,boxG,tm.visor,.7,.14,.05,0,tY+.45,.71);vent=add(top,boxG,ventMat,1.2,.1,.6,0,tY+.12,-.55);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY+.05,0);add(pv,boxG,m,.7,.35,1.1,s*.1,.1,0,0,0,s*-.3);pads.push(pv);
+   // manipulator arm: shoulder -> upper -> elbow -> forearm -> tool (spinning welder)
+   const sh=grp(top,s*.75,cy+.2,-.55);add(sh,jointG,jm,.8,.8,.8,0,0,0);add(sh,boxG,dk,.22,.22,1.0,0,0,.5);const el=grp(sh,0,0,1.0);add(el,jointG,jm,.6,.6,.6,0,0,0);add(el,boxG,m,.2,.2,.9,0,0,.45);
+   const tool=grp(el,0,0,.95);add(tool,clawG,MS.metal,1,1,1,0,0,.1,Math.PI/2,0,0);const tl=add(tool,boxG,coreMat,.12,.12,.12,0,0,.42);arms.push({sh,el,tool,tl,s,kind:'tool'});}
+  for(let i=0;i<2;i++){const dr=grp(g,0,4.5,0);add(dr,droneG,m,1,.6,1,0,0,0);add(dr,rotorG,MS.metal,1,1,1,0,.15,0,Math.PI/2,0,0);add(dr,coreG,coreMat,.35,.35,.35,0,-.15,0);drones.push({g:dr,ph:i*Math.PI,p:new THREE.Vector3()});}}
+ else{// phantom: lean wedge, canopy, swept fins, twin dash thrusters
+  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,m,tw[0]*.7,.6,1.1,0,cy+.1,tw[2]/2+.4,0,0,0).rotation.x=.35;
+  add(top,boxG,tm.visor,.9,.35,.7,0,tY+.05,.35,-.3,0,0);add(top,boxG,tm.stripe,tw[0]+.04,.1,tw[2]+.04,0,cy-.2,0);vent=add(top,boxG,ventMat,.8,.08,.6,0,tY+.01,-.6);
+  for(const s of[-1,1]){add(top,boxG,m,.1,.9,1.3,s*.65,1.6,-.7,0,0,s*.5);add(top,boxG,lm,.05,.6,.06,s*.82,1.7,-.1,0,0,s*.5);
+   add(top,thrG,MS.metal,.8,.8,.8,s*.55,.55,-1.15,Math.PI/2,0,0);const j=add(top,flashG,jetMat,1,1.6,1,s*.55,.55,-1.8,-Math.PI/2,0,0);j.visible=false;jets.push(j);
+   const pv=grp(top,s*(tw[0]/2),tY,0);add(pv,boxG,m,.45,.2,1.0,s*.05,.05,0,0,0,s*-.5);pads.push(pv);}}
+ // shared detail: running lights, cables, side decal
+ for(const s of[-1,1])add(top,boxG,lm,.12,.12,.06,s*tw[0]*.36,cy+tw[1]*.25,tw[2]/2+.05+(type==='strider'?.0:0));
+ if(hi){for(const s of[-1,1])add(top,cableG,cableMat,1,.8,1,s*tw[0]*.3,tY,-tw[2]/2+.1,0,0,0);if(type!=='guardian')add(top,planeG,decalMat(team,type),.9,.45,1,tw[0]/2+.01,cy,-.1,0,Math.PI/2,0);
+  add(top,boxG,dk,tw[0]*.6,.08,.08,0,cy-tw[1]/2+.1,tw[2]/2+.02);}
+ antP=new THREE.Group();antP.position.set(type==='mender'?.55:.6,tY+(type==='mender'?.5:.1),-.5);top.add(antP);add(antP,antG,MS.metal,1,type==='mender'?1.8:1,1,0,type==='mender'?1.1:.65,0);
+ add(antP,jointG,tm.visor,.25,.25,.25,0,type==='mender'?2.25:1.3,0);if(type==='mender')add(antP,dishG,MS.metal,1,1,1,0,1.5,0,.5,0,0);
+ // ---- weapon hardpoints: [x,y,z,scale,kind] ----
+ const HP={guardian:[[-1,0,0,1.15,'arm'],[1,0,0,1.15,'arm'],[-1,1,0,.7,'pod'],[1,1,0,.7,'pod']],strider:[[-1,0,0,1,'arm'],[1,0,0,1,'arm']],mender:[[-1,0,0,1,'arm'],[1,0,0,1,'arm']],phantom:[[-1,0,0,.9,'arm'],[1,0,0,.9,'arm'],]}[type];
+ const guns=[],flash=[],spinners=[],kickers=[];const mz0={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7}[wpn];
  const coil=wpn==='railgun'?new THREE.MeshStandardMaterial({color:0x2a5070,emissive:0x50c0ff,emissiveIntensity:.2,metalness:.5,roughness:.3}):null;
- for(const s of[-1,1]){const pv=new THREE.Group();pv.position.set(s*(tw[0]/2+.35),.7,0);const kb=new THREE.Group();pv.add(kb);kickers.push(kb);
+ for(const [s,pod,,sc,kind] of HP){let x,y,z;
+  if(kind==='pod'){x=s*.95;y=tY+.85;z=-.25;const br=add(top,boxG,dk,.5,.6,.5,x,tY+.35,z);}else{x=s*(tw[0]/2+(type==='guardian'?.75:.35));y=type==='strider'?.55:.7;z=type==='guardian'?.25:0;
+   if(type==='guardian'&&s<0)x=-tw[0]/2-.35;// left gun rides under the shield arm
+   add(top,jointG,jm,.9,.9,.9,s*(tw[0]/2+.05),y+.05,z);if(type!=='guardian'||s>0)add(top,boxG,dk,.6,.3,.3,s*(tw[0]/2+.15),y+.05,z);}
+  const pv=new THREE.Group();pv.position.set(x,y,z);const kb=new THREE.Group();kb.scale.setScalar(sc);pv.add(kb);kickers.push(kb);
   if(wpn==='minigun'){add(kb,boxG,dk,.6,.6,.9,0,0,.1);const sp=new THREE.Group();sp.position.z=1.2;kb.add(sp);spinners.push(sp);
-   for(let k=0;k<3;k++){const a=k*2.09,b=add(sp,barrelG,MS.metal,.6,1.1,.6,Math.cos(a)*.15,Math.sin(a)*.15,0);b.rotation.x=Math.PI/2;}}
+   for(let k=0;k<3;k++){const a=k*2.09,b=add(sp,barrelG,MS.metal,.6,1.1,.6,Math.cos(a)*.15,Math.sin(a)*.15,0);b.rotation.x=Math.PI/2;}if(hi)add(kb,boxG,M(0x5a5030),.25,.35,.5,s*.4,-.1,0);}
   else if(wpn==='railgun'){add(kb,boxG,dk,.45,.6,1.3,0,0,.1);const b=add(kb,barrelG,MS.metal,1.3,2,1.3,0,0,1.7);b.rotation.x=Math.PI/2;for(const z of[1.1,1.8])add(kb,coilG,coil,1,1,1,0,0,z);}
-  else if(wpn==='shotgun'){add(kb,boxG,dk,.6,.55,1.1,0,0,.1);for(const x of[-.14,.14]){const b=add(kb,barrelG,MS.metal,1.5,1.2,1.5,x,0,1.1);b.rotation.x=Math.PI/2;}add(kb,boxG,MS.metal,.5,.12,.5,0,-.3,.9);}
+  else if(wpn==='shotgun'){add(kb,boxG,dk,.6,.55,1.1,0,0,.1);for(const xx of[-.14,.14]){const b=add(kb,barrelG,MS.metal,1.5,1.2,1.5,xx,0,1.1);b.rotation.x=Math.PI/2;}add(kb,boxG,MS.metal,.5,.12,.5,0,-.3,.9);}
   else{add(kb,boxG,M(0x665544),.85,.85,1.1,0,.1,.1);for(let r=0;r<2;r++)for(let c=0;c<2;c++){const tb=add(kb,tubeG,MS.dark,1,1,1,-.2+c*.4,-.1+r*.4,.68);tb.rotation.x=Math.PI/2;}}
-  const fl=add(pv,flashG,MS.flash,1,1,1,0,0,mz+.4);fl.rotation.x=-Math.PI/2;fl.visible=false;flash.push(fl);top.add(pv);guns.push(pv);}
- g.traverse(o=>{if(o.isMesh&&o.material!==shieldMat&&o.material!==jetMat&&o.material!==MS.flash)o.castShadow=true;});
- S.add(g);return{g,lower,legs,top,guns,flash,spinners,kickers,shield,jets,pads,antP,vent,coil,mz,mats:[m,dk],flashT:0,smokeT:0,legYaw:0,tYaw:0,tYawV:0,gp:0};}
+  const fl=add(pv,flashG,MS.flash,sc,sc,sc,0,0,(mz0+.4)*sc);fl.rotation.x=-Math.PI/2;fl.visible=false;flash.push(fl);pv.userData.mz=mz0*sc;top.add(pv);guns.push(pv);}
+ g.traverse(o=>{if(o.isMesh&&o.material!==shieldMat&&o.material!==jetMat&&o.material!==MS.flash&&o.material!==cableMat&&!(o.material.transparent))o.castShadow=hi||o.geometry===boxG;});
+ S.add(g);return{g,lower,legs,top,guns,flash,spinners,kickers,shield,jets,pads,arms,drones,coreM,antP,vent,coil,mz:mz0,mats:[m,dk],flashT:0,smokeT:0,legYaw:0,tYaw:0,tYawV:0,gp:0};}
 const LIGHT_B=new THREE.MeshBasicMaterial({color:0x60d0ff}),LIGHT_R=new THREE.MeshBasicMaterial({color:0xff5040});
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 function turn(cur,tgt,rate,dt){const d=wrap(tgt-cur);return cur+Math.sign(d)*Math.min(Math.abs(d),rate*dt);}
 // ---------- locomotion: inertia, world-planted feet with 2-bone IK, weight shift, secondary motion ----------
 const _v=new THREE.Vector3(),_w=new THREE.Vector3(),_h=new THREE.Vector3();
 const L1=LEG.L1,L2=LEG.L2;
-function homeOf(u,L,out){const p=u.g.position,ly=u.legYaw;return out.set(p.x+Math.cos(ly)*L.s*0.9+Math.sin(ly)*0.15,p.y,p.z-Math.sin(ly)*L.s*0.9+Math.cos(ly)*0.15);}
+function homeOf(u,L,out){const p=u.g.position,ly=u.legYaw;const c=Math.cos(ly),n=Math.sin(ly);return out.set(p.x+c*L.hx+n*L.hz,p.y,p.z-n*L.hx+c*L.hz);}
 function initFeet(u){for(const L of u.legs){homeOf(u,L,L.foot);L.sw=-1;}}
 function ik(u,L){// ankle target in lower-local space -> hip roll/pitch + knee bend, ankle keeps foot flat
  _v.set(L.foot.x,L.foot.y+LEG.foot+0.1,L.foot.z);u.lower.worldToLocal(_v);_v.sub(L.hip.position);
- const r=Math.atan2(_v.x,-_v.y),a=Math.hypot(_v.x,_v.y),d=Math.min(L1+L2-0.002,Math.max(0.4,Math.hypot(a,_v.z)));
+ const L1=L.l1,L2=L.l2,rv=L.rev?-1:1;const r=Math.atan2(_v.x,-_v.y),a=Math.hypot(_v.x,_v.y),d=Math.min(L1+L2-0.002,Math.max(0.4,Math.hypot(a,_v.z)));
  const th=Math.atan2(-_v.z,a),be=Math.acos(Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d))),k=Math.PI-Math.acos(Math.max(-1,Math.min(1,(L1*L1+L2*L2-d*d)/(2*L1*L2))));
- L.hip.rotation.set(th-be,0,r);L.knee.rotation.x=k;L.ank.rotation.set(-(th-be+k),0,-r);
- L.prod.scale.y=0.55+0.55*k;L.prod.position.y=-LEG.L1*0.55-L.prod.scale.y*0.25;
- const ak=-(th-be+k);L.pis2.scale.y=Math.max(.35,0.9+0.5*ak);}
+ const hx=th-be*rv,kk=k*rv;L.hip.rotation.set(hx,0,r);L.knee.rotation.x=kk;L.ank.rotation.set(-(hx+kk),0,-r);
+ L.prod.scale.y=0.55+0.55*k;L.prod.position.y=-L1*0.55-L.prod.scale.y*0.25;
+ const ak=-(hx+kk)*rv;L.pis2.scale.y=Math.max(.35,0.9+0.5*ak);}
 function legLag(u,L,dt){// thigh armor plate trails the hip swing (spring)
  const hx=L.hip.rotation.x,dv=(hx-(L.hx0===undefined?hx:L.hx0))/Math.max(dt,1e-3);L.hx0=hx;
  L.thV+=(-160*L.thR-10*L.thV-dv*0.9)*dt;L.thR+=L.thV*dt;L.thR=Math.max(-.5,Math.min(.5,L.thR));L.thA.rotation.x=L.thR;}
@@ -320,13 +370,13 @@ function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.
  // legs face movement (walk backwards if moving away from torso)
  if(sp>0.4){let my=Math.atan2(v.x,v.z);if(Math.abs(wrap(my-u.tYaw))>1.9)my+=Math.PI;u.legYaw=turn(u.legYaw,my,CFG.legTurn/(u.T.mass||1),dt);}
  const stride=Math.min(G.stride[1],G.stride[0]+sp*G.strideK),stepT=Math.min(G.stepMax,Math.max(G.stepMin,stride/Math.max(sp,0.01)))*(u.T.mass||1)**0.5;
- if(u.air){for(const L of u.legs){L.hip.rotation.set(-.5,0,L.s*.08);L.knee.rotation.x=1.1;L.ank.rotation.set(-.6,0,0);L.sw=-1;}u.wasAir=true;}
+ if(u.air){for(const L of u.legs){const rv=L.rev?-1:1;L.hip.rotation.set(-.5*rv,0,L.s*.08);L.knee.rotation.x=1.1*rv;L.ank.rotation.set(-.6*rv,0,0);L.sw=-1;}u.wasAir=true;}
  else{if(u.wasAir){u.wasAir=false;initFeet(u);}
-  let sw=u.legs.find(L=>L.sw>=0);
-  if(!sw){let best=null,bd=0;for(const L of u.legs){homeOf(u,L,_h).addScaledVector(v,stepT*0.5);const d=Math.hypot(L.foot.x-_h.x,L.foot.z-_h.z);
-    const need=sp>0.4?stride*0.5:G.settle;const pref=L===u.lastLeg?0.85:1;if(d>need&&d*pref>bd){bd=d*pref;best=L;}}
-   if(best){best.sw=0;best.from.copy(best.foot);best.dur=stepT;u.lastLeg=best;sw=best;}}
-  if(sw){sw.sw=Math.min(1,sw.sw+dt/sw.dur);homeOf(u,sw,sw.to).addScaledVector(v,(1-sw.sw)*sw.dur+stepT*0.5);
+  let sws=u.legs.filter(L=>L.sw>=0);
+  if(!sws.length){let best=null,bd=0;for(const L of u.legs){homeOf(u,L,_h).addScaledVector(v,stepT*0.5);const d=Math.hypot(L.foot.x-_h.x,L.foot.z-_h.z);
+    const need=sp>0.4?stride*0.5:G.settle;const pref=L.grp===u.lastGrp?0.85:1;if(d>need&&d*pref>bd){bd=d*pref;best=L;}}
+   if(best){for(const L of u.legs)if(L.grp===best.grp){L.sw=0;L.from.copy(L.foot);L.dur=stepT;sws.push(L);}u.lastGrp=best.grp;}}
+  for(const sw of sws){sw.sw=Math.min(1,sw.sw+dt/sw.dur);homeOf(u,sw,sw.to).addScaledVector(v,(1-sw.sw)*sw.dur+stepT*0.5);
    const e=sw.sw*sw.sw*(3-2*sw.sw);sw.foot.lerpVectors(sw.from,sw.to,e);sw.foot.y=p.y+Math.sin(Math.PI*sw.sw)*G.lift*Math.min(1,0.4+sp/6);
    if(sw.sw>=1){sw.sw=-1;sw.foot.y=p.y;u.dip=1;footstep(u,sw.foot);}}
   for(const L of u.legs)if(L.sw<0)L.foot.y=p.y;}
@@ -346,6 +396,12 @@ function animMech(u,dt){const G=CFG.gait,p=u.g.position,v=u.vel,sp=Math.hypot(v.
  const ca=Math.cos(u.tYaw),sa=Math.sin(u.tYaw),ax=u.acc.x*ca-u.acc.z*sa,az=u.acc.x*sa+u.acc.z*ca;
  u.jgV.x+=(-90*u.jg.x-7*u.jgV.x-ax*0.4-u.tYawV*1.5)*dt;u.jgV.z+=(-90*u.jg.z-7*u.jgV.z+az*0.4+u.dip*3)*dt;u.jg.x+=u.jgV.x*dt;u.jg.z+=u.jgV.z*dt;
  u.antP.rotation.set(u.jg.z*0.8,0,u.jg.x*0.8);for(const pd of u.pads)pd.rotation.set(u.jg.z*0.3,u.jg.x*0.25,0);
+ u.armT=(u.armT||0)+dt;for(const a of u.arms){if(a.kind==='shield'){a.pv.rotation.set(u.jg.z*0.5-u.shA*0.4,u.jg.x*0.4+u.shA*0.5,u.jg.x*0.2);continue;}
+  const w=u.armT*1.6+a.s;a.sh.rotation.set(-.35+Math.sin(w)*.25+u.jg.z*.6,a.s*(.35+Math.sin(w*.7)*.2)+u.jg.x*.5,0);a.el.rotation.set(.7+Math.sin(w*1.3)*.35,-a.s*.4,0);a.tool.rotation.z+=dt*8;
+  a.tl.visible=Math.sin(w*5)>0;}
+ for(const d of u.drones){const t=u.armT*1.3+d.ph,dg=d.g;d.p.set(Math.cos(t)*2.4,4.6+Math.sin(t*2)*.35,Math.sin(t)*2.4);dg.position.x+=(d.p.x-dg.position.x)*Math.min(1,dt*4);dg.position.y+=(d.p.y-dg.position.y)*Math.min(1,dt*4);dg.position.z+=(d.p.z-dg.position.z)*Math.min(1,dt*4);
+  dg.rotation.set(-u.vel.z*.03,t*3,u.vel.x*.03);}
+ if(u.coreM)u.coreM.rotation.y+=dt*2;
  // weapons: barrel kick-back, spin, railgun charge glow, flash
  for(let i=0;i<u.kickers.length;i++){u.kick[i]=Math.max(0,u.kick[i]-dt*u.kick[i]*12-dt*.2);u.kickers[i].position.z=-u.kick[i];}
  for(const s of u.spinners)s.rotation.z+=dt*35*(u.spin||0);
@@ -363,11 +419,11 @@ function footstep(u,f){if(FX.length<CFG.fx.maxFx*.8)fx(_w.set(f.x,f.y+.2,f.z),.9
 function deathAnim(u,dt){const t=u.dying+=dt,ease=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3);
  // staggered collapse: hit-side knee buckles first, the other follows, torso pitches over and bounces on the ground
  const s=u.dieSide,a=ease((t-0.05)/0.5),b=ease((t-0.3)/0.55),f=Math.max(a,b)*0.5+Math.min(a,b)*0.5;
- for(const L of u.legs){const q=L.s===s?a:b;L.hip.rotation.set(-1.0*q,0,L.s*(.12+.25*q));L.knee.rotation.x=0.3+1.8*q;L.ank.rotation.set(-0.9*q,0,0);L.prod.scale.y=0.55+0.55*(0.3+1.8*q);}
+ for(const L of u.legs){const q=L.s===s?a:b;L.hip.rotation.set(-1.0*q*(L.rev?-.5:1),0,L.s*(.12+.25*q));const rv=L.rev?-1:1;L.knee.rotation.x=(0.3+1.8*q)*rv;L.ank.rotation.set(-0.9*q*rv,0,0);L.prod.scale.y=0.55+0.55*(0.3+1.8*q);}
  const fall=ease((t-0.35)/0.6),bounce=t>0.95&&t<1.4?Math.sin((t-0.95)/0.45*Math.PI)*0.12*(1.4-t):0;
  u.lower.position.y=-1.15*f;u.lower.rotation.z=s*0.18*f;u.top.position.y=2.6-1.3*f-0.35*fall+bounce;
  u.top.rotation.set(0.15*a+0.45*fall,u.tYaw+s*0.25*fall,s*(0.15*a+0.35*fall),'YXZ');
- for(const g of u.guns)g.rotation.x=0.7*fall;u.antP.rotation.set(-0.8*fall,0,s*0.6*fall);
+ for(const g of u.guns)g.rotation.x=0.7*fall;for(const d of u.drones)d.g.position.y=Math.max(.4,d.g.position.y-dt*6);u.antP.rotation.set(-0.8*fall,0,s*0.6*fall);
  if(t<0.95){if(Math.random()<.45){u.top.getWorldPosition(_w);sparks(_w.addScaledVector(rnd3(),1.4));}if(!u.pop&&t>0.25){u.pop=1;u.top.getWorldPosition(_w);boom(_w.clone().addScaledVector(rnd3(),1),1,0xff8030);}}
  else if(!u.wreck){u.wreck=true;u.top.getWorldPosition(_w);explode(_w.clone(),1.4);for(const m of u.mats){m.color.multiplyScalar(0.28);m.metalness=0.3;}
   if(u.plate)u.plate.visible=false;if(u.shield)u.shield.visible=false;u.jets.forEach(j=>j.visible=false);if(u===P)shake(0.5);}
@@ -385,7 +441,7 @@ function makeUnit(team,type,wpn,prof){const me=team==='b'&&!prof,T=me?upMech(typ
  if(pr&&team==='r'){const k=1+CFG.econ.enemyScale*progress();pr.hpMul*=k;pr.dmgMul*=k;pr.scale=k;}const u=mech(team,type,wpn);
  Object.assign(u,{team,type,wpn,T,W,prof:pr,alive:true,hp:T.hp*(pr?pr.hpMul:1),speed:T.speed*(pr?pr.speedMul:1),ammo:W.mag,reload:0,fireCd:0,spin:0,
   shieldOn:false,shA:0,shieldHP:T.shield?T.shield.hp:0,shieldT:0,abCd:0,vy:0,air:false,lastHit:-99,lockT:0,lockTgt:null,cd:1+Math.random()*2,burst:0,think:0,goal:null,
-  vel:new THREE.Vector3(),acc:new THREE.Vector3(),jg:new THREE.Vector3(),jgV:new THREE.Vector3(),fl:new THREE.Vector3(),kick:[0,0],jolt:0,sway:0,dip:0,crouch:0,jumpWind:0,
+  vel:new THREE.Vector3(),acc:new THREE.Vector3(),jg:new THREE.Vector3(),jgV:new THREE.Vector3(),fl:new THREE.Vector3(),kick:u.guns.map(()=>0),jolt:0,sway:0,dip:0,crouch:0,jumpWind:0,
   stagT:0,dashT:0,ventT:0,kills:0,seeT:0,strafeD:1,strafeT:0,scanT:0,tgt:null,dieSide:Math.random()<.5?-1:1,yaw:0,pitch:.05});u.max=u.hp;return u;}
 // nameplates: team-colored name + hp bar (canvas sprite)
 function makePlate(u,ally){const c=document.createElement('canvas');c.width=256;c.height=64;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
@@ -448,9 +504,9 @@ let AC=null;const unlockAudio=()=>{if(!AC)try{AC=new (window.AudioContext||windo
 addEventListener('touchstart',unlockAudio,{passive:true});addEventListener('mousedown',unlockAudio);
 function sfx(k){if(!AC||AC.state!=='running')return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='sine';const big=k==='boom';
  o.frequency.setValueAtTime(big?90:70,t);o.frequency.exponentialRampToValueAtTime(big?30:38,t+(big?.6:.18));g.gain.setValueAtTime(big?.5:.22,t);g.gain.exponentialRampToValueAtTime(.001,t+(big?.7:.2));o.connect(g).connect(AC.destination);o.start(t);o.stop(t+(big?.75:.22));}
-function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return u.guns[i].localToWorld(p.set(0,0,u.mz));}
+function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return u.guns[i].localToWorld(p.set(0,0,u.guns[i].userData.mz||u.mz));}
 function fireWeapon(u,aimPt,homing){if(u===P)STATS.shots++;const W=u.W,pr=u.prof;u.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,u.spin):1);u.ammo--;
- const gi=u.ammo%2,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
+ const gi=((u.ammo%u.guns.length)+u.guns.length)%u.guns.length,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
  const s=(W.pellets?0:W.spread)+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  u.kick[gi]=Math.min(1,u.kick[gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);if(u.wpn==='railgun')u.ventT=.7;
  if(u===P){flashLight(f,u.wpn==='railgun'?4:1.5);shake(W.jolt*2);}
@@ -612,7 +668,7 @@ const camRay=new THREE.Raycaster(),cO=new THREE.Vector3(),cD=new THREE.Vector3()
 function cam(dt){if(!P)return;const K=CFG.cam,f=(P.alive||!SPEC)?P:SPEC,p=f.g.position;
  if(f===P)camYaw=P.yaw;else camYaw+=wrap(f.tYaw-camYaw)*Math.min(1,(dt||0)*3);
  const bx=-Math.sin(camYaw),bz=-Math.cos(camYaw),rx=-bz,rz=bx,pit=f===P?P.pitch:.05;
- cO.set(p.x,p.y+K.height,p.z);want.set(p.x+bx*K.dist-rx*K.side,p.y+K.height+pit*K.pitchLift,p.z+bz*K.dist-rz*K.side);
+ cO.set(p.x,p.y+K.height,p.z);const ck=P&&P.type==='guardian'?1.35:P&&P.type==='strider'?1.12:1;want.set(p.x+bx*K.dist*ck-rx*K.side*ck,p.y+K.height*(ck>1.2?1.12:1)+pit*K.pitchLift,p.z+bz*K.dist*ck-rz*K.side*ck);
  cD.copy(want).sub(cO);const L=cD.length();cD.normalize();camRay.set(cO,cD);camRay.far=L;const h=camRay.intersectObjects(obstMeshes,false)[0];
  if(h)want.copy(cO).addScaledVector(cD,Math.max(1.2,h.distance-0.4));
  if(dt){shakeA=Math.max(0,shakeA-shakeA*K.shakeDecay*dt-dt*.05);}const s=shakeA*shakeA*0.6;
@@ -650,7 +706,8 @@ function hud(){const W=P.W,T=P.T;hudN++;
 const menu=$('menu'),mc=$('mc');let menuStep='title';
 const statMax={hp:1300,speed:10};const bar=(l,v,t)=>`<div class="st"><span>${l}</span><div class="sb"><i style="width:${Math.max(4,v*100)}%"></i></div><em>${t}</em></div>`;
 function preview(){if(P)S.remove(P.g);P=makeUnit('b',loadout.mech,loadout.weapon,null);applyPaint(P,paintOf(loadout.mech));P.g.position.set(0,0,48);P.tYaw=P.legYaw=Math.PI;P.yaw=Math.PI;P.pitch=.05;initFeet(P);animMech(P,.016);}
-function menuTick(dt){menuA+=dt*.35;if(!P)return;const p=P.g.position;P.tYaw=Math.PI+Math.sin(menuA*.8)*.6;P.legYaw=Math.PI;P.spin=P.W.spin?1:0;animMech(P,dt);
+let LINEUP=null;
+function menuTick(dt){menuA+=dt*.35;if(LINEUP){for(const u of LINEUP){u.spin=1;animMech(u,dt);}C.position.set(9,7.5,28);C.lookAt(-1,2.4,48);return;}if(!P)return;const p=P.g.position;P.tYaw=Math.PI+Math.sin(menuA*.8)*.6;P.legYaw=Math.PI;P.spin=P.W.spin?1:0;animMech(P,dt);
  const a=Math.PI*0.75+menuA*0.3;const cx=p.x+Math.sin(a)*9,cz=p.z+Math.cos(a)*9;C.position.set(cx,4.5,cz);
  const lx=-Math.cos(a),lz=Math.sin(a);const side=innerWidth>700?2.8:0;C.lookAt(p.x+lx*side,3,p.z+lz*side);dl.position.set(p.x+SUN.x*60,SUN.y*60,p.z+SUN.z*60);dl.target.position.set(p.x,0,p.z);}
 let gtab='mech',gsel=null,resetArm=false;
@@ -722,7 +779,7 @@ loadMap('arena',7);setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
 window.__game={THREE_V:THREE.Vector3,hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout={mech:m,weapon:w};},
  startMatch:(md,df,mp)=>{settings.mode=md;if(df)settings.diff=df;if(mp)settings.map=mp;newGame();},MAPS,get mapKey(){return mapKey},loadMap,setBaseProg:(t,v)=>{BASES[t].prog=v;},
- killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),get SAVE(){return SAVE},buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},renderMenu,go:s=>{menuStep=s;renderMenu();}};
+ killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),get SAVE(){return SAVE},buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},lineup:(w)=>{if(P){S.remove(P.g);P=null;}if(LINEUP)LINEUP.forEach(u=>S.remove(u.g));LINEUP=['guardian','strider','mender','phantom'].map((k,i)=>{const u=makeUnit('b',k,w||'minigun',null);u.g.position.set(-10.5+i*7,0,48);u.tYaw=u.legYaw=u.yaw=Math.PI*0.82;initFeet(u);animMech(u,.016);return u;});},renderMenu,go:s=>{menuStep=s;renderMenu();}};
 // barrel convergence: rotate each gun pivot so its +Z points at the aim point
 const _l=new THREE.Vector3();
 function aimGuns(u,pt,dt){const K=CFG.cam;u.top.updateMatrixWorld(true);for(const g of u.guns){g.rotation.order='YXZ';
