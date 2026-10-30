@@ -44,12 +44,23 @@ canvas{display:block}
 .st{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.st span{width:80px}.st em{width:70px;font-style:normal;text-align:right}
 .sb{flex:1;height:10px;background:#fff2;border-radius:5px;overflow:hidden}.sb i{display:block;height:100%;background:#fa4}
 .row{display:flex;justify-content:space-between;gap:10px}
+#teams{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;font-weight:bold;font-size:18px;text-shadow:0 0 3px #000}
+#teams b{padding:3px 12px;border-radius:8px}#teams .tb{background:#1a5fa0cc}#teams .tr{background:#a02a20cc}#teams .tk{background:#0008;font-size:14px;line-height:22px}
+#cap{position:absolute;top:46px;left:50%;transform:translateX(-50%);width:300px;font-size:12px;font-weight:bold;text-shadow:0 0 3px #000;display:none}
+#cap .cb{height:9px;background:#0008;border:1px solid #fff8;border-radius:4px;margin:2px 0 5px;overflow:hidden}#cap i{display:block;height:100%;width:0}
+#capE{background:#4cf}#capO{background:#f54}#cap .warn{color:#f88}
+#spec{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:20px;font-weight:bold;background:#000a;padding:8px 18px;border-radius:10px;display:none}
+#toast{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:13px;background:#000a;padding:4px 12px;border-radius:8px;display:none}
+#mk{font-size:20px;margin-top:10px}#mm{font-size:16px;opacity:.85;margin-top:4px;font-weight:normal}
+.dif{display:flex;gap:8px;margin:12px 0}.dif button{flex:1}#mc .dif button.on{background:#fa4;color:#000}
+.gq{margin-top:14px;display:flex;gap:8px;align-items:center;font-size:14px}#mc .gq button{font-size:15px;padding:8px 14px}#mc .gq button.on{background:#6cf;color:#000}
+.card .md{font-size:22px;font-weight:bold;color:#fc6}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
-<div id="xh"></div><div id="rng"></div><div id="lock"></div>
+<div id="teams"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
 <div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">R</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
-<div id="msg"><div id="mt"></div><small id="ml"></small><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=6"></script></body></html>
+<div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
+<script type="module" src="game.js?v=7"></script></body></html>
