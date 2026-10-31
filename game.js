@@ -1,4 +1,4 @@
-/*v21 skyhawk + aegis*/
+/*v23 aegis rebalance*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -70,8 +70,8 @@ CFG.mechs.skyhawk={name:'Skyhawk',hp:820,speed:9.4,mass:.8,color:0x3a8fd0,enemyC
  desc:'Ducted-fan gunship. Hold FLY (Space) to lift off and hover up to 16 m; fuel drains in the air and refills on the ground. Ability: on the ground an afterburner LAUNCH, in the air a DIVE STRIKE that slams into your aim point for heavy splash damage. Light armor, and every weapon can still hit it in the air.',
  fly:{fuel:6,regen:1.2,climb:10,ceil:16,airSpeed:1.15,glide:.45,launch:15,lcd:3},dive:{cd:10,dmg:260,r:7,speed:46,dur:1.4}};
 CFG.mechs.aegis={name:'Aegis',hp:1250,speed:7.4,mass:1.25,color:0x2fb8a8,enemyColor:0xb84a8a,ability:'FORCE DOME',
- desc:'Field-generator walker. Raises a translucent force DOME (7 m) that stops every bullet, rocket, beam and EMP fired from OUTSIDE it, and allies standing inside are covered too. Shots fired from inside pass out freely. The dome has its own energy, which recharges while lowered. If it breaks, the generator locks out for a few seconds.',
- dome:{hp:1600,r:7,regen:110,regenDelay:2,cd:9,min:.3,slow:.8,capFill:450}};
+ desc:'Field-generator walker. Projects a translucent force DOME (7 m) for up to 5 seconds that stops bullets, rockets and beams fired from OUTSIDE it; allies inside are covered too and shots from inside pass out freely. The dome is fragile (650 HP) and does not regenerate while up, so focused fire can break it. Aegis heals for 10% of all damage the dome absorbs. EMP drains 250 dome HP and knocks it down; lockdown fields still root you.',
+ dome:{hp:650,r:7,dur:5,cd:12,brokeCd:15,heal:.1,empDrain:250,slow:.8}};
 CFG.weapons.shotgun={name:'Scattergun',desc:'Close-range shotgun: 9 heavy pellets per blast. Devastating up close, useless far away.',
  dmg:15,pellets:9,interval:0.8,range:28,mag:6,reload:3.2,spread:0.11,speed:150,aiBurst:1,kick:0.7,jolt:0.07};
 CFG.econ={win:100,loss:25,kill:20,capture:60,duelMul:{easy:0.7,normal:1,hard:1.5},
@@ -103,9 +103,9 @@ VAR.laser={S:['Pulse Laser','Light beam sidearm. Low heat, quick cool-down.'],L:
 CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of small missiles that seek the enemy nearest your aim. Fired from altitude they dive in for bonus damage (up to +50% at 10 m up), which makes it the flyer weapon.',fam:'swarm',size:'M',
  dmg:20,interval:.16,range:75,mag:12,reload:3.8,spread:.05,speed:62,splash:1.8,seek:.9,turnRate:3.2,altBonus:.5,kick:.15,jolt:.01,aiBurst:6};
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
-CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Damage your force dome or shield absorbs charges a capacitor for up to +60% damage on the next shots.',fam:'pulse',size:'M',
- dmg:46,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,capBoost:.6,kick:.4,jolt:.04,aiBurst:2};
-VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove, bigger capacitor boost.']};
+CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you.',fam:'pulse',size:'M',
+ dmg:46,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,kick:.4,jolt:.04,aiBurst:2};
+VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
  W.dmg=+(b.dmg*q.dmg).toFixed(1);W.interval=+(b.interval*q.int).toFixed(3);W.range=Math.round(b.range*q.range);W.reload=+(b.reload*q.reload).toFixed(2);W.mag=Math.max(2,Math.round(b.mag*q.mag));
  if(W.splash)W.splash=+(b.splash*(z==='L'?1.4:.75)).toFixed(1);if(W.spin)W.spin=b.spin*(z==='L'?1.6:.6);W.kick=b.kick*q.sc;W.jolt=b.jolt*q.dmg;if(W.beam){W.mag=1;W.interval=0.1;W.dmg=+(b.dmg*(z==='S'?.68:1.5)).toFixed(1);W.heat=z==='S'?.22:.3;W.cool=z==='S'?.5:.33;W.color=z==='S'?0xff60a0:0xff5020;W.aiBurst=z==='S'?26:18;}
@@ -113,7 +113,7 @@ for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],
  if(W.tether){const S_=z==='S';W.dmg=S_?30:95;W.interval=S_?.65:1.25;W.range=S_?60:88;W.mag=S_?6:4;W.reload=S_?2.8:4.2;W.tether=S_?2.5:4.5;W.amp=S_?.15:.3;W.tslow=S_?.18:.35;W.speed=S_?140:120;W.aiBurst=S_?3:1;}
  if(W.dot!==undefined){const S_=z==='S';W.dmg=S_?6:16;W.interval=S_?.28:.45;W.range=S_?45:55;W.mag=S_?10:14;W.reload=S_?2.8:3.6;W.dot=S_?36:100;W.dotT=S_?2.5:3.5;W.leech=S_?.3:.4;W.speed=S_?95:75;W.aiBurst=S_?5:3;}
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
- if(W.push){const S_=z==='S';W.push=S_?5:15;W.dmg=S_?26:82;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.capBoost=S_?.45:.8;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
+ if(W.push){const S_=z==='S';W.push=S_?5:15;W.dmg=S_?26:82;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
 {const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
@@ -152,7 +152,7 @@ function mechAt(k,L){const b=CFG.mechs[k],T=JSON.parse(JSON.stringify(b));T.colo
  if(T.regen)T.regen.rate=Math.round(b.regen.rate*(1+0.12*ab));
  if(T.lockdown)T.lockdown.dur=+(b.lockdown.dur*(1+.1*ab)).toFixed(2);
  if(T.dash)T.dash.cd=+(b.dash.cd*(1-0.08*ab)).toFixed(2);
- if(T.dome){T.dome.hp=Math.round(b.dome.hp*(1+.1*ab));T.dome.regen=Math.round(b.dome.regen*(1+.08*ab));}
+ if(T.dome){T.dome.hp=Math.round(b.dome.hp*(1+.1*ab));}
  if(T.fly)T.fly.fuel=+(b.fly.fuel*(1+.08*ab)).toFixed(2);if(T.dive)T.dive.cd=+(b.dive.cd*(1-.07*ab)).toFixed(2);return T;}
 function wpnAt(k,L){const b=CFG.weapons[k],W=Object.assign({},b),P=UPS.wpn;
  W.dmg=+(b.dmg*(1+P.dmg.per*(L.dmg-1))).toFixed(1);W.interval=+(b.interval*(1-P.rate.per*(L.rate-1))).toFixed(4);
@@ -676,7 +676,7 @@ function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clear
 const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1),shotgun:new THREE.BoxGeometry(.1,.1,.7)};
 const PM={minigun:new THREE.MeshBasicMaterial({color:0xffee66}),railgun:new THREE.MeshBasicMaterial({color:0x80e8ff}),hornet:new THREE.MeshBasicMaterial({color:0xffaa22}),shotgun:new THREE.MeshBasicMaterial({color:0xffcc88})};
 function shoot(from,dir,u,homing,W){W=W||u.W;if(W.seek&&!homing)homing=seekT(u,from,dir,W);const m=new THREE.Mesh(PG[W.fam],PM[W.fam]);m.scale.setScalar(SIZES[W.size].sc);m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
- B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1)*(CFG.firepower[u.type]||1)*((W.altBonus||W.capBoost)?shotMul(u,W):1),homing});}
+ B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1)*(CFG.firepower[u.type]||1)*(W.altBonus?shotMul(u,W):1),homing});}
 PG.lockbolt=new THREE.OctahedronGeometry(.22,0).scale(1,1,3);PM.lockbolt=new THREE.MeshBasicMaterial({color:0xc090ff});
 PG.nanite=new THREE.CylinderGeometry(.06,.02,.7,5).rotateX(Math.PI/2);PM.nanite=new THREE.MeshBasicMaterial({color:0x50ff80});
 const fxG=new THREE.SphereGeometry(1,8,6),sparkG=new THREE.BoxGeometry(.12,.12,.12),debG=new THREE.BoxGeometry(.5,.35,.6);
@@ -706,7 +706,7 @@ function fireWeapon(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(
  for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}if(w.ammo<=0)w.reload=W.reload;}
 function frontal(u,pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,l=Math.hypot(dx,dz)||1;return (dx*Math.sin(u.tYaw)+dz*Math.cos(u.tYaw))/l>0.25;}
 function dropShield(u,broken){if(!u.shieldOn)return;u.shieldOn=false;u.abCd=broken?u.T.shield.cd:Math.max(u.abCd,.4);}
-function hurt(u,d,pos,src){if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.cap=Math.min(1,(u.cap||0)+Math.min(d,Math.max(0,u.shieldHP))/400);u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
+function hurt(u,d,pos,src){if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
  if(u.teth&&u.teth.t>0)d*=1+u.teth.amp;if(src===P&&u.team!==P.team)chDmg(Math.min(d,Math.max(0,u.hp)),HITF);u.hp-=d;u.lastHit=clock;if(u===P)sfx('hurt');else if(src===P)sfx('hit');if(src)u.lastAtt=src;const H=CFG.hitReact;
  if(pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,c=Math.cos(u.tYaw),s=Math.sin(u.tYaw),lz=dx*s+dz*c,lx=dx*c-dz*s,l=Math.hypot(lx,lz)||1,k=Math.min(H.maxFlinch,d*H.flinch);
   u.fl.x+=lz/l*k;u.fl.z+=-lx/l*k;}// torso tips away from the impact
@@ -848,14 +848,14 @@ function tickBeams(dt){for(const u of U)if(u.beams)for(const b of u.beams){b.use
 // ---------- v15: EMP cannon (charged Tesla bolt) + nanite DoT ----------
 function chargeEmp(u,w,aimPt){if(w.chg)return false;const W=w.W,pr=u.prof;w.chg=clock;w.aimPt=aimPt.clone();w.fireCd=W.charge+W.interval*(pr?pr.fireMul:1);sfx('charge',{u,d:W.charge});return true;}
 function zap(a,b,c,n){const pts=[a.clone()];const d=b.clone().sub(a);for(let i=1;i<n;i++){const q=a.clone().addScaledVector(d,i/n);q.x+=Rn(-.6,.6);q.y+=Rn(-.6,.6);q.z+=Rn(-.6,.6);pts.push(q);}pts.push(b.clone());for(let i=0;i<pts.length-1;i++)bolt(pts[i],pts[i+1],c);}
-function empHit(t,W,src){if(t.isDome){domeHurt(t,W.dmg*1.5,null,src);return;}if(t.domeOn)domeDrop(t,false);if(src===P)chEv('emps',1);t.empT=Math.max(t.empT||0,W.stun);t.empSlow=W.slow;if(t.shieldOn)dropShield(t);t.dashT=0;if(t===P){shake(.25);toast&&toast('⚡ EMP — systems offline');}}
+function empHit(t,W,src){if(t.isDome){const h=t.host;domeHurt(t,W.dmg*1.5+h.T.dome.empDrain,null,src);t=h;if(!t.alive)return;}if(t.domeOn)domeDrop(t,false);if(src===P)chEv('emps',1);t.empT=Math.max(t.empT||0,W.stun);t.empSlow=W.slow;if(t.shieldOn)dropShield(t);t.dashT=0;if(t===P){shake(.25);toast&&toast('⚡ EMP — systems offline');}}
 function empShot(u,w,aimPt){HITF='emp';if(u!==P)window.__empN=(window.__empN||0)+1;const W=w.W,pr=u.prof;if(u===P)STATS.shots++;w.ammo--;if(w.ammo<=0)w.reload=W.reload;
  const f=muzzle(u,w.gi);const d=aimPt.clone().sub(f).normalize();const sw=sweep(f,d,W.range,u.team);const L=sw?sw.t:W.range;const e=f.clone().addScaledVector(d,L);
  zap(f,e,0x80e0ff,Math.max(4,L/4|0));if(!gfxLow())zap(f,e,0xffffff,Math.max(3,L/6|0));fx(e,W.blast*1.2,0x80e0ff,{grow:2,life:.35,op:.8});sparks(e,0x80e0ff);sparks(e,0xffffff);flashLight(e,3);
  u.kick[w.gi]=Math.min(1,u.kick[w.gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);if(u===P)shake(.08);sfx('shot',{u,fam:W.fam,size:W.size,gi:w.gi});
  const dm=W.dmg*(pr?pr.dmgMul:1)*(CFG.firepower[u.type]||1);
  if(sw&&sw.u){hurt(sw.u,dm,e,u);empHit(sw.u,W,u);if(u===P){STATS.hits++;hitMarkT=.18;}}
- for(const t of foes(u.team)){if(!t.alive||(sw&&t===sw.u))continue;const tp=t.g.position;if(Math.hypot(tp.x-e.x,tp.z-e.z)<W.blast+1.5&&Math.abs(tp.y+2.5-e.y)<4&&!domeSafe(t,e,u.team)){hurt(t,dm*.4,null,u);empHit(t,W,u);}}}
+ for(const t of foes(u.team)){if(!t.alive||(sw&&t===sw.u))continue;const tp=t.g.position;if(Math.hypot(tp.x-e.x,tp.z-e.z)<W.blast+1.5&&Math.abs(tp.y+2.5-e.y)<4){if(!domeSafe(t,e,u.team))hurt(t,dm*.4,null,u);empHit(t,W,u);}}}
 function naniteHit(t,W,src,dmg){if(t.isDome)return;const fp=src&&src.prof?src.prof.dmgMul:1;const dps=W.dot*fp*(CFG.firepower[src.type]||1)/W.dotT;if(!t.dot||t.dot.dps<=dps)t.dot={dps,t:W.dotT,src,leech:W.leech};else t.dot.t=W.dotT;if(src&&src.alive){const h0=src.hp;src.hp=Math.min(src.max,src.hp+dmg*W.leech);if(src===P)chEv('heal',src.hp-h0);}}
 // ---------- v20: procedural WebAudio (buses: master > sfx / ui / amb), per-pilot volumes ----------
 let AC=null,BUS=null,NOISE=null,AMB_S=null;const SLAST={};
@@ -1063,17 +1063,21 @@ function raySph(o,d,c,r){const ox=o.x-c.x,oy=o.y-c.y,oz=o.z-c.z,cc=ox*ox+oy*oy+o
 function domeSweep(o,d,L,owner,best){for(const u of U){if(u.team===owner||!domeUp(u))continue;const t=raySph(o,d,domeC(u,_q),domeR(u));if(t>=0&&t<=L&&(!best||t<best.t))best={t,u:u.domeX};}return best;}
 // splash / bursts from outside a dome can't reach units sheltering inside it
 function domeSafe(t,pos,owner){if(!pos)return false;for(const u of U){if(u.team===owner||u.team!==t.team||!domeUp(u))continue;const c=domeC(u,_q),r=domeR(u);if(t.g.position.distanceTo(c)<r+.5&&pos.distanceTo(c)>r-.2)return true;}return false;}
-function domeHurt(D,d,pos,src){const u=D.host,T=u.T.dome;if(!domeUp(u))return;const a=Math.min(d,Math.max(0,u.domeHP));u.domeHP-=d;u.domeHit=clock;u.domeFl=1;u.cap=Math.min(1,(u.cap||0)+a/T.capFill);
+function domeHurt(D,d,pos,src){const u=D.host,T=u.T.dome;if(!domeUp(u))return;const a=Math.min(d,Math.max(0,u.domeHP));u.domeHP-=d;u.domeHit=clock;u.domeFl=1;if(a>0&&u.alive){const h=Math.min(u.max-u.hp,a*T.heal);if(h>0){u.hp+=h;healPop(u,h);}}
  if(u===P)chEv('block',a);if(src===P)sfx('hitsh');else sfx('domeHit',{u,p:pos});if(pos&&!gfxLow())fx(pos,1+Math.min(2,d/40),u.team==='b'?0x80e0ff:0xff90b0,{grow:3,life:.35,op:.6});
  if(u.domeHP<=0){u.domeHP=0;domeDrop(u,true);}}
-function domeDrop(u,broken){if(!u.domeOn)return;u.domeOn=false;if(broken){u.abCd=u.T.dome.cd;sfx('domeBreak',{u});const c=domeC(u,_q2).clone();fx(c,u.T.dome.r*1.2,u.team==='b'?0x80e0ff:0xff90b0,{grow:1.6,life:.45,op:.5});if(u===P){shake(.25);toast&&toast('DOME BROKEN — generator rebooting');}}else{u.abCd=Math.max(u.abCd,.6);sfx('domeDown',{u});}}
+function domeDrop(u,broken){if(!u.domeOn)return;u.domeOn=false;u.domeT=0;if(broken){u.abCd=u.T.dome.brokeCd;sfx('domeBreak',{u});const c=domeC(u,_q2).clone();fx(c,u.T.dome.r*1.2,u.team==='b'?0x80e0ff:0xff90b0,{grow:1.6,life:.45,op:.5});if(u===P){shake(.25);toast&&toast('DOME BROKEN — generator rebooting');}}else{u.abCd=u.T.dome.cd;sfx('domeDown',{u});}}
+const _hp=new THREE.Vector3();function healPop(u,h){u.healAcc=(u.healAcc||0)+h;if(clock-(u.healPopT||-9)<.35)return;u.healPopT=clock;const n=Math.round(u.healAcc);u.healAcc=0;if(n<1)return;
+ if(!gfxLow())fx(_hp.set(u.g.position.x,u.g.position.y+2.5,u.g.position.z).clone(),1.2,0x50ff80,{grow:2,life:.4,op:.5});
+ _hp.set(u.g.position.x,u.g.position.y+6,u.g.position.z).project(C);if(_hp.z>1||Math.abs(_hp.x)>1.1||Math.abs(_hp.y)>1.1)return;const d=document.createElement('div');d.className='healN';d.textContent='+'+n;
+ d.style.left=((_hp.x+1)/2*innerWidth+(Math.random()-.5)*30)+'px';d.style.top=((1-_hp.y)/2*innerHeight)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),900);}
 function seekT(u,from,dir,W){let best=null,bs=W.seek;for(const f of foes(u.team)){const q=_q.set(f.g.position.x,f.g.position.y+2.5,f.g.position.z).sub(from);const L=q.length();if(L>W.range*1.1)continue;const c=q.dot(dir)/L;if(c>bs){bs=c;best=f;}}return best;}
 function altOf(u){const p=u.g.position;return p.y-groundAt(p.x,p.z,p.y);}
 // called from shoot(): per-shot damage factor for the new families
-function shotMul(u,W){let k=1;if(W.altBonus)k*=1+W.altBonus*Math.min(1,Math.max(0,(altOf(u)-1)/9));if(W.capBoost&&u.cap>0){k*=1+W.capBoost*u.cap;u.cap=Math.max(0,u.cap-.25);}return k;}
+function shotMul(u,W){let k=1;if(W.altBonus)k*=1+W.altBonus*Math.min(1,Math.max(0,(altOf(u)-1)/9));return k;}
 function pushU(t,v,k){if(!t||t.isDome||!t.alive)return;const l=Math.hypot(v.x,v.z)||1,m=t.T.mass||1;t.vel.x+=v.x/l*k/m;t.vel.z+=v.z/l*k/m;t.stagT=Math.max(t.stagT,.15);}
 function abilityAir(u){const T=u.T;
- if(T.dome){if(u.domeOn)domeDrop(u);else if(u.abCd<=0&&u.domeHP>=T.dome.hp*T.dome.min){u.domeOn=true;sfx('domeUp',{u});if(u===P)chEv('abil',1);}else if(u===P)sfx('denied');return true;}
+ if(T.dome){if(u.domeOn)domeDrop(u);else if(u.abCd<=0&&!(u.empT>0)){u.domeOn=true;u.domeHP=T.dome.hp;u.domeT=T.dome.dur;sfx('domeUp',{u});if(u===P)chEv('abil',1);}else if(u===P)sfx('denied');return true;}
  if(T.dive){if(u.air&&altOf(u)>2.5){if(u.abCd>0||u.diving){if(u===P)sfx('denied');return true;}
    const p=u.g.position,tp=u===P?playerAim():(u.tgt?u.tgt.g.position.clone():p.clone().add(new THREE.Vector3(Math.sin(u.tYaw)*15,-p.y,Math.cos(u.tYaw)*15)));
    const d=tp.clone().sub(p);d.normalize();if(d.y>-.4){d.y=-.4;const h=Math.hypot(d.x,d.z)||1;d.x*=Math.sqrt(1-.16)/h;d.z*=Math.sqrt(1-.16)/h;}
@@ -1093,10 +1097,10 @@ function diveImpact(u){if(!u.diving)return;u.diving=false;u.diveT=0;const D=u.T.
 // per-frame: fuel, thrust, dome energy + visuals (called at the top of tickUnit)
 function tickAir(u,dt){const T=u.T;if(u.diving&&(!u.alive||(!u.air&&u.diveT<(T.dive?T.dive.dur-.2:0))))diveImpact(u);
  if(T.dome){const D=T.dome;if(!u.domeX)u.domeX={isDome:true,alive:true,team:u.team,host:u,g:u.g,T:u.T,vel:u.vel};
-  if(u.domeOn&&(u.empT>0||!u.alive))domeDrop(u,u.empT>0);u.domeA+=((u.domeOn?1:0)-u.domeA)*Math.min(1,dt*(u.domeOn?5:8));
-  if(!u.domeOn&&clock-(u.domeHit||-99)>D.regenDelay&&!(u.empT>0)&&u.abCd<=0)u.domeHP=Math.min(D.hp,u.domeHP+D.regen*dt);
-  if(u.domeM){u.domeM.visible=u.domeA>.03;u.domeFl=Math.max(0,(u.domeFl||0)-dt*4);u.domeM.scale.setScalar(D.r*Math.max(.03,u.domeA));const lo=u.domeHP<D.hp*.25;
-   u.domeM.children[0].material.opacity=.09+.3*u.domeFl+.04*Math.sin(clock*3)+(lo?.05*Math.sin(clock*20):0);u.domeM.children[1].material.opacity=.16+.3*u.domeFl;u.domeM.rotation.y+=dt*.25;}
+  u.dmgR=(u.dmgR||0)*Math.exp(-dt/1.5)+Math.max(0,(u.hpPrev??u.hp)-u.hp);u.hpPrev=u.hp;if(u.domeOn){u.domeT-=dt;if(!u.alive)domeDrop(u,false);else if(u.domeT<=0)domeDrop(u,false);}u.domeA+=((u.domeOn?1:0)-u.domeA)*Math.min(1,dt*(u.domeOn?5:8));
+  if(!u.domeOn&&u.abCd<=0)u.domeHP=D.hp;
+  if(u.domeM){u.domeM.visible=u.domeA>.03;u.domeFl=Math.max(0,(u.domeFl||0)-dt*4);u.domeM.scale.setScalar(D.r*Math.max(.03,u.domeA));const lo=u.domeOn&&(u.domeHP<D.hp*.3||u.domeT<1.5);
+   u.domeM.children[0].material.opacity=.09+.3*u.domeFl+.04*Math.sin(clock*3)+(lo?.07*Math.sin(clock*24):0);u.domeM.children[1].material.opacity=lo&&Math.sin(clock*(u.domeT<.8?40:22))>.3?.04:.16+.3*u.domeFl;u.domeM.rotation.y+=dt*.25;}
   if(u.fring)u.fring.rotation.y+=dt*(u.domeOn?6:1.2);}
  if(T.fly){const F=T.fly,p=u.g.position;u.lchCd=Math.max(0,(u.lchCd||0)-dt);
   const want=u===P?!!(inp.fly||inp.keys.Space):!!u.aiFly;
@@ -1117,13 +1121,14 @@ function aiAir(u,dt,t,dist,see){const T=u.T;
   else if(!u.air&&(u.lchCd||0)<=0&&t&&clock-u.lastHit<.5&&Math.random()<.5)ability(u);}
  if(T.dome){const D=T.dome,threat=t&&dist<80,hot=clock-Math.max(u.lastHit,u.domeHit||-99)<1.5;
   const allyHurt=mates(u.team).some(a=>a!==u&&clock-a.lastHit<1&&a.g.position.distanceTo(u.g.position)<D.r);
-  if(!u.domeOn&&u.abCd<=0&&(threat&&hot||allyHurt)&&u.domeHP>D.hp*.5&&Math.random()<dt*6)ability(u);
-  else if(u.domeOn&&((!threat&&clock-(u.domeHit||-99)>3)||u.domeHP<D.hp*.15))ability(u);}}
+  const focus=u.dmgR>u.max*.06||foes(u.team).filter(f=>f.alive&&f.tgt===u&&f.g.position.distanceTo(u.g.position)<60).length>=2;
+  if(!u.domeOn&&u.abCd<=0&&!(u.empT>0)&&(threat&&hot&&focus||allyHurt&&focus)&&Math.random()<dt*5)ability(u);
+  else if(u.domeOn&&!threat&&clock-(u.domeHit||-99)>1.5)ability(u);}}
 // HUD: vertical fuel gauge (flyer) / dome energy gauge (Aegis) beside the crosshair, FLY touch button
 function hudAir(){let el=$('airG');if(!el){el=document.createElement('div');el.id='airG';el.innerHTML='<i></i><span></span>';document.body.appendChild(el);}
  const T=P&&P.T,on=mode==='play'&&P&&P.alive&&(T.fly||T.dome);el.style.display=on?'block':'none';if(!on)return;
- const f=T.fly?P.fuel/T.fly.fuel:P.domeHP/T.dome.hp;el.firstChild.style.height=Math.max(0,f*100)+'%';el.firstChild.style.background=T.fly?(f<.2?'#f64':'#fb5'):(P.domeOn?'#5ef':P.abCd>0?'#678':'#3ac');
- el.lastChild.textContent=T.fly?'FUEL':'DOME';el.classList.toggle('lowf',!!(T.fly&&f<.2));
+ const f=T.fly?P.fuel/T.fly.fuel:P.domeOn?P.domeT/T.dome.dur:P.abCd>0?1-P.abCd/(P.domeHP<=0?T.dome.brokeCd:T.dome.cd):1;el.firstChild.style.height=Math.max(0,f*100)+'%';el.firstChild.style.background=T.fly?(f<.2?'#f64':'#fb5'):(P.domeOn?'#5ef':P.abCd>0?'#678':'#3ac');
+ el.lastChild.textContent=T.fly?'FUEL':P.domeOn?P.domeT.toFixed(1)+'s':'DOME';el.classList.toggle('lowf',!!(T.fly&&f<.2||P.domeOn&&(P.domeT<1.5||P.domeHP<T.dome.hp*.3)));
  const b=$('bFLY');if(b)b.classList.toggle('on',!!P.flyOn);}
 (function(){const b=$('bFLY');if(!b)return;b.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];inp.fly=true;inp.flyId=t.identifier;},{passive:false});
  const end=e=>{for(const t of e.changedTouches)if(t.identifier===inp.flyId){inp.fly=false;inp.flyId=null;}};addEventListener('touchend',end);addEventListener('touchcancel',end);})();
@@ -1145,7 +1150,7 @@ const DPOOL=[['wins',2,'Win 2 matches',100],['kills',10,'Destroy 10 enemy mechs'
  ...FAMS.map(f=>['kill_'+f,3,`Destroy 3 mechs with ${FAMN[f]} weapons`,90,()=>ownFam(f)]),
  ['roots',3,'Root 3 enemies with Lockdown',100,()=>ownMech('locke')],['emps',4,'EMP 4 enemies',90,()=>ownFam('emp')],['heal',300,'Heal 300 HP with nanites',90,()=>ownFam('nanite')],
  ['block',800,'Block 800 damage with a shield',80,()=>ownAb('shield')],['jumps',5,'Jump 5 times',60,()=>ownAb('jump')],['dashes',5,'Dash 5 times',60,()=>ownAb('dash')],
- ['flyT',60,'Fly for 60 seconds',70,()=>ownAb('fly')],['dives',3,'Hit 3 enemies with Dive Strikes',100,()=>ownAb('fly')],['block',1200,'Absorb 1,200 damage with a force dome',90,()=>ownAb('dome')]];
+ ['flyT',60,'Fly for 60 seconds',70,()=>ownAb('fly')],['dives',3,'Hit 3 enemies with Dive Strikes',100,()=>ownAb('fly')],['block',600,'Absorb 600 damage with a force dome',90,()=>ownAb('dome')]];
 const DBONUS=150;
 // career: id,name,desc(target),targets,coins,value fn,{tier:unique reward}
 const lvOf=(k,kind)=>Object.values(levelsOf(k,kind));
@@ -1336,7 +1341,7 @@ function hud(){const W=P.W,T=P.T;hudN++;
  else if(T.lockdown){if(P.abCd>0){af=1-P.abCd/T.lockdown.cd;at=`LOCKDOWN RECHARGING ${P.abCd.toFixed(1)}s`;ac='#678';}else{at='LOCKDOWN READY — aim & tap';ac='#b8f';}}
  else if(T.dash){if(P.abCd>0){af=1-P.abCd/T.dash.cd;at=`DASH COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='DASH READY';}
  else if(T.jump){if(P.abCd>0){af=1-P.abCd/T.jump.cd;at=`JUMP COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='JUMP READY';}
- else if(T.dome){af=P.domeHP/T.dome.hp;if(P.domeOn){at=`FORCE DOME UP ${Math.ceil(P.domeHP)} — tap to lower`;ac='#5ef';}else if(P.abCd>0&&P.domeHP<=0){af=1-P.abCd/T.dome.cd;at=`DOME BROKEN ${P.abCd.toFixed(1)}s`;ac='#678';}else if(P.domeHP<T.dome.hp*T.dome.min){at=`DOME RECHARGING ${Math.round(af*100)}%`;ac='#678';}else at=`DOME READY ${Math.round(af*100)}%`+(P.cap>.05?` · PULSE +${Math.round(P.cap*60)}%`:'');}
+ else if(T.dome){const D=T.dome;if(P.domeOn){af=P.domeT/D.dur;at=`FORCE DOME ${Math.max(0,P.domeT).toFixed(1)}s · ${Math.ceil(P.domeHP)} HP — tap to lower`;ac=(P.domeT<1.5||P.domeHP<D.hp*.3)&&Math.sin(clock*20)>0?'#f86':'#5ef';}else if(P.abCd>0){const br=P.domeHP<=0;af=1-P.abCd/(br?D.brokeCd:D.cd);at=`${br?'DOME BROKEN':'DOME RECHARGING'} ${P.abCd.toFixed(1)}s`;ac='#678';}else at=`DOME READY · ${D.dur}s / ${D.hp} HP`;}
  else if(T.dive){if(P.diving){at='DIVE STRIKE!';ac='#fb5';}else if(P.air&&P.g.position.y-groundAt(P.g.position.x,P.g.position.z,P.g.position.y)>2.5){if(P.abCd>0){af=1-P.abCd/T.dive.cd;at=`DIVE COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else{at='DIVE READY — aim & tap';ac='#fb5';}}else{af=1-(P.lchCd||0)/T.fly.lcd;at=P.lchCd>0?`LAUNCH ${P.lchCd.toFixed(1)}s`:'LAUNCH READY · hold FLY to hover';ac=P.lchCd>0?'#678':'#6cf';}}
  else{const t=clock-P.lastHit;af=P.hp>=P.max?1:Math.min(1,t/T.regen.delay);at=P.hp>=P.max?'REGEN: FULL':(af>=1?`REGENERATING +${T.regen.rate}/s`:`REGEN IN ${(T.regen.delay-t).toFixed(1)}s`);ac=af>=1?'#6f9':'#678';}
  bAB.classList.toggle('on',!!((T.shield&&P.shieldOn)||(T.dome&&P.domeOn)||P.diving));bAB.textContent=T.shield?(P.shieldOn?'LOWER':'SHIELD'):T.dome?(P.domeOn?'LOWER':'DOME'):T.dive?(P.air&&P.g.position.y-groundAt(P.g.position.x,P.g.position.z,P.g.position.y)>2.5?'DIVE':'LAUNCH'):bAB.textContent;hudAir();abBar.style.width=af*100+'%';abBar.style.background=ac;$('abt').textContent=at;ring(bAB,af,ac+'8');
@@ -1360,7 +1365,7 @@ const szTag=k=>{const z=CFG.weapons[k].size;return `<span class="szb z${z}">${z}
 function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}${bar('TETHER',w.tether/5,w.tether+'s · +'+Math.round(w.amp*100)+'% dmg taken')}${bar('RANGE',w.range/130,w.range+' m')}${bar('RATE',.4/w.interval,(1/w.interval).toFixed(1)+' /s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} bolts · reload ${w.reload}s · tethered target slowed ${Math.round(w.tslow*100)}% and takes +${Math.round(w.amp*100)}% damage from everyone</p>`;
  if(w.emp)return `${bar('DAMAGE',w.dmg/150,w.dmg+' + EMP')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.range/130,w.range+' m')}${bar('CHARGE',1-w.charge/1.5,w.charge+'s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · EMP burst ${w.blast} m · disables shield, jump, dash and regen</p>`;
  if(w.dot)return `${bar('DAMAGE',(w.dmg+w.dot)/150,w.dmg+' + '+w.dot+' over '+w.dotT+'s')}${bar('LEECH',w.leech/.5,Math.round(w.leech*100)+'% healed')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',(w.dmg/w.interval)/150,Math.round(w.dmg/w.interval+w.dot/w.dotT))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} doses · reload ${w.reload}s · damage over time heals you</p>`;if(w.beam){const dps=w.dmg/w.interval;return `${bar('DAMAGE',dps/230,Math.round(dps)+' /s beam')}${bar('HEAT',w.heat/.4,'full in '+(1/w.heat).toFixed(1)+'s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · hitscan beam · cools ${Math.round(w.cool*100)}%/s · overheat lockout ${w.reload}s</p>`;}const rate=1/w.interval,dps=w.dmg*(w.pellets||1)*rate;return `${bar('DAMAGE',w.dmg*(w.pellets||1)/230,w.dmg+(w.pellets?' ×'+w.pellets:' / hit'))}${bar('FIRE RATE',Math.min(1,rate/14),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · mag ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p>`;}
-function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m), ${m.dome.cd}s break lockout`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:`+${m.regen.rate} HP/s after ${m.regen.delay}s`;}
+function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m) for ${m.dome.dur}s, heals ${Math.round(m.dome.heal*100)}% of absorbed damage, ${m.dome.cd}s cooldown (${m.dome.brokeCd}s if broken)`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:`+${m.regen.rate} HP/s after ${m.regen.delay}s`;}
 function buyBox(k){const c=CFG.econ.locked[k];return isLocked(k)?`<div class="buy"><span>🔒 Locked</span>${SAVE.coins>=c?`<button class="go" data-buy="${k}">UNLOCK 🪙${c}</button>`:`<button disabled>🪙${c} — need ${c-SAVE.coins} more</button>`}</div>`:'';}
 // garage stat rows: label, current, next
 function mechRows(k){const L=levelsOf(k,'mech'),T=mechAt(k,L),out=[];
@@ -1539,7 +1544,7 @@ function openSound(back){const a=aud(),row=(k,l)=>`<div class="trw"><label>${l}<
  <p class="ab">Saved per pilot. On iPad/iPhone sound starts after your first tap.</p></div></div>`,back);}
 function audSet(k,v){SAVE.audio=Object.assign(aud(),{[k]:v});audApply();try{persist();}catch(e){}}
 // ---------- tuning panel ----------
-const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
+const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
 const tOver=()=>SAVE.tune||(SAVE.tune={});
 function tStep(d){d=Math.abs(d);return d>=100?1:d>=10?.1:d>=1?.01:.001;}
 function tRow(path,label){const def=tGet(TDEF,path),cur=path in tOver()?tOver()[path]:def,mx=Math.max(Math.abs(def)*3,1),st=tStep(def||1),ch=path in tOver();

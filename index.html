@@ -124,6 +124,8 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 #dpanel .dk{font-size:10px;background:#fff2;border:1px solid #fff4;border-radius:3px;padding:0 4px;min-width:30px;text-align:center}#dpanel .da{margin-top:5px}#dpanel .dkeys{font-size:10px;opacity:.65;margin-top:4px;white-space:normal;line-height:13px}
 #plk{position:absolute;left:50%;top:58%;transform:translateX(-50%);background:#000b;border:1px solid #fd4;color:#fd4;font-weight:bold;font-size:15px;padding:8px 16px;border-radius:10px;pointer-events:none;display:none}
 body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:14px;top:64px;width:300px}
+.healN{position:fixed;z-index:30;pointer-events:none;color:#5f8;font:bold 18px system-ui,sans-serif;text-shadow:0 0 4px #000,0 1px 2px #000;transform:translate(-50%,-50%);animation:healUp .9s ease-out forwards}
+@keyframes healUp{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-40px}}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
@@ -132,4 +134,4 @@ body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:1
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=22"></script></body></html>
+<script type="module" src="game.js?v=23"></script></body></html>
