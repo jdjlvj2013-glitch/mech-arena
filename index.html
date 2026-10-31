@@ -7,6 +7,19 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:system-ui,sans-serif;color:#fff}
 canvas{display:block}
 #hud{position:fixed;inset:0;pointer-events:none}
+#ovl{display:none;position:fixed;inset:0;z-index:60;background:#0b0f16f2;color:#dde;overflow-y:auto;-webkit-overflow-scrolling:touch;font:14px system-ui,sans-serif;touch-action:pan-y}
+#ovl .obar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));background:#141b26;border-bottom:1px solid #fff2}
+#ovl .obar b{flex:1;font-size:18px;letter-spacing:2px}#ovl button{background:#243042;color:#eef;border:1px solid #fff3;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;min-height:36px}
+#ovl button.on{background:#2a7a4a}#ovl button.warn{background:#7a2a2a}#ovl .tunb{background:#2a4f7a}
+#obody{max-width:900px;margin:0 auto;padding:12px 14px 80px}#ovl .ab{opacity:.75;font-size:12.5px}
+.tsec{background:#ffffff0a;border:1px solid #fff2;border-radius:10px;margin:8px 0}.tsec summary{padding:12px;cursor:pointer;font-weight:600;font-size:15px}.tchg{font-style:normal;font-size:11px;background:#c90;color:#000;border-radius:8px;padding:1px 7px}
+.tin{padding:0 12px}.trs{padding:6px 12px 12px;text-align:right}.tin h4{margin:12px 0 4px;color:#9cf;text-transform:uppercase;font-size:12px}
+.trw{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff10}.trw label{flex:0 0 38%;font-size:13px}.trw input[type=range]{flex:1;min-width:60px;height:28px}
+.trw input[type=number]{width:84px;background:#0006;color:#fff;border:1px solid #fff3;border-radius:6px;padding:6px;font:inherit}.trw output{width:44px;text-align:right}.trw select{background:#0006;color:#fff;border:1px solid #fff3;border-radius:6px;padding:6px;font:inherit}
+.trw.ch label{color:#fc6}.trw .tx{padding:4px 8px;min-height:30px}
+.pz{display:flex;flex-direction:column;gap:12px;max-width:360px;margin:30px auto}.pz button{font-size:17px!important;padding:14px!important}
+#bPause{position:absolute;top:12px;right:172px;width:44px;height:44px;line-height:44px;text-align:center;font-size:20px;pointer-events:auto;border-radius:10px;background:#000a;border:1px solid #fff4;cursor:pointer;z-index:5}
+
 #hp{position:absolute;top:14px;left:14px;width:260px;height:18px;background:#300;border:2px solid #fff;border-radius:4px}
 #hpf{height:100%;width:100%;background:linear-gradient(#5f5,#2a2)}
 #info{position:absolute;top:40px;left:14px;font-size:15px;text-shadow:0 0 3px #000}
@@ -113,4 +126,4 @@ body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:1
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=19"></script></body></html>
+<script type="module" src="game.js?v=20"></script></body></html>
