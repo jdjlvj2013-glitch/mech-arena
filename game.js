@@ -1,4 +1,4 @@
-/*v28 wraith stealth + jammer + status bar*/
+/*v29 wraith 2x medium*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -17,7 +17,7 @@ const CFG={
    ability:'JUMP',desc:'Agile frame. Jump-jets launch you over cover and onto containers and platforms.',
    jump:{vel:19.6,cd:4.5,airSpeed:1.3,airCtl:0.65}},
   mender:{name:'Mender',hp:850,speed:9,mass:1,color:0x3d8a3a,enemyColor:0x9a2f45,
-   ability:'REGEN',desc:'Repair frame. After 3s without taking damage, auto-repairs 60 HP per second.',
+   ability:'REGEN',desc:'Repair frame. After 3s without taking damage, auto-repairs 60 HP per second. Two Medium arm mounts (a Small also fits either one).',
    regen:{delay:3,rate:60}},
  },
  weapons:{
@@ -59,8 +59,8 @@ S.add(dl,dl.target);
 const SUN=new THREE.Vector3(30,50,20).normalize();
 var PROFS=null;// v16 pilot profiles (set up in core.js)
 // ======================= PROGRESSION: coins, upgrades, unlocks, paints =======================
-CFG.mechs.phantom={name:'Phantom',hp:900,speed:9.5,mass:0.95,color:0x6b4fa8,enemyColor:0x9a2a50,ability:'DASH',
- desc:'Stealth raider. Fires a burst of thrusters for a lightning-fast dash in the direction you are moving.',dash:{speed:40,dur:0.32,cd:5}};
+CFG.mechs.phantom={name:'Phantom',hp:900,speed:9.3,mass:0.95,color:0x6b4fa8,enemyColor:0x9a2a50,ability:'DASH',
+ desc:'Stealth raider. Fires a burst of thrusters for a lightning-fast dash in the direction you are moving. Two Medium arm mounts (a Small also fits either one).',dash:{speed:40,dur:0.32,cd:5}};
 // v16: LOCKE — Grok Bot's signature sentinel (tripod walker, keyhole sensor eye)
 CFG.mechs.locke={name:'Locke',hp:1100,speed:8.6,mass:1.1,color:0xc8962c,enemyColor:0xa8304e,ability:'LOCKDOWN',
  desc:'Sentinel tripod built around a keyhole sensor eye. Fires a Lockdown beacon that projects a magnetic field: every enemy inside is rooted in place (no walking, jumping or dashing) while you and your team pick them apart.',
@@ -73,8 +73,8 @@ CFG.mechs.aegis={name:'Aegis',hp:1250,speed:7.4,mass:1.25,color:0x2fb8a8,enemyCo
  desc:'Field-generator walker. Projects a translucent force DOME (7 m) for up to 5 seconds that stops bullets, rockets and beams fired from OUTSIDE it; allies inside are covered too and shots from inside pass out freely. The dome is fragile (650 HP) and does not regenerate while up, so focused fire can break it. Aegis heals for 10% of all damage the dome absorbs. EMP drains 250 dome HP and knocks it down; lockdown fields still root you.',
  dome:{hp:650,r:7,dur:5,cd:12,brokeCd:15,heal:.1,empDrain:250,slow:.8}};
 // v28: WRAITH (stealth cloak frame)
-CFG.mechs.wraith={name:'Wraith',hp:820,speed:9.2,mass:.85,color:0x46505e,enemyColor:0x5c3a52,ability:'CLOAK',
- desc:'Stealth infiltrator. CLOAK bends light around the frame for up to 7 s: near-invisible shimmer, gone from enemy minimaps, lock-ons and name plates, and bots lose track of you. Firing or taking hits makes the cloak flicker visible for a moment, and you can be spotted up close (6 m). EMP knocks the cloak down. Pairs with the Jammer.',
+CFG.mechs.wraith={name:'Wraith',hp:820,speed:8.9,mass:.85,color:0x46505e,enemyColor:0x5c3a52,ability:'CLOAK',
+ desc:'Stealth infiltrator. CLOAK bends light around the frame for up to 7 s: near-invisible shimmer, gone from enemy minimaps, lock-ons and name plates, and bots lose track of you. Firing or taking hits makes the cloak flicker visible for a moment, and you can be spotted up close (6 m). EMP knocks the cloak down. Pairs with the Jammer. Two Medium arm mounts (a Small also fits either one).',
  cloak:{dur:7,cd:14,near:6,fireReveal:.8,hitReveal:.5,fireCost:.4,speedMul:1.1}};
 CFG.weapons.shotgun={name:'Scattergun',desc:'Close-range shotgun: 9 heavy pellets per blast. Devastating up close, useless far away.',
  dmg:15,pellets:9,interval:0.8,range:28,mag:6,reload:3.2,spread:0.11,speed:150,aiBurst:1,kick:0.7,jolt:0.07};
@@ -127,12 +127,12 @@ for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],
 {const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
 // hardpoints per mech (s = side: -1 left group, +1 right group). A slot takes its size or smaller.
 CFG.slots={guardian:[{z:'L',s:1,n:'Right arm'},{z:'L',s:-1,n:'Left arm'},{z:'S',s:1,n:'Right shoulder'},{z:'S',s:-1,n:'Left shoulder'}],
- strider:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],mender:[{z:'M',s:1,n:'Right arm'},{z:'S',s:-1,n:'Left arm'}],phantom:[{z:'M',s:1,n:'Right arm'},{z:'S',s:-1,n:'Left arm'}],
+ strider:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],mender:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],phantom:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],
  locke:[{z:'M',s:1,n:'Right pod'},{z:'M',s:-1,n:'Left pod'},{z:'S',s:1,n:'Crown'}],
- skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'S',s:-1,n:'Left arm'}]};
-CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun_s'],phantom:['minigun','minigun_s'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','minigun_s']};
+ skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}]};
+CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun'],phantom:['minigun','minigun'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','railgun']};
 // firepower: per-mech damage factor (Guardian's 4 mounts share one reactor)
-CFG.firepower={guardian:.62,strider:1,mender:1.1,phantom:1.1,locke:.85,skyhawk:1,aegis:.85,wraith:1.05};
+CFG.firepower={guardian:.62,strider:1,mender:1,phantom:1,locke:.85,skyhawk:1,aegis:.85,wraith:.95};
 const fits=(k,sl)=>SIZES[CFG.weapons[k].size].r<=SIZES[sl.z].r;
 const wtOf=a=>a.reduce((t,k)=>t+SIZES[CFG.weapons[k].size].wt,0);
 // heavier loadouts slow the mech a little (relative to its stock loadout)
