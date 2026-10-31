@@ -1,4 +1,4 @@
-/*v26 armor detail*/
+/*v27 mech redesign*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -442,25 +442,34 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
   add(top,boxG,tm.stripe,.3,tw[1]+.05,tw[2]+.05,0,cy,0);add(top,boxG,dk,1.2,.6,.8,0,cy+.1,-tw[2]/2-.3);vent=add(top,boxG,ventMat,.8,.1,.6,0,cy+.41,-tw[2]/2-.3);
   for(const s of[-1,1]){add(top,thrG,MS.metal,1,1,1,s*.55,cy-.1,-tw[2]/2-.55);const j=add(top,flashG,jetMat,1.2,1.4,1.2,s*.55,cy-1.1,-tw[2]/2-.55,Math.PI,0,0);j.visible=false;jets.unshift(j);
    const pv=grp(top,s*(tw[0]/2+.05),tY,0);add(pv,boxG,m,.6,.3,1.1,s*.1,.1,0,0,0,s*-.4);pads.push(pv);}}
- else if(type==='mender'){// tall support frame: rounded core, repair core + ring, sensor mast, two manipulator arms, repair drones
-  add(top,cylG,m,tw[0]/2,tw[1],tw[0]/2,0,cy+.1,0);add(top,boxG,m,tw[0]*.85,.6,tw[2],0,cy-.6,0);add(top,boxG,tm.stripe,tw[0]+.02,.15,.4,0,cy+.55,0);
-  coreM=add(top,coreG,coreMat,1.1,1.1,1.1,0,cy+.1,tw[2]/2+.1);add(top,ringG,coreMat,1.1,1.1,1.1,0,cy+.1,tw[2]/2+.1);
-  add(top,boxG,dk,.9,.5,.5,0,tY+.4,.45);add(top,boxG,tm.visor,.7,.14,.05,0,tY+.45,.71);vent=add(top,boxG,ventMat,1.2,.1,.6,0,tY+.12,-.55);
-  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY+.05,0);add(pv,boxG,m,.7,.35,1.1,s*.1,.1,0,0,0,s*-.3);pads.push(pv);
-   // manipulator arm: shoulder -> upper -> elbow -> forearm -> tool (spinning welder)
-   const sh=grp(top,s*.75,cy+.2,-.55);add(sh,jointG,jm,.8,.8,.8,0,0,0);add(sh,boxG,dk,.22,.22,1.0,0,0,.5);const el=grp(sh,0,0,1.0);add(el,jointG,jm,.6,.6,.6,0,0,0);add(el,boxG,m,.2,.2,.9,0,0,.45);
-   const tool=grp(el,0,0,.95);add(tool,clawG,MS.metal,1,1,1,0,0,.1,Math.PI/2,0,0);const tl=add(tool,boxG,coreMat,.12,.12,.12,0,0,.42);arms.push({sh,el,tool,tl,s,kind:'tool'});}
-  for(let i=0;i<2;i++){const dr=grp(g,0,4.5,0);add(dr,droneG,m,1,.6,1,0,0,0);add(dr,rotorG,MS.metal,1,1,1,0,.15,0,Math.PI/2,0,0);add(dr,coreG,coreMat,.35,.35,.35,0,-.15,0);drones.push({g:dr,ph:i*Math.PI,p:new THREE.Vector3()});}}
+ else if(type==='mender'){// v27 field medic: hunched forward cabin with glowing cross visor, nanite-tank backpack, drone dock, twin crane repair arms
+  const HQ=_hq();const hb=grp(top,0,cy-.05,.25);hb.rotation.x=.28;
+  add(hb,boxG,m,1.8,1.25,1.4,0,0,0);add(hb,boxG,dk,1.35,.45,.7,0,-.6,.45);add(hb,boxG,dk,1.25,.55,.3,0,.2,.78);add(hb,boxG,tm.stripe,1.84,.14,1.0,0,.5,-.1);
+  add(hb,boxG,coreMat,.52,.14,.05,0,.22,.95);add(hb,boxG,coreMat,.14,.44,.05,0,.22,.95);for(const s of[-1,1])add(hb,boxG,tm.visor,.28,.1,.05,s*.47,.22,.94);
+  add(top,boxG,dk,1.7,1.5,.55,0,cy+.35,-.75);add(top,boxG,m,1.9,.3,.8,0,cy-.45,-.7);
+  for(let i=-1;i<=1;i++){const x=i*.55,z=-1.18;add(top,tankG,tankMat,1,1.15,1,x,cy+.4,z);add(top,capG,dk,1,.6,1,x,cy+.97,z);add(top,capG,dk,1,.6,1,x,cy-.17,z,Math.PI,0,0);
+   if(HQ)for(const y of[.05,.75])add(top,tankG,dk,1.08,.05,1.08,x,cy+y,z);}
+  add(top,boxG,coreMat,.42,.12,.04,0,cy+.45,-1.46);add(top,boxG,coreMat,.12,.42,.04,0,cy+.45,-1.46);
+  add(top,hexG,dk,.62,.14,.62,0,tY+.25,-.75);add(top,ringG,coreMat,.9,.9,.9,0,tY+.34,-.75,Math.PI/2,0,0);coreM=add(top,coreG,coreMat,.7,.7,.7,0,tY+.48,-.75);
+  vent=add(top,boxG,ventMat,1.0,.08,.4,0,cy-.29,-.7);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY-.05,.1);add(pv,boxG,m,.6,.3,1.0,s*.1,.1,0,0,0,s*-.3);pads.push(pv);
+   const sh=grp(top,s*.95,tY+.15,-.45);add(sh,hexG,dk,.32,.3,.32,0,0,0);add(sh,jointG,jm,.75,.75,.75,0,0,0);add(sh,boxG,m,.26,.3,1.35,0,.05,.65);add(sh,pistonG,rod,.8,1.0,.8,0,-.18,.6,Math.PI/2,0,0);
+   const el=grp(sh,0,0,1.3);add(el,jointG,jm,.6,.6,.6,0,0,0);add(el,boxG,dk,.18,.2,.95,0,0,.47);add(el,boxG,tm.stripe,.2,.06,.4,0,.12,.55);
+   const tool=grp(el,0,0,.95);add(tool,cylG,MS.metal,.25,.12,.25,0,0,0,Math.PI/2,0,0);for(let j=0;j<3;j++){const a=j*Math.PI*2/3;add(tool,clawG,MS.metal,.7,.7,.7,Math.sin(a)*.1,Math.cos(a)*.1,.22,Math.PI/2+Math.cos(a)*.3,0,-Math.sin(a)*.3);}
+   const tl=add(tool,boxG,coreMat,.12,.12,.12,0,0,.38);arms.push({sh,el,tool,tl,s,kind:'tool'});}
+  for(let i=0;i<2;i++){const dr=grp(g,0,4.5,0);add(dr,droneG,m,1,.6,1,0,0,0);add(dr,rotorG,MS.metal,1,1,1,0,.15,0,Math.PI/2,0,0);add(dr,coreG,coreMat,.35,.35,.35,0,-.15,0);add(dr,boxG,coreMat,.3,.05,.08,0,.21,0);add(dr,boxG,coreMat,.08,.05,.3,0,.21,0);drones.push({g:dr,ph:i*Math.PI,p:new THREE.Vector3()});}}
  else if(type==='locke'){// hovering sentinel: armored sphere hull on a tripod, giant keyhole sensor eye, orbiting lock-ring halo
   const hull=add(top,sphG,m,1.15,1.0,1.1,0,cy+.2,0);add(top,cylG,dk,1.3,.5,1.3,0,cy-.55,0);add(top,boxG,tm.stripe,2.42,.14,.5,0,cy+.2,-.2);
   for(const s of[-1,1]){add(top,boxG,m,.3,1.3,1.6,s*1.05,cy+.1,-.1,0,0,s*.18);add(top,boxG,dk,.12,.9,1.2,s*1.22,cy+.1,-.1,0,0,s*.18);}
   add(top,boxG,m,1.5,.35,1.2,0,cy+1.15,-.25,-.15,0,0);vent=add(top,boxG,ventMat,1.0,.08,.6,0,cy+1.34,-.35);
-  const bz=M(0xd8b048,{metal:.95,rough:.2});add(top,torusG,bz,2.2,2.2,1.6,0,cy+.25,1.02);add(top,cylG,MS.dark,.62,.12,.62,0,cy+.25,1.0,Math.PI/2,0,0);
-  eye=new THREE.MeshStandardMaterial({color:0x2a1040,emissive:0xb070ff,emissiveIntensity:1.4,roughness:.3});
+  const bz=M(0xd8b048,{metal:.95,rough:.2});eye=new THREE.MeshStandardMaterial({color:0x2a1040,emissive:0xb070ff,emissiveIntensity:1.4,roughness:.3});const LR=lockBezG();add(top,LR.bez,bz,1,1,1,0,cy+.25,1.02);add(top,LR.glow,eye,1,1,1,0,cy+.25,1.12);
+  for(let j=0;j<8;j++){const a=j*Math.PI/4+Math.PI/8,c=Math.cos(a),sn=Math.sin(a);add(top,boxG,dk,.36,.1,.12,c*.66,cy+.25+sn*.66,1.1,0,0,a+Math.PI/2);if(LR.hi)add(top,rivG,rivM,1,1,1,c*.66,cy+.25+sn*.66,1.17,Math.PI/2,0,0);}
+  for(const a of[Math.PI*.5,Math.PI*1.17,Math.PI*1.83]){const c=Math.cos(a),sn=Math.sin(a);add(top,boxG,dk,.16,.16,.5,c*.72,cy+.25+sn*.72,.78);add(top,boxG,m,.26,.12,.2,c*.8,cy+.25+sn*.8,1.0,0,0,a+Math.PI/2);}add(top,cylG,MS.dark,.62,.12,.62,0,cy+.25,1.0,Math.PI/2,0,0);
+  
   iris=grp(top,0,cy+.25,1.08);add(iris,cylG,eye,.2,.06,.2,0,.12,0,Math.PI/2,0,0);add(iris,keyG,eye,1,1,1,0,-.08,0);
-  if(hi){for(let j=0;j<8;j++){const a=j*Math.PI/4;add(top,boxG,bz,.07,.18,.06,Math.cos(a)*.78,cy+.25+Math.sin(a)*.78,1.04,0,0,a+Math.PI/2);}
+  if(hi){
    for(const s of[-1,1])add(top,cableG,cableMat,1,.9,1,s*.6,cy+.9,-.8);add(top,boxG,lm,.5,.06,.04,0,cy-.3,1.0);}
-  halo=grp(top,0,cy+.2,-.05);add(halo,torusG,bz,4.4,4.4,1.2,0,0,0,Math.PI/2,0,0);for(let j=0;j<3;j++){const a=j*Math.PI*2/3;add(halo,boxG,eye,.18,.12,.18,Math.cos(a)*1.35,0,Math.sin(a)*1.35);add(halo,boxG,dk,.3,.2,.3,Math.cos(a+.5)*1.35,0,Math.sin(a+.5)*1.35);}
+  halo=grp(top,0,cy+.2,-.05);add(halo,lockBezG().halo,bz,1,1,1,0,0,0,Math.PI/2,0,0);for(let j=0;j<6;j++){const a=j*Math.PI/3+.26;add(halo,boxG,dk,.2,.17,.2,Math.cos(a)*1.32,0,Math.sin(a)*1.32,0,-a,0);}for(let j=0;j<3;j++){const a=j*Math.PI*2/3;add(halo,boxG,eye,.18,.12,.18,Math.cos(a)*1.35,0,Math.sin(a)*1.35);add(halo,boxG,dk,.3,.2,.3,Math.cos(a+.5)*1.35,0,Math.sin(a+.5)*1.35);}
   for(const s of[-1,1]){const pv=grp(top,s*1.0,cy+.85,-.1);add(pv,boxG,m,.7,.25,1.2,s*.15,.1,0,0,0,s*-.35);pads.push(pv);}}
  else if(type==='skyhawk'){// ducted-fan gunship: slim fuselage, bubble canopy, swept wings with fan nacelles, tail boom
   add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,m,tw[0]*.7,.7,1.3,0,cy-.05,tw[2]/2+.5,.25,0,0);add(top,sphG,tm.visor,.5,.38,.8,0,tY,.55);
@@ -472,7 +481,12 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
    const j=add(nc,flashG,jetMat,1.1,1.6,1.1,0,-.9,0,Math.PI,0,0);j.visible=false;jets.push(j);pads.push(nc);}}
  else if(type==='aegis'){// field generator: hexagonal reactor hull, three emitter pylons around a glowing core, spinning field ring + translucent dome
   const fm=new THREE.MeshStandardMaterial({color:0x103030,emissive:team==='b'?0x40e0ff:0xff6090,emissiveIntensity:1.5,roughness:.3});
-  add(top,hexG,m,tw[0]/2,tw[1],tw[2]/2,0,cy,0);add(top,hexG,dk,tw[0]/2*.75,.3,tw[2]/2*.75,0,tY+.15,0);add(top,hexG,tm.stripe,tw[0]/2+.03,.14,tw[2]/2+.03,0,cy-.3,0);
+  const HQ=_hq(),HR=1.25,HH=tw[1],ap=HR*Math.cos(Math.PI/6);add(top,bevHex(HR,HH,HQ?2:1),m,1,1,1,0,cy,0);
+  for(let k=0;k<6;k++){const f=Math.PI/6+k*Math.PI/3,sf=Math.sin(f),cf=Math.cos(f),pg=k%2?'A':'B',P=(geo,mt,sx,sy,sz,d,y,lx=0,rx=0)=>{const o=add(top,geo,mt,sx,sy,sz,sf*d+cf*lx,y,cf*d-sf*lx,rx,f,0);o.rotation.order='YXZ';return o;};
+   const pl=P(boxG,m,HR*.78,HH*.62,.08,ap+.04,cy+.12);pl.userData.pg=pg;pl.userData.noArm=1;
+   const em=P(hexG,fm,.16,.05,.16,ap+.1,cy+.12,0,Math.PI/2);em.userData.pg=pg;
+   if(HQ)for(const i of[-1,1])for(const j of[-1,1]){const bt=P(rivG,rivM,1,1,1,ap+.09,cy+.12+j*HH*.25,i*HR*.32,Math.PI/2);bt.userData.pg=pg;}
+   const c=f+Math.PI/6;add(top,boxG,dk,.1,HH*.92,.1,Math.sin(c)*(HR-.03),cy,Math.cos(c)*(HR-.03),0,c,0);}add(top,hexG,dk,tw[0]/2*.75,.3,tw[2]/2*.75,0,tY+.15,0);add(top,hexG,tm.stripe,tw[0]/2+.03,.14,tw[2]/2+.03,0,cy-.3,0);
   add(top,boxG,tm.visor,1.0,.16,.05,0,cy+.35,tw[2]/2-.05);coreM=add(top,icoG,fm,.42,.42,.42,0,tY+.85,0);
   for(let j=0;j<3;j++){const a=j*Math.PI*2/3+Math.PI/2,px=Math.cos(a)*.85,pz=Math.sin(a)*.85;add(top,boxG,dk,.2,1.3,.2,px,tY+.75,pz,Math.sin(a)*.25,0,-Math.cos(a)*.25);add(top,sphG,fm,.13,.13,.13,px*.75,tY+1.4,pz*.75);}
   fring=grp(top,0,tY+.85,0);add(fring,torusG,fm,3.4,3.4,.6,0,0,0,Math.PI/2,0,0);
@@ -1027,7 +1041,7 @@ function armorUnit(u,keep){if(!u.mats||gfxLow()||window.__noArmor)return;const h
  u.g.traverse(o=>{if(o.isMesh&&o.geometry===boxG&&!keep.has(o)&&!o.children.length&&o.visible&&!o.material.transparent)list.push(o);});
  const inTop=o=>{for(let p=o.parent;p;p=p.parent){if(p===u.top)return true;if(p===u.g)return false;}return false;};
  for(const o of list){const s=o.scale,W=Math.abs(s.x),H=Math.abs(s.y),D=Math.abs(s.z);if(Math.min(W,H,D)<.06)continue;
-  const mn=Math.min(W,H,D);if(!hiQ&&mn<.25)continue;o.geometry=rbox(W,H,D,hiQ&&mn>=.6?2:1);o.scale.set(Math.sign(s.x)||1,Math.sign(s.y)||1,Math.sign(s.z)||1);if(o.material!==m)continue;
+  const mn=Math.min(W,H,D);if(!hiQ&&mn<.25)continue;o.geometry=rbox(W,H,D,hiQ&&mn>=.6?2:1);o.scale.set(Math.sign(s.x)||1,Math.sign(s.y)||1,Math.sign(s.z)||1);if(o.material!==m||o.userData.noArm)continue;
   const par=o.parent,top=inTop(o);if(top&&par.userData.pgS===undefined)par.userData.pgS=(pgN++%2?'A':'B');o.updateMatrix();const hd=[W/2,H/2,D/2],dm=[W,H,D];
   for(const ax of _ax){const a=ax[0]?0:ax[1]?1:2,u1=a===0?2:0,u2=a===1?2:1,fa=dm[u1],fb=dm[u2];if(fa<.35||fb<.35||fa*fb<.3)continue;
    const ins=Math.min(.09,Math.min(fa,fb)*.1),pa=fa-ins*2,pb=fb-ins*2,t=.07,sg=ax[0]+ax[1]+ax[2],pg=top?par.userData.pgS:0;
@@ -1038,6 +1052,14 @@ function armorUnit(u,keep){if(!u.mats||gfxLow()||window.__noArmor)return;const h
     if(a===0)bt.rotation.z=Math.PI/2;else if(a===2)bt.rotation.x=Math.PI/2;bt.userData.pg=pg;bt.castShadow=o.castShadow;add(bt);}}}}
 function plateTick(u,b){if(!u.plateSets){u.plateSets=[];u.g.traverse(o=>{if(o.isMesh&&o.userData.pg)u.plateSets.push(o);});}
  for(const o of u.plateSets)o.visible=b<(o.userData.pg==='A'?4:7);}
+// ---- v27 mech detail helpers: bevelled hex hull, lock ring, medic parts ----
+const _bhC=new Map();
+function bevHex(R,H,bs){const k=R+','+H+','+bs;let g=_bhC.get(k);if(g)return g;const bv=.07,r=R-bv,sh=new THREE.Shape();
+ for(let i=0;i<6;i++){const t=i*Math.PI/3,x=r*Math.sin(t),y=-r*Math.cos(t);i?sh.lineTo(x,y):sh.moveTo(x,y);}sh.closePath();
+ g=new THREE.ExtrudeGeometry(sh,{depth:H-2*bv,bevelEnabled:true,bevelThickness:bv,bevelSize:bv,bevelSegments:bs,curveSegments:1});g.rotateX(-Math.PI/2);g.translate(0,-(H-2*bv)/2,0);g.computeVertexNormals();g.userData.shared=1;_bhC.set(k,g);return g;}
+const _hq=()=>typeof settings!=='undefined'&&settings.gfx==='high';
+const _lrG={};function lockBezG(){const h=_hq();if(!_lrG[h]){_lrG[h]={bez:new THREE.TorusGeometry(.66,.12,h?10:6,h?48:24),glow:new THREE.TorusGeometry(.53,.025,4,h?40:24),halo:new THREE.TorusGeometry(1.32,.075,h?8:5,h?64:32),hi:h};}return _lrG[h];}
+const tankG=new THREE.CylinderGeometry(.24,.24,1,12),capG=new THREE.SphereGeometry(.245,12,6,0,Math.PI*2,0,Math.PI/2),tankMat=new THREE.MeshStandardMaterial({color:0x1c5a34,emissive:0x30e080,emissiveIntensity:.55,roughness:.15,metalness:.2});
 // ---------- v20: procedural WebAudio (buses: master > sfx / ui / amb), per-pilot volumes ----------
 let AC=null,BUS=null,NOISE=null,AMB_S=null;const SLAST={};
 const AUD_DEF={master:.8,sfx:.9,ui:.7,amb:.5,mute:false};
