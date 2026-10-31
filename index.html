@@ -44,6 +44,8 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 .cards.wl .card.eq{box-shadow:inset 0 0 0 2px #6f9}
 #bMG{right:40px;bottom:50px;width:120px;height:120px;font-size:18px}
 #bAB{right:180px;bottom:40px;width:90px;height:90px;border-color:#6cf}
+#bFLY{right:282px;bottom:40px;width:90px;height:90px;border-color:#fb5}#bFLY.on{background:#fb55;border-color:#fb5;box-shadow:0 0 18px #fb5;color:#fff}
+#airG{position:fixed;left:calc(50% + 70px);top:calc(50% - 60px);width:10px;height:120px;border:1px solid #fff6;background:#0006;border-radius:5px;display:none;pointer-events:none;z-index:5}#airG i{position:absolute;bottom:0;left:0;right:0;border-radius:4px;background:#fb5}#airG span{position:absolute;top:124px;left:-12px;font:bold 9px sans-serif;color:#fffc;letter-spacing:1px}@keyframes blink{50%{opacity:.35}}#airG.lowf{animation:blink .4s infinite}
 #bAB.on{background:#3df5;border-color:#3df;box-shadow:0 0 18px #3df;color:#fff}
 .wl.hb i{background:#f55!important}.wl.hot em{color:#f66}
 #bAB.passive{opacity:.75;border-style:dashed;border-color:#6f9}
@@ -122,8 +124,8 @@ body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:1
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
 <div id="dpanel"></div><div id="plk"></div><div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
-<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">⟳</div><div class="btn grp" id="bFL">◀ L</div><div class="btn grp" id="bFR">R ▶</div></div>
+<div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bFLY" style="display:none">FLY</div><div class="btn" id="bRL">⟳</div><div class="btn grp" id="bFL">◀ L</div><div class="btn grp" id="bFR">R ▶</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=20"></script></body></html>
+<script type="module" src="game.js?v=21"></script></body></html>
