@@ -37,7 +37,7 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 #bRL{right:22px;bottom:205px;width:60px;height:60px;background:#48f3;border-color:#8af}
 #aim{position:absolute;right:0;top:0;width:55%;height:100%;pointer-events:auto}
 #msg{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000a;font-size:44px;font-weight:bold}
-#msg small{font-size:16px;opacity:.8;margin-top:6px}
+#msg{overflow-y:auto;justify-content:safe center;padding:16px 0}#msg small{font-size:16px;opacity:.8;margin-top:6px}
 .mb{margin-top:16px;font-size:24px;padding:14px 40px;border-radius:12px;border:0;background:#fa4;color:#000;font-weight:bold;min-width:260px}
 .mb.alt{background:#ddd}
 #hint{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.6;pointer-events:none}
@@ -93,6 +93,12 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 .pin{width:100%;box-sizing:border-box;font-size:20px;padding:12px;border-radius:10px;border:2px solid #fff3;background:#0008;color:#fff;margin:8px 0}.pcode{height:70px;font-size:12px;font-family:monospace;word-break:break-all}
 .pst{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.pst div{background:#fff1;border-radius:8px;padding:6px;text-align:center}.pst b{display:block;font-size:17px;color:#fc6}.pst small{font-size:11px;opacity:.75}
 .plist{display:flex;flex-direction:column;gap:6px}.pl{display:flex;align-items:center;gap:6px;background:#0005;border-radius:10px;padding:8px;border:2px solid transparent}.pl.sel{border-color:#fa4}.pl>div{flex:1 1 40%;min-width:0}.pl small{display:block;opacity:.7;font-size:12px}.pl button{flex:0 0 auto;font-size:13px;padding:8px 10px}.pl .pin{flex:1;margin:0;font-size:16px;padding:8px}.prow{display:flex;gap:8px;align-items:center}.prow .pin{flex:1}.prow button{flex:0 0 auto}
+#mc .trow{display:flex;gap:12px}#mc .trow button.big{flex:1;margin:6px 0 12px}#mc button.chb{background:#fc6;position:relative}
+#mc .badge{position:absolute;top:-8px;right:-8px;background:#e33;color:#fff;border-radius:14px;min-width:28px;height:28px;line-height:28px;font-size:16px;font-style:normal;padding:0 6px;box-shadow:0 0 0 3px #111}
+#mc .chi{padding:10px 14px;margin:8px 0}#mc .chh{display:flex;justify-content:space-between;align-items:center;gap:8px}#mc .chh button{margin:4px 0;padding:8px 18px}
+.cbar{height:10px;background:#0006;border-radius:6px;overflow:hidden;margin:6px 0}.cbar i{display:block;height:100%;background:linear-gradient(90deg,#fa4,#fd6)}
+#mc .ok{color:#6f9}#mc .rdy{filter:drop-shadow(0 0 4px #fd6)}#mc .dim{opacity:.3}.ttl{font-size:.7em;color:#fd6;background:#fd62;border-radius:8px;padding:1px 8px;margin-left:6px}
+.chr{width:min(520px,90vw);font-size:14px;margin:8px 0;background:#0007;border-radius:10px;padding:8px 12px}.chr b{font-size:13px;opacity:.8}.chrr{display:grid;grid-template-columns:1fr 110px 70px;gap:8px;align-items:center;font-weight:normal}.chrr small{font-size:13px}.chrr i{color:#6f9;font-style:normal}.chrr .cbar{width:100%;min-width:100px;height:8px}.chrn{color:#fd6;margin-top:4px;font-size:14px}
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
@@ -101,4 +107,4 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=16"></script></body></html>
+<script type="module" src="game.js?v=17"></script></body></html>
