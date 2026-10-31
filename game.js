@@ -1,4 +1,4 @@
-/*v30 sfx+pfx*/
+/*v31 pulse charge + chain EMP*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -94,34 +94,34 @@ const VAR={minigun:{S:['Light SMG','Compact rapid-fire SMG. Light and quick to r
  shotgun:{S:['Scatter Pistol','Short-range sidearm shotgun.'],L:['Heavy Scattergun','Massive close-range blast.']}};
 CFG.weapons.laser={name:'Beam Laser',desc:'Continuous hitscan beam. Damage ticks while you hold fire; builds heat and locks out on overheat.',fam:'laser',size:'M',
  dmg:9,interval:0.1,range:62,mag:1,reload:3,spread:0,speed:999,hitscan:true,beam:true,heat:0.25,cool:0.4,color:0xff3050,kick:0.03,jolt:0.004,aiBurst:22};
-CFG.weapons.emp={name:'EMP Cannon',desc:'Tesla coil. Tap to charge, then a lightning bolt: light damage, knocks out shields, jump, dash and regen, and slows the target.',fam:'emp',size:'M',
- dmg:60,interval:2.2,range:60,mag:4,reload:4.5,spread:0,speed:999,hitscan:true,emp:true,charge:.7,stun:3,slow:.6,blast:2.5,kick:.5,jolt:.05,aiBurst:1};
+CFG.weapons.emp={name:'EMP Cannon',desc:'Tesla coil. Tap to charge, then a short-range CHAIN LIGHTNING bolt: hits the target, then arcs to up to 2 more enemies within 8 m (each jump deals 65% of the last). Every enemy it touches loses shields, jump, dash and regen and is slowed. Arcs need line of sight and can\'t find cloaked Wraiths.',fam:'emp',size:'M',
+ dmg:60,interval:2.2,range:34,mag:4,reload:4.5,spread:0,speed:999,hitscan:true,emp:true,charge:.7,stun:3,slow:.6,jumps:2,chainR:8,chainFall:.65,kick:.5,jolt:.05,aiBurst:1};
 CFG.weapons.nanite={name:'Nanite Injector',desc:'Syringe launcher. Darts inject nanites that eat armor over time and feed a share back to you as repairs.',fam:'nanite',size:'M',
  dmg:10,interval:.35,range:50,mag:12,reload:3.2,spread:.012,speed:85,dot:60,dotT:3,leech:.35,kick:.12,jolt:.01,aiBurst:4};
 CFG.weapons.lockbolt={name:'Lockbolt',desc:'Magnetic tether launcher. Each bolt latches a glowing tether onto the target: while tethered it takes extra damage from ALL sources and is slowed. Tether snaps if it stretches too far.',fam:'lockbolt',size:'M',
  dmg:52,interval:.9,range:72,mag:5,reload:3.4,spread:.006,speed:130,tether:3.5,amp:.2,tslow:.25,kick:.35,jolt:.03,aiBurst:2};
 VAR.lockbolt={S:['Lockpick','Light tether pistol. Quick bolts, short tether.'],L:['Deadbolt','Heavy tether lance. Huge bolt, long tether, big damage amp.']};
-VAR.emp={S:['Arc Zapper','Small Tesla coil. Quick charge, short stun.'],L:['Storm Coil','Huge Tesla tower. Long stun, wide EMP burst.']};
+VAR.emp={S:['Arc Zapper','Small Tesla coil. Quick charge, short stun. Chains to 2 more enemies within 6.5 m (60% per jump).'],L:['Storm Coil','Huge Tesla tower. Long stun. Chains to 3 more enemies within 9.5 m (70% per jump).']};
 VAR.nanite={S:['Nanite Dart','Light syringe pistol. Fast darts, small dose.'],L:['Nanite Lance','Heavy syringe. Big dose, strong leech.']};
 VAR.laser={S:['Pulse Laser','Light beam sidearm. Low heat, quick cool-down.'],L:['Heavy Lance','Searing heavy beam. Huge damage and reach, runs hot.']};
 CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of small missiles that seek the enemy nearest your aim. Fired from altitude they dive in for bonus damage (up to +50% at 10 m up), which makes it the flyer weapon.',fam:'swarm',size:'M',
  dmg:20,interval:.16,range:75,mag:12,reload:3.8,spread:.05,speed:62,splash:1.8,seek:.9,turnRate:3.2,altBonus:.5,kick:.15,jolt:.01,aiBurst:6};
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
-CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you.',fam:'pulse',size:'M',
- dmg:46,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,kick:.4,jolt:.04,aiBurst:2};
+CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: hold fire and each orb grows from 1× to 2.5× damage over 1.6 s, then holds at MAX (bigger orb, harder shove).',fam:'pulse',size:'M',
+ dmg:46,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMax:2.5,kick:.4,jolt:.04,aiBurst:2};
 CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a chance to JAM the target: it forces weapons into a full reload (laser / heat weapons are forced into overheat). Medium jams 2 weapons per proc. Targets get a few seconds of jam resistance after it wears off.',fam:'jammer',size:'M',
  dmg:24,interval:.6,range:62,mag:8,reload:3.2,spread:.008,speed:120,jam:.5,jamN:2,jamMul:.8,kick:.2,jolt:.02,aiBurst:3};
 VAR.jammer={S:['Jam Pistol','Light scrambler. Fast shots, small chance to jam ONE weapon.'],L:['Blackout Array','Heavy scrambler dish. Slow, but most hits jam ALL of the target\'s weapons.']};
-VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome.']};
+VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges to 2.5× damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges to 2.5× damage in 2 s.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
  W.dmg=+(b.dmg*q.dmg).toFixed(1);W.interval=+(b.interval*q.int).toFixed(3);W.range=Math.round(b.range*q.range);W.reload=+(b.reload*q.reload).toFixed(2);W.mag=Math.max(2,Math.round(b.mag*q.mag));
  if(W.splash)W.splash=+(b.splash*(z==='L'?1.4:.75)).toFixed(1);if(W.spin)W.spin=b.spin*(z==='L'?1.6:.6);W.kick=b.kick*q.sc;W.jolt=b.jolt*q.dmg;if(W.beam){W.mag=1;W.interval=0.1;W.dmg=+(b.dmg*(z==='S'?.68:1.5)).toFixed(1);W.heat=z==='S'?.22:.3;W.cool=z==='S'?.5:.33;W.color=z==='S'?0xff60a0:0xff5020;W.aiBurst=z==='S'?26:18;}
- if(W.emp){const S_=z==='S';W.dmg=S_?40:110;W.interval=S_?1.8:2.6;W.range=S_?50:70;W.mag=S_?4:3;W.reload=S_?4:5.2;W.charge=S_?.45:1;W.stun=S_?2:4;W.slow=S_?.7:.5;W.blast=S_?1.6:3.6;W.aiBurst=1;}
+ if(W.emp){const S_=z==='S';W.dmg=S_?40:110;W.interval=S_?1.8:2.6;W.range=S_?28:40;W.mag=S_?4:3;W.reload=S_?4:5.2;W.charge=S_?.45:1;W.stun=S_?2:4;W.slow=S_?.7:.5;W.jumps=S_?2:3;W.chainR=S_?6.5:9.5;W.chainFall=S_?.6:.7;W.aiBurst=1;}
  if(W.tether){const S_=z==='S';W.dmg=S_?30:95;W.interval=S_?.65:1.25;W.range=S_?60:88;W.mag=S_?6:4;W.reload=S_?2.8:4.2;W.tether=S_?2.5:4.5;W.amp=S_?.15:.3;W.tslow=S_?.18:.35;W.speed=S_?140:120;W.aiBurst=S_?3:1;}
  if(W.dot!==undefined){const S_=z==='S';W.dmg=S_?6:16;W.interval=S_?.28:.45;W.range=S_?45:55;W.mag=S_?10:14;W.reload=S_?2.8:3.6;W.dot=S_?36:100;W.dotT=S_?2.5:3.5;W.leech=S_?.3:.4;W.speed=S_?95:75;W.aiBurst=S_?5:3;}
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
  if(W.jam){const S_=z==='S';W.jam=S_?.3:.75;W.jamN=S_?1:99;W.jamMul=S_?.55:1;W.dmg=S_?10:60;W.interval=S_?.32:1.2;W.mag=S_?12:4;W.speed=S_?135:105;W.aiBurst=S_?5:1;}
- if(W.push){const S_=z==='S';W.push=S_?5:15;W.dmg=S_?26:82;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
+ if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMax=2.5;W.dmg=S_?26:82;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
 {const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
@@ -373,7 +373,7 @@ function wDet(kb,wpn,big,sm,hi,dk,lm){const mt=MS.metal,bl=wdM('blk',0x18181a,{m
   stripes(0,.05+.15*rows+.14,-.2,.3*n);hose(-.15*n,-.1,-.3,-.25,-.4,-.4);wAdd(kb,boxG,lm,.06,.06,.06,.15*n-.05,.15*rows,-.32);
   ud.anim=(w,dt,u)=>{const o=(w.reload?0:1)*(clock-(w.lastF||-9)<1.2||w.burst>0?1:0);for(const [d,sx]of doors){d.rotation.y+=(sx*o*1.4-d.rotation.y)*Math.min(1,dt*10);}};}
  else if(wpn==='pulse'){const orb=kb.children.find(c=>c.geometry===sphG);ud.keep=[orb];hose(-.3,-.2,-.4,-.25,-.1,.5);hose(.3,-.2,-.4,.25,-.1,.5);vents(.31,0,-.05,5,1);stripes(0,-.28,.2,.5);
-  ud.anim=(w,dt,u)=>{if(orb){const ch=w.reload?.4:Math.max(0,1-w.fireCd/w.W.interval);orb.scale.setScalar(.2*(.6+.5*ch+.06*Math.sin(clock*18)));}};}
+  ud.anim=(w,dt,u)=>{if(orb){const ch=w.reload?.4:Math.max(0,1-w.fireCd/w.W.interval),pc=w.pc||0,mx=pc>=1;orb.scale.setScalar(.2*(.6+.5*ch+.9*pc+(mx?.12:.06)*Math.sin(clock*(mx?30:18))));}};}
  else{// hornet missile pod: hinged armoured door, side rails, warning stripes
   const n=big?3:2,rows=sm?1:2,d=new THREE.Group();d.position.set(0,.1+.21*rows+.05,.65);kb.add(d);wAdd(d,boxG,wdM('hdoor',0x554433,{metal:.5,rough:.5}),.45*n,.04,.42*rows,0,0,-.21*rows*0);
   for(const sx of[-1,1])wAdd(kb,boxG,bl,.04,.42*rows,1.0,sx*(.225*n+.03),.1,.1);stripes(0,.1-.21*rows-.04,.66,.45*n,6);rivets(.225*n+.06,.1,-.3,.5);
@@ -790,8 +790,8 @@ function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clear
 // ---------- projectiles & effects ----------
 const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1),shotgun:new THREE.BoxGeometry(.1,.1,.7)};
 const PM={minigun:new THREE.MeshBasicMaterial({color:0xffee66}),railgun:new THREE.MeshBasicMaterial({color:0x80e8ff}),hornet:new THREE.MeshBasicMaterial({color:0xffaa22}),shotgun:new THREE.MeshBasicMaterial({color:0xffcc88})};
-function shoot(from,dir,u,homing,W){W=W||u.W;if(W.seek&&!homing)homing=seekT(u,from,dir,W);const m=new THREE.Mesh(PG[W.fam],PM[W.fam]);m.scale.setScalar(SIZES[W.size].sc);m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
- B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1)*(CFG.firepower[u.type]||1)*(W.altBonus?shotMul(u,W):1),homing});}
+function shoot(from,dir,u,homing,W){W=W||u.W;if(W.seek&&!homing)homing=seekT(u,from,dir,W);const m=new THREE.Mesh(PG[W.fam],PM[W.fam]);m.scale.setScalar(SIZES[W.size].sc*(SHOTCM>1?1+(SHOTCM-1)*.6:1));m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
+ B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1)*(CFG.firepower[u.type]||1)*(W.altBonus?shotMul(u,W):1)*SHOTCM,cm:SHOTCM,homing});}
 PG.lockbolt=new THREE.OctahedronGeometry(.22,0).scale(1,1,3);PM.lockbolt=new THREE.MeshBasicMaterial({color:0xc090ff});
 PG.nanite=new THREE.CylinderGeometry(.06,.02,.7,5).rotateX(Math.PI/2);PM.nanite=new THREE.MeshBasicMaterial({color:0x50ff80});
 const fxG=new THREE.SphereGeometry(1,8,6),sparkG=new THREE.BoxGeometry(.12,.12,.12),debG=new THREE.BoxGeometry(.5,.35,.6);
@@ -813,12 +813,16 @@ function updFx(dt){for(let i=FX.length-1;i>=0;i--){const f=FX[i];f.t+=dt/f.life;
 function shake(a){shakeA=Math.min(1,shakeA+a);}
 // tiny WebAudio thuds (unlocked on first touch/click)
 function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return safeMuzzle(u,i,u.guns[i].localToWorld(p.set(0,u.guns[i].userData.my||0,u.guns[i].userData.mz||u.mz)));}
+let SHOTCM=1;
+function pulseMul(w){return 1+((w.W.chMax||1)-1)*Math.min(1,w.pc||0);}
+function pulseTick(u,dt){for(const w of u.ws){if(!w.W.push)continue;const rdy=!w.reload&&w.fireCd<=0&&w.ammo>0&&u.alive;if(!rdy){if(w.reload)w.pc=0;w.pcF=0;continue;}
+ w.pc=Math.min(1,(w.pc||0)+dt/(w.W.chT||1.6));if(w.pc>=1&&!w.pcF){w.pcF=1;if(u===P){sfx('pulseFull',{u});const mp=muzzle(u,w.gi);fx(mp,1.4,0x9ff8ff,{grow:3,life:.35,op:.9});}}}}
 function fireWeapon(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(w.W.emp)return chargeEmp(u,w,aimPt);if(u===P)STATS.shots++;const W=w.W,pr=u.prof;w.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,w.spin):1);w.ammo--;
- const gi=w.gi,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
+ if(W.push)SHOTCM=pulseMul(w);const gi=w.gi,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
  const s=(W.pellets?0:W.spread)+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  u.kick[gi]=Math.min(1,u.kick[gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);sfx('shot',{u,fam:W.fam,size:W.size,gi});if(W.fam==='railgun')u.ventT=.7;
  if(u===P){flashLight(f,W.fam==='railgun'?4:1.5);shake(W.jolt*2);}
- for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}if(w.ammo<=0)w.reload=W.reload;}
+ for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}SHOTCM=1;if(W.push)w.pc=0;if(w.ammo<=0)w.reload=W.reload;}
 function frontal(u,pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,l=Math.hypot(dx,dz)||1;return (dx*Math.sin(u.tYaw)+dz*Math.cos(u.tYaw))/l>0.25;}
 function dropShield(u,broken){if(!u.shieldOn)return;u.shieldOn=false;u.abCd=broken?u.T.shield.cd:Math.max(u.abCd,.4);}
 function hurt(u,d,pos,src){if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
@@ -966,11 +970,18 @@ function zap(a,b,c,n){const pts=[a.clone()];const d=b.clone().sub(a);for(let i=1
 function empHit(t,W,src){if(t.isDome){const h=t.host;domeHurt(t,W.dmg*1.5+h.T.dome.empDrain,null,src);t=h;if(!t.alive)return;}if(t.domeOn)domeDrop(t,false);if(src===P)chEv('emps',1);t.empT=Math.max(t.empT||0,W.stun);t.empSlow=W.slow;if(t.shieldOn)dropShield(t);t.dashT=0;if(t===P){shake(.25);toast&&toast('⚡ EMP — systems offline');}}
 function empShot(u,w,aimPt){HITF='emp';if(u!==P)window.__empN=(window.__empN||0)+1;const W=w.W,pr=u.prof;if(u===P)STATS.shots++;w.ammo--;if(w.ammo<=0)w.reload=W.reload;
  const f=muzzle(u,w.gi);const d=aimPt.clone().sub(f).normalize();const sw=sweep(f,d,W.range,u.team);const L=sw?sw.t:W.range;const e=f.clone().addScaledVector(d,L);
- zap(f,e,0x80e0ff,Math.max(4,L/4|0));if(!gfxLow())zap(f,e,0xffffff,Math.max(3,L/6|0));fx(e,W.blast*1.2,0x80e0ff,{grow:2,life:.35,op:.8});sparks(e,0x80e0ff);sparks(e,0xffffff);flashLight(e,3);
+ zap(f,e,0x80e0ff,Math.max(4,L/4|0));if(!gfxLow())zap(f,e,0xffffff,Math.max(3,L/6|0));fx(e,2.4,0x80e0ff,{grow:2,life:.35,op:.8});sparks(e,0x80e0ff);sparks(e,0xffffff);flashLight(e,3);
  u.kick[w.gi]=Math.min(1,u.kick[w.gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);if(u===P)shake(.08);sfx('shot',{u,fam:W.fam,size:W.size,gi:w.gi});
  const dm=W.dmg*(pr?pr.dmgMul:1)*(CFG.firepower[u.type]||1);
- if(sw&&sw.u){hurt(sw.u,dm,e,u);empHit(sw.u,W,u);if(u===P){STATS.hits++;hitMarkT=.18;}}
- for(const t of foes(u.team)){if(!t.alive||(sw&&t===sw.u))continue;const tp=t.g.position;if(Math.hypot(tp.x-e.x,tp.z-e.z)<W.blast+1.5&&Math.abs(tp.y+2.5-e.y)<4){if(!domeSafe(t,e,u.team))hurt(t,dm*.4,null,u);empHit(t,W,u);}}}
+ if(sw&&sw.u){hurt(sw.u,dm,e,u);empHit(sw.u,W,u);if(u===P){STATS.hits++;hitMarkT=.18;}chainArc(u,W,sw.u.isDome?sw.u.host:sw.u,dm);}}
+const _ca=new THREE.Vector3(),_cb=new THREE.Vector3();
+function chainArc(u,W,t0,dm){if(!t0||!t0.g)return 0;const hit=new Set([t0]);let cur=t0,m=1,n=0;
+ for(let j=0;j<(W.jumps||0);j++){_ca.copy(cur.g.position);_ca.y+=2.5;let best=null,bd=W.chainR||0;
+  for(const t of foes(u.team)){if(!t.alive||t.isDome||hit.has(t)||cloakHid(t,null))continue;const d=t.g.position.distanceTo(cur.g.position);if(d>bd)continue;_cb.copy(t.g.position);_cb.y+=2.5;if(!los(_ca,_cb))continue;bd=d;best=t;}
+  if(!best)break;m*=W.chainFall||.65;_cb.copy(best.g.position);_cb.y+=2.5;zap(_ca.clone(),_cb.clone(),0x80e0ff,Math.max(3,bd/2|0));if(!gfxLow())zap(_ca.clone(),_cb.clone(),0xffffff,3);sparks(_cb.clone(),0x80e0ff);
+  if(!domeSafe(best,_ca,u.team)){hurt(best,dm*m,_cb.clone(),u);empHit(best,Object.assign({},W,{stun:W.stun*m,dmg:W.dmg*m}),u);}
+  hit.add(best);cur=best;n++;}
+window.__chainN=(window.__chainN||0)+n;return n;}
 function naniteHit(t,W,src,dmg){if(t.isDome)return;const fp=src&&src.prof?src.prof.dmgMul:1;const dps=W.dot*fp*(CFG.firepower[src.type]||1)/W.dotT;if(!t.dot||t.dot.dps<=dps)t.dot={dps,t:W.dotT,src,leech:W.leech};else t.dot.t=W.dotT;if(src&&src.alive){const h0=src.hp;src.hp=Math.min(src.max,src.hp+dmg*W.leech);if(src===P)chEv('heal',src.hp-h0);}}
 // ---------- v25: detail pass with a perf budget — static-mesh merging, quality levels + Auto, pooled particles, damage states, shockwaves, clouds, ground decals, steam vents ----------
 // ---- merge static leaf meshes per (parent, material) so detail costs geometry, not draw calls ----
@@ -1286,6 +1297,7 @@ function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===
  case'shHit':if(!gate('shh'+(u&&u._sid),.07))return;tone({f:rj(900),d:.12,v:.08*V,pan});nz({f:2600,q:3,d:.07,v:.12*V,pan});break;
  case'shBreak':nz({type:'highpass',f:2500,d:.5,v:.3*V,pan});tone({type:'triangle',f:900,f2:120,d:.45,v:.1*V,pan});break;
  case'lockdown':tone({f:130,f2:55,a:.05,d:1.1,v:.25*V,pan});tone({type:'square',f:440,f2:880,d:.35,v:.05*V,lp:1800,pan});break;
+ case'pulseFull':tone({type:'triangle',f:520,f2:1560,a:.01,d:.18,v:.12*V,pan});tone({f:1560,d:.12,v:.06*V,pan});break;
  case'charge':tone({type:'sawtooth',f:200,f2:1400,a:.02,d:o.d||.4,v:.05*V,lp:3000,pan});break;
  case'stun':tone({type:'square',f:58,d:.7,v:.08,lp:600});nz({type:'highpass',f:4000,d:.4,v:.15});tone({type:'square',f:1800,f2:300,d:.3,v:.04});break;
  case'heal':if(!gate('heal',.6))return;tone({f:880,f2:1320,a:.02,d:.18,v:.05});tone({f:1320,f2:1760,t:.1,a:.02,d:.18,v:.04});break;
@@ -1337,6 +1349,7 @@ sfx0=function(k,o){smpLoad();const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mi
  case'step':if(V>.03&&SB.step1){const c=STEPC[u&&u.type]||STEPC.strider;smp(pick('step1','step2'),{v:.22*c.v*V*(mine?.7:.9),pan,rate:2600/c.c+.25,lp:2600});}break;// layer, procedural stays
  case'land':ok=smp('land',{v:.55*V*(o.k||1),pan,rate:.8});if(ok)smp('clank',{v:.2*V,pan,rate:.7,t:.03});break;
  case'jump':ok=smp('thrust',{v:.4*V,pan,rate:.9,dur:.6});break;
+ case'pulseFull':ok=smp('shup',{v:.5*V,pan,rate:1.5,dur:.35})&&smp('reloaded',{v:.45*V,pan,rate:1.2});break;
  case'dash':ok=smp('dash',{v:.5*V,pan,rate:1.15,dur:.5});break;
  case'shot':{if(!mine&&(V<.04||!gate('s2'+(u&&u._sid)+o.fam,.07)))return;if(mine&&!gate('ps2'+o.gi,.035))return;const z=o.size==='S'?1.2:o.size==='L'?.8:1,v=V*(mine?1:.8);
   switch(o.fam){
@@ -1693,7 +1706,7 @@ function update(dt){clock+=dt;const k=inp.keys;
  else{P.vel.set(0,0,0);lockEl.style.display='none';}
  for(const u of U)if(u!==P&&u.alive){tickUnit(u,dt);if(!TF('aiOff'))aiTick(u,dt);}
  sepUnits();envTick(dt);
- for(const u of U){if(!u.alive)u.vel.set(0,0,0);animMech(u,dt);}
+ for(const u of U){if(!u.alive)u.vel.set(0,0,0);animMech(u,dt);pulseTick(u,dt);}
  tickBeams(dt);
  // projectiles (friendly fire off: sweeps/splash only test the shooter's foes)
  for(let i=B.length-1;i>=0;i--){const b=B[i],p=b.m.position,W=b.W,sp=W.speed;let hit=false,hitU=null;
@@ -1705,7 +1718,7 @@ function update(dt){clock+=dt;const k=inp.keys;
   let mult=1;if(W.falloff&&b.dist>W.range*W.falloff)mult=1-.5*(b.dist-W.range*W.falloff)/(W.range*(1-W.falloff));
   if(hit||b.dist>=W.range){const pos=p.clone();
    HITF=W.fam;if(W.splash){boom(pos,hit?3:1.5,0xff7700);flashLight(pos,2);if(hitU)hurt(hitU,b.dmg,pos,b.src);for(const u of foes(b.owner)){if(u===hitU)continue;const dd=u.g.position.clone().setY(u.g.position.y+2.5).distanceTo(pos);if(dd<W.splash&&!domeSafe(u,pos,b.owner))hurt(u,b.dmg*.5*(1-dd/W.splash),pos,b.src);}}
-   else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push);if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6,0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
+   else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult)*(hitU.isDome&&b.cm>1.5?1.5/b.cm:1),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push*(1+((b.cm||1)-1)*.5));if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6*(1+((b.cm||1)-1)*.6),0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
    S.remove(b.m);B.splice(i,1);}}
  tickFields(dt);
  if(settings.mode==='base')tickBases(dt);
@@ -1751,9 +1764,11 @@ function hud(){const W=P.W,T=P.T;hudN++;
  const regen=T.regen&&clock-P.lastHit>T.regen.delay&&P.hp<P.max&&P.alive;hpf.style.background=regen?'linear-gradient(#8fa,#2c6)':'linear-gradient(#5f5,#2a2)';
  info.innerHTML=`HP ${Math.ceil(P.hp)}/${Math.round(P.max)} ${regen?'<b style="color:#6f9">+ REGEN</b>':''}`;
  // per-mount ammo / reload list + group button rings
- const frac=w=>w.W.emp&&w.chg?'CHARGING '+Math.round(Math.min(1,(clock-w.chg)/w.W.charge)*100)+'%':w.W.beam?(w.reload?1-w.reload/w.W.reload:1-(w.heat||0)):w.reload?1-w.reload/w.W.reload:w.ammo/w.W.mag,grp=g=>{const a=P.ws.filter(w=>w.s===g);return a.length?a.reduce((t,w)=>t+frac(w),0)/a.length:0;};
+ const frac=w=>w.W.push&&!w.reload&&w.pc>0?w.pc:w.W.emp&&w.chg?'CHARGING '+Math.round(Math.min(1,(clock-w.chg)/w.W.charge)*100)+'%':w.W.beam?(w.reload?1-w.reload/w.W.reload:1-(w.heat||0)):w.reload?1-w.reload/w.W.reload:w.ammo/w.W.mag,grp=g=>{const a=P.ws.filter(w=>w.s===g);return a.length?a.reduce((t,w)=>t+frac(w),0)/a.length:0;};
+ {let pi=$('pulInd');if(!pi){pi=document.createElement('div');pi.id='pulInd';pi.innerHTML='<b></b><i><s></s></i>';pi.style.cssText='position:fixed;left:50%;top:calc(50% + 38px);transform:translateX(-50%);z-index:20;pointer-events:none;font:700 12px system-ui;color:#9ff;text-align:center;text-shadow:0 0 4px #000;display:none';pi.querySelector('i').style.cssText='display:block;width:90px;height:6px;margin:3px auto 0;background:#0008;border:1px solid #6dd;border-radius:3px;overflow:hidden';pi.querySelector('s').style.cssText='display:block;height:100%;width:0;background:#4bd';document.body.appendChild(pi);}
+  const pw=mode==='play'&&P&&P.alive?P.ws.filter(w=>w.W.push):[];const pc=pw.length?Math.max(...pw.map(w=>w.reload?0:w.pc||0)):0;pi.style.display=pw.length?'block':'none';if(pw.length){const mx=pc>=1;pi.querySelector('b').textContent=mx?'⚡ PULSE MAX ×'+pw[0].W.chMax:'PULSE ×'+(1+(pw[0].W.chMax-1)*pc).toFixed(1);pi.querySelector('b').style.color=mx?'#fff':'#9ff';const s_=pi.querySelector('s');s_.style.width=(pc*100).toFixed(0)+'%';s_.style.background=mx?'#7ff':'#4bd';s_.style.boxShadow=mx?'0 0 8px #7ff':'none';}}
  {let ei=$('empInd');if(!ei){ei=document.createElement('div');ei.id='empInd';ei.textContent='⚡ EMP — ABILITY OFFLINE';document.body.appendChild(ei);}ei.style.display=mode==='play'&&P&&P.empT>0?'block':'none';if(P&&P.empT>0)ei.textContent='⚡ EMP — ABILITY OFFLINE '+P.empT.toFixed(1)+'s';}
- if((hudN&3)===0){$('gunt').innerHTML=P.ws.map(w=>`<div class="wl${w.reload?' rl':''}${w.W.beam?' hb'+((w.heat||0)>.7?' hot':''):''}"><b>${w.s<0?'◀L':'R▶'}</b><span class="szb z${w.W.size}">${w.W.size}</span> ${w.W.name}<em>${w.W.beam?(w.reload?'OVERHEAT '+w.reload.toFixed(1)+'s':'HEAT '+Math.round((w.heat||0)*100)+'%'):w.reload?'RELOAD '+w.reload.toFixed(1)+'s':w.ammo+'/'+w.W.mag}</em><i style="width:${frac(w)*100}%"></i></div>`).join('');
+ if((hudN&3)===0){$('gunt').innerHTML=P.ws.map(w=>`<div class="wl${w.reload?' rl':''}${w.W.beam?' hb'+((w.heat||0)>.7?' hot':''):''}"><b>${w.s<0?'◀L':'R▶'}</b><span class="szb z${w.W.size}">${w.W.size}</span> ${w.W.name}<em>${w.W.beam?(w.reload?'OVERHEAT '+w.reload.toFixed(1)+'s':'HEAT '+Math.round((w.heat||0)*100)+'%'):w.reload?'RELOAD '+w.reload.toFixed(1)+'s':w.W.push&&w.pc>0?(w.pc>=1?'MAX ×'+w.W.chMax:'CHG ×'+pulseMul(w).toFixed(1))+' '+w.ammo+'/'+w.W.mag:w.ammo+'/'+w.W.mag}</em><i style="width:${frac(w)*100}%"></i></div>`).join('');
   const all=P.ws.reduce((t,w)=>t+frac(w),0)/P.ws.length,rl=P.ws.every(w=>w.reload);gunBar.style.width=all*100+'%';gunBar.style.background=rl?'#fa4':'#ff6';ring(bMG,all,rl?'#fa48':'#f448');bMG.textContent=rl?'RELOAD':'FIRE';
   ring($('bFL'),grp(-1),'#fc48');ring($('bFR'),grp(1),'#fc48');}
  let af=1,at='',ac='#6cf';
@@ -1784,7 +1799,8 @@ const lockTag=k=>isLocked(k)?`<small class="lk">🔒 🪙${CFG.econ.locked[k]}</
 const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',swarm:'✈',pulse:'◉',jammer:'⌁'})[CFG.weapons[k].fam];
 const szTag=k=>{const z=CFG.weapons[k].size;return `<span class="szb z${z}">${z}</span>`;};let slotSel=0,pickSel=null;
 function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}${bar('TETHER',w.tether/5,w.tether+'s · +'+Math.round(w.amp*100)+'% dmg taken')}${bar('RANGE',w.range/130,w.range+' m')}${bar('RATE',.4/w.interval,(1/w.interval).toFixed(1)+' /s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} bolts · reload ${w.reload}s · tethered target slowed ${Math.round(w.tslow*100)}% and takes +${Math.round(w.amp*100)}% damage from everyone</p>`;
- if(w.emp)return `${bar('DAMAGE',w.dmg/150,w.dmg+' + EMP')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.range/130,w.range+' m')}${bar('CHARGE',1-w.charge/1.5,w.charge+'s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · EMP burst ${w.blast} m · disables shield, jump, dash and regen</p>`;
+ if(w.emp)return `${bar('DAMAGE',w.dmg/150,w.dmg+' + EMP')}${bar('CHAIN',w.jumps/4,'+'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.range/130,w.range+' m')}${bar('CHARGE',1-w.charge/1.5,w.charge+'s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
+ if(w.push)return `${bar('DAMAGE',w.dmg*w.chMax/250,w.dmg+' → '+Math.round(w.dmg*w.chMax)+' charged')}${bar('CHARGE',1-w.chT/2.5,'×'+w.chMax+' in '+w.chT+'s, holds at max')}${bar('SHOVE',w.push/16,w.push+' → '+(w.push*(1+(w.chMax-1)*.5)).toFixed(1))}${bar('RANGE',w.range/130,w.range+' m')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} orbs · ${w.interval}s between · reload ${w.reload}s · charges while ready (don't fire); charged damage to Aegis domes capped at ×1.5</p>`;
  if(w.dot)return `${bar('DAMAGE',(w.dmg+w.dot)/150,w.dmg+' + '+w.dot+' over '+w.dotT+'s')}${bar('LEECH',w.leech/.5,Math.round(w.leech*100)+'% healed')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',(w.dmg/w.interval)/150,Math.round(w.dmg/w.interval+w.dot/w.dotT))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} doses · reload ${w.reload}s · damage over time heals you</p>`;if(w.beam){const dps=w.dmg/w.interval;return `${bar('DAMAGE',dps/230,Math.round(dps)+' /s beam')}${bar('HEAT',w.heat/.4,'full in '+(1/w.heat).toFixed(1)+'s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · hitscan beam · cools ${Math.round(w.cool*100)}%/s · overheat lockout ${w.reload}s</p>`;}const rate=1/w.interval,dps=w.dmg*(w.pellets||1)*rate;return `${bar('DAMAGE',w.dmg*(w.pellets||1)/230,w.dmg+(w.pellets?' ×'+w.pellets:' / hit'))}${bar('FIRE RATE',Math.min(1,rate/14),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · mag ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p>`;}
 function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m) for ${m.dome.dur}s, heals ${Math.round(m.dome.heal*100)}% of absorbed damage, ${m.dome.cd}s cooldown (${m.dome.brokeCd}s if broken)`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:m.cloak?`${m.cloak.dur}s cloak (untargetable, hidden beyond ${m.cloak.near} m), ${m.cloak.cd}s cooldown`:m.regen?`+${m.regen.rate} HP/s after ${m.regen.delay}s`:'';}
 function buyBox(k){const c=CFG.econ.locked[k];return isLocked(k)?`<div class="buy"><span>🔒 Locked</span>${SAVE.coins>=c?`<button class="go" data-buy="${k}">UNLOCK 🪙${c}</button>`:`<button disabled>🪙${c} — need ${c-SAVE.coins} more</button>`}</div>`:'';}
@@ -1861,6 +1877,7 @@ function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(
 function deskPanel(at,af,ac){const pct=v=>Math.max(0,Math.min(100,v*100)).toFixed(0)+'%';
  const rows=P.ws.map(w=>{const W=w.W;let st,f,col='#ff6';
   if(W.emp&&w.chg){f=Math.min(1,(clock-w.chg)/W.charge);st='CHARGING '+Math.round(f*100)+'%';col='#8cf';}
+  else if(W.push&&!w.reload&&w.pc>0){f=w.pc;st=(w.pc>=1?'⚡ MAX ×'+W.chMax:'CHARGING ×'+pulseMul(w).toFixed(1))+' · '+w.ammo+'/'+W.mag;col=w.pc>=1?'#7ff':'#4bd';}
   else if(w.reload){f=1-w.reload/W.reload;st=(W.beam?'OVERHEAT ':'RELOAD ')+w.reload.toFixed(1)+'s';col='#fa4';}
   else if(W.beam){f=1-(w.heat||0);st='HEAT '+Math.round((w.heat||0)*100)+'%';col=(w.heat||0)>.7?'#f64':'#6cf';}
   else{f=w.ammo/W.mag;st=w.ammo+'/'+W.mag;}
@@ -1965,7 +1982,7 @@ function openSound(back){const a=aud(),row=(k,l)=>`<div class="trw"><label>${l}<
  <p class="ab">Saved per pilot. On iPad/iPhone sound starts after your first tap.</p></div></div>`,back);}
 function audSet(k,v){SAVE.audio=Object.assign(aud(),{[k]:v});audApply();try{persist();}catch(e){}}
 // ---------- tuning panel ----------
-const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
+const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',jumps:'Chain jumps',chainR:'Chain radius (m)',chainFall:'Chain dmg per jump ×',chT:'Pulse charge time (s)',chMax:'Pulse max charge ×',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
 const tOver=()=>SAVE.tune||(SAVE.tune={});
 function tStep(d){d=Math.abs(d);return d>=100?1:d>=10?.1:d>=1?.01:.001;}
 function tRow(path,label){const def=tGet(TDEF,path),cur=path in tOver()?tOver()[path]:def,mx=Math.max(Math.abs(def)*3,1),st=tStep(def||1),ch=path in tOver();
@@ -2016,3 +2033,4 @@ addEventListener('keydown',e=>{if(mode!=='play'||(e.target&&/INPUT|SELECT|TEXTAR
 applyTune();
 if(window.__game){if(window.__game.useProf)window.__game.useProf=useProf;if(window.__game.goMenu)window.__game.goMenu=goMenu;}
 Object.assign(window.__game||{},{applyTune,sfx,openTune,openSound,openPause,TDEF,TF,aud,get PAUSED(){return PAUSED;}});
+window.__v31={chainArc:(u,W,t,d)=>chainArc(u,W,t,d),empShot:(u,w,a)=>empShot(u,w,a),pulseMul:w=>pulseMul(w),fireWeapon:(u,w,a)=>fireWeapon(u,w,a),get B(){return B;},get U(){return U;}};
