@@ -99,12 +99,18 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 .cbar{height:10px;background:#0006;border-radius:6px;overflow:hidden;margin:6px 0}.cbar i{display:block;height:100%;background:linear-gradient(90deg,#fa4,#fd6)}
 #mc .ok{color:#6f9}#mc .rdy{filter:drop-shadow(0 0 4px #fd6)}#mc .dim{opacity:.3}.ttl{font-size:.7em;color:#fd6;background:#fd62;border-radius:8px;padding:1px 8px;margin-left:6px}
 .chr{width:min(520px,90vw);font-size:14px;margin:8px 0;background:#0007;border-radius:10px;padding:8px 12px}.chr b{font-size:13px;opacity:.8}.chrr{display:grid;grid-template-columns:1fr 110px 70px;gap:8px;align-items:center;font-weight:normal}.chrr small{font-size:13px}.chrr i{color:#6f9;font-style:normal}.chrr .cbar{width:100%;min-width:100px;height:8px}.chrn{color:#fd6;margin-top:4px;font-size:14px}
-.ttag{font-size:.6em;background:#3c6;color:#000;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}</style></head><body>
+.ttag{font-size:.6em;background:#3c6;color:#000;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}#dpanel{position:absolute;right:12px;bottom:12px;width:330px;background:#000a;border:1px solid #fff3;border-radius:10px;padding:6px 8px;font-size:12px;pointer-events:none;text-shadow:0 0 2px #000;display:none}
+#dpanel .dh{font-size:10px;letter-spacing:2px;opacity:.6;margin-bottom:2px}#dpanel .dw{position:relative;display:flex;gap:6px;align-items:center;padding:3px 4px 5px;margin:2px 0;background:#ffffff0d;border-radius:4px;white-space:nowrap;overflow:hidden}
+#dpanel .dw b{flex:1;overflow:hidden;text-overflow:ellipsis}#dpanel .dw em{font-style:normal;font-weight:bold}#dpanel .dw small{opacity:.7;font-weight:normal}#dpanel .dw i{position:absolute;left:0;bottom:0;height:3px;border-radius:2px}
+#dpanel .dk{font-size:10px;background:#fff2;border:1px solid #fff4;border-radius:3px;padding:0 4px;min-width:30px;text-align:center}#dpanel .da{margin-top:5px}#dpanel .dkeys{font-size:10px;opacity:.65;margin-top:4px;white-space:normal;line-height:13px}
+#plk{position:absolute;left:50%;top:58%;transform:translateX(-50%);background:#000b;border:1px solid #fd4;color:#fd4;font-weight:bold;font-size:15px;padding:8px 16px;border-radius:10px;pointer-events:none;display:none}
+body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:14px;top:64px;width:300px}
+</style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
-<div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
+<div id="dpanel"></div><div id="plk"></div><div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
 <div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bRL">⟳</div><div class="btn grp" id="bFL">◀ L</div><div class="btn grp" id="bFR">R ▶</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=18"></script></body></html>
+<script type="module" src="game.js?v=19"></script></body></html>
