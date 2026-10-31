@@ -1,4 +1,4 @@
-/*v17 challenges*/
+/*v18 test pilot*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -120,7 +120,7 @@ const SAVE_KEY='mechArena.save.v2',SAVE_KEY1='mechArena.save.v1';
 function freshSave(){return {v:2,coins:0,earned:0,wins:0,lv:{},unlocked:[],paints:['default'],paint:{},life:null,ch:null,titles:[],title:''};}
 let SAVE=freshSave();try{let s=JSON.parse(localStorage.getItem(SAVE_KEY));if(!s){const o=JSON.parse(localStorage.getItem(SAVE_KEY1));if(o&&o.v===1){s=Object.assign(o,{v:2,migrated:1});localStorage.setItem(SAVE_KEY,JSON.stringify(s));}}
  if(s&&s.v===2)SAVE=Object.assign(freshSave(),s);}catch(e){}
-function persist(){if(PROFS&&PROFS.list[PROFS.cur]){PROFS.list[PROFS.cur].save=SAVE;writeProfs();return;}try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+function persist(){if(PROFS&&PROFS.list[PROFS.cur]){if(PROFS.list[PROFS.cur].test)testFill();PROFS.list[PROFS.cur].save=SAVE;writeProfs();return;}try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
 const lvl=(k,s)=>(SAVE.lv[k]&&SAVE.lv[k][s])||1;
 const isLocked=k=>k in CFG.econ.locked&&!SAVE.unlocked.includes(k);
 const upCost=(k,s)=>{const l=lvl(k,s);return l>=5?0:CFG.econ.upCost[l];};
@@ -549,7 +549,7 @@ function profInit(){try{PROFS=JSON.parse(localStorage.getItem(PROF_KEY));}catch(
   PROFS={v:1,cur:id,list:{[id]:{name:'',save:SAVE,loadout,stats:Object.assign(freshStats(),{wins:SAVE.wins||0}),created:Date.now(),migrated:had}}};writeProfs();}
  useProf(PROFS.list[PROFS.cur]?PROFS.cur:Object.keys(PROFS.list)[0]);}
 function newId(){return 'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);}
-function useProf(id){PROFS.cur=id;const p=PROFS.list[id];SAVE=Object.assign(freshSave(),p.save||{});p.save=SAVE;
+function useProf(id){PROFS.cur=id;const p=PROFS.list[id];SAVE=Object.assign(freshSave(),p.save||{});p.save=SAVE;if(p.test)try{testFill();}catch(e){}
  loadout=Object.assign(freshLoadout(),p.loadout||{});loadout.slots=Object.assign(freshLoadout().slots,loadout.slots||{});p.loadout=loadout;p.stats=Object.assign(freshStats(),p.stats||{});writeProfs();}
 const curProf=()=>PROFS.list[PROFS.cur];
 function cleanName(n){return String(n||'').replace(/[<>&"']/g,'').trim().slice(0,16);}
@@ -961,7 +961,7 @@ function chStart(){chEnsure();chDaily();chSnap=JSON.parse(JSON.stringify(SAVE.li
 const pbar=(f)=>`<div class="cbar"><i style="width:${Math.round(Math.max(0,Math.min(1,f))*100)}%"></i></div>`;
 function fmtLeft(ms){const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4);return `${h}h ${m}m`;}
 let chTab='daily';
-function chalScreen(){const C=chDaily();let h=`<div class="gh"><h2>🏅 CHALLENGES</h2>${coinTag()}</div><div class="tabs"><button data-chtab="daily" class="${chTab==='daily'?'on':''}">DAILY</button><button data-chtab="career" class="${chTab==='career'?'on':''}">CAREER</button></div>`;
+function chalScreen(){const C=chDaily();let h=`<div class="gh"><h2>🏅 CHALLENGES${testTag(curProf())}</h2>${coinTag()}</div>${isTest()?'<p class="ab">🧪 Test pilot — challenges run here for testing only; nothing carries over to your real pilots.</p>':''}<div class="tabs"><button data-chtab="daily" class="${chTab==='daily'?'on':''}">DAILY</button><button data-chtab="career" class="${chTab==='career'?'on':''}">CAREER</button></div>`;
  if(chTab==='daily'){h+=`<p class="ab">New challenges every day at midnight · resets in <b id="chcd">${fmtLeft(msToMidnight())}</b></p>`;
   C.list.forEach((e,i)=>{const q=dProg(e),done=q.cur>=q.n;h+=`<div class="det chi"><div class="chh"><b>${q.p[2]}</b><span>🪙${q.p[3]}</span></div>${pbar(q.cur/q.n)}<div class="chh"><small>${Math.floor(q.cur).toLocaleString()} / ${q.n.toLocaleString()}</small>${e.cl?'<small class="ok">✔ CLAIMED</small>':done?`<button class="go" data-chc="d:${i}">CLAIM</button>`:''}</div></div>`;});
   const all=C.list.every(e=>e.cl);h+=`<div class="det chi"><div class="chh"><b>Daily bonus — claim all 3</b><span>🪙${DBONUS}</span></div><div class="chh"><small>${C.list.filter(e=>e.cl).length} / 3 claimed</small>${C.bonus?'<small class="ok">✔ CLAIMED</small>':all?'<button class="go" data-chc="bonus">CLAIM</button>':''}</div></div>`;}
@@ -975,6 +975,17 @@ function chResults(){if(!SAVE.ch)return '';const C=SAVE.ch;let h='<div class="ch
  for(const e of C.list){const q=dProg(e),d=Math.max(0,Math.min(q.n,L_(e.k)-e.base)-Math.min(q.n,(chSnap?chSnap[e.k]||0:L_(e.k))-e.base));h+=`<div class="chrr"><span>${q.cur>=q.n?'✅':'▫️'} ${q.p[2]}</span>${pbar(q.cur/q.n)}<small>${Math.floor(q.cur)}/${q.n}${d>0?` <i>+${Math.floor(d)}</i>`:''}</small></div>`;}
  const n=chClaimable();return h+(n?`<div class="chrn">🏅 ${n} reward${n>1?'s':''} ready to claim in Challenges</div>`:'')+'</div>';}
 setInterval(()=>{const e=document.getElementById('chcd');if(e)e.textContent=fmtLeft(msToMidnight());if(mode==='menu'&&SAVE.ch&&SAVE.ch.day&&SAVE.ch.day!==dayKey()&&menuStep==='chal')renderMenu();},20000);
+// ---------- v18: test pilot (everything unlocked, computed from item tables) ----------
+const TEST_COINS=999999;const isTest=()=>!!(PROFS&&curProf()&&curProf().test);
+function testFill(){const S=SAVE;S.unlocked=[...new Set([...(S.unlocked||[]),...Object.keys(CFG.econ.locked)])];
+ S.paints=[...new Set([...(S.paints||[]),...Object.keys(CFG.paints)])];
+ for(const [tab,kind] of [[CFG.mechs,'mech'],[CFG.weapons,'wpn']])for(const k of Object.keys(tab)){S.lv[k]=S.lv[k]||{};for(const s of Object.keys(UPS[kind]))S.lv[k][s]=5;}
+ if(S.coins<TEST_COINS)S.coins=TEST_COINS;chEnsure();for(const c of CAREER)for(const t of Object.values(c.uniq))if(t.title&&!S.titles.includes(t.title))S.titles.push(t.title);}
+function createTest(){const ex=Object.keys(PROFS.list).find(k=>PROFS.list[k].test);if(ex){useProf(ex);return ex;}
+ const id=newId();PROFS.list[id]={name:'TEST PILOT',test:1,save:freshSave(),loadout:freshLoadout(),stats:freshStats(),created:Date.now()};useProf(id);return id;}
+function resetTest(){const k=Object.keys(PROFS.list).find(k=>PROFS.list[k].test);if(!k)return null;const p=PROFS.list[k];p.save=freshSave();p.loadout=freshLoadout();p.stats=freshStats();useProf(k);return k;}
+const testTag=q=>q&&q.test?' <span class="ttag">🧪 TEST</span>':'';
+if(isTest()){testFill();persist();}
 // ---------- loop ----------
 const fwd=new THREE.Vector3(),rt=new THREE.Vector3();
 function outcome(){const md=settings.mode,b=mates('b').length,r=mates('r').length;
@@ -1121,14 +1132,15 @@ function nameScreen(){const p=curProf(),mig=p.migrated&&(SAVE.coins||SAVE.unlock
  <input id="pnm" class="pin" maxlength="16" placeholder="Pilot name" autocomplete="off" autocapitalize="words">${mig?`<p class="ab">Your existing progress (🪙${SAVE.coins}, ${SAVE.unlocked.length} unlocks) will be kept on this pilot.</p>`:''}
  <button class="big" data-pnew="1">START ▶</button>${Object.values(PROFS.list).some(q=>q.name)?'<div class="row"><button data-go="pilot">Choose existing pilot</button></div>':''}`;}
 function pilotScreen(){const id=PROFS.cur,p=curProf(),st=p.stats,wr=st.matches?Math.round(st.wins/st.matches*100):0;
- let h=`<div class="gh"><h2>PILOT</h2>${coinTag()}</div><div class="det pc"><h3>👤 ${p.name||'(unnamed)'} ${SAVE.title?`<span class="ttl">🎖 ${SAVE.title}</span>`:''}<small>— active</small></h3><div class="pst">
+ let h=`<div class="gh"><h2>PILOT</h2>${coinTag()}</div><div class="det pc"><h3>👤 ${p.name||'(unnamed)'}${testTag(p)} ${SAVE.title?`<span class="ttl">🎖 ${SAVE.title}</span>`:''}<small>— active</small></h3><div class="pst">
  <div><b>${st.matches}</b><small>matches</small></div><div><b>${st.wins}</b><small>wins</small></div><div><b>${wr}%</b><small>win rate</small></div><div><b>${st.kills}</b><small>kills</small></div>
  <div><b>${favMech(st)}</b><small>favorite mech</small></div><div><b>🪙${SAVE.earned}</b><small>earned</small></div><div><b>${SAVE.unlocked.length}</b><small>unlocks</small></div><div><b>${SAVE.paints.length-1}</b><small>paints</small></div></div></div>
  <h3>ALL PILOTS ON THIS DEVICE</h3><div class="plist">`;
- for(const [k,q] of Object.entries(PROFS.list)){h+=`<div class="pl ${k===id?'sel':''}"><div><b>${q.name||'(unnamed)'}</b><small>🪙${(q.save||{}).coins||0} · ${(q.stats||{}).matches||0} matches${k===id?' · ACTIVE':''}</small></div>`+
+ for(const [k,q] of Object.entries(PROFS.list)){h+=`<div class="pl ${k===id?'sel':''}"><div><b>${q.name||'(unnamed)'}${testTag(q)}</b><small>🪙${(q.save||{}).coins||0} · ${(q.stats||{}).matches||0} matches${k===id?' · ACTIVE':''}</small></div>`+
   (pren===k?`<input id="pren" class="pin" maxlength="16" value="${q.name||''}"><button class="go" data-prsave="${k}">SAVE</button>`:
   `${k===id?'':`<button class="go" data-psw="${k}">SWITCH</button>`}<button data-pren="${k}">RENAME</button><button class="${pdelArm===k?'danger':''}" data-pdel="${k}">${pdelArm===k?'CONFIRM DELETE':'DELETE'}</button>`)+`</div>`;}
  h+=`</div><div class="det"><h3>New pilot</h3><div class="prow"><input id="pnm" class="pin" maxlength="16" placeholder="Pilot name" autocomplete="off"><button class="go" data-pnew="1">CREATE</button></div></div>
+ <div class="det"><h3>🧪 Test pilot</h3><p>A separate sandbox pilot with every mech, weapon, paint and title unlocked, all upgrades maxed and unlimited coins. New items are unlocked automatically. Nothing it does affects your other pilots.</p><div class="row"><button class="go" data-ptest="1">${Object.values(PROFS.list).some(q=>q.test)?'🧪 SWITCH TO TEST PILOT':'🧪 CREATE TEST PILOT'}</button>${Object.values(PROFS.list).some(q=>q.test)?`<button class="${pdelArm==='__rt'?'danger':''}" data-ptreset="1">${pdelArm==='__rt'?'CONFIRM RESET':'RESET TEST PILOT'}</button>`:''}</div></div>
  <div class="det"><h3>Save code</h3><p>Move this pilot to another device, or keep a backup. Copy the code, then paste it into Import on the other device.</p>
  ${pexp?`<textarea id="pcode" class="pin pcode" readonly>${exportCode()}</textarea><button class="go" data-pcopy="1">📋 COPY CODE</button>`:`<button data-pexp="1">⇪ EXPORT ${p.name||'pilot'}</button>`}
  <textarea id="pimp" class="pin pcode" placeholder="Paste a save code (MA1-…)"></textarea><button data-pimp="1">⇩ IMPORT AS NEW PILOT</button></div>
@@ -1146,7 +1158,7 @@ function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';co
  const gq=`<div class="gq">Graphics: <button data-gfx="high" class="${settings.gfx==='high'?'on':''}">HIGH</button><button data-gfx="low" class="${settings.gfx==='low'?'on':''}">LOW</button></div>`;
  if(menuStep==='title'&&!curProf().name)menuStep='name';
  if(menuStep==='name')h=nameScreen();else if(menuStep==='pilot')h=pilotScreen();else if(menuStep==='chal')h=chalScreen();
- else if(menuStep==='title'){h=`<h1>MECH ARENA</h1><div class="wb">Welcome back, <b>${curProf().name}</b>${SAVE.title?` <span class="ttl">🎖 ${SAVE.title}</span>`:''} <button data-go="pilot" class="sw2">👤 PILOT · SWITCH</button></div>${coinTag()}<p class="sub">Win matches to earn coins. Upgrade and unlock gear in the Garage.</p>
+ else if(menuStep==='title'){h=`<h1>MECH ARENA</h1><div class="wb">Welcome back, <b>${curProf().name}</b>${testTag(curProf())}${SAVE.title?` <span class="ttl">🎖 ${SAVE.title}</span>`:''} <button data-go="pilot" class="sw2">👤 PILOT · SWITCH</button></div>${coinTag()}<p class="sub">Win matches to earn coins. Upgrade and unlock gear in the Garage.</p>
   <button class="big" data-go="mode">PLAY</button><button class="big alt" data-go="deploy">QUICK DEPLOY<br><small>${md.name}${settings.mode==='duel'?' ('+CFG.diff[settings.diff].name+')':''} · ${settings.map==='random'?'Random map':MAPS[settings.map].name} · ${Ms[loadout.mech].name} · ${slotsOf(loadout.mech).map(k=>Ws[k].name).join(' + ')}</small></button>
   <div class="trow"><button class="big gar" data-go="garage">🔧 GARAGE</button><button class="big gar chb" data-go="chal">🏅 CHALLENGES${chClaimable()?`<i class="badge">${chClaimable()}</i>`:''}</button></div>${gq}`;}
  else if(menuStep==='garage')h=garage();
@@ -1168,9 +1180,11 @@ function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(
 function showUI(){menu.style.display=mode==='menu'?'flex':'none';$('hud').style.display=mode==='play'?'block':'none';$('msg').style.display=mode==='over'?'flex':'none';
  const t=TOUCH&&mode==='play'?'':'none';for(const id of['joy','bMG','bAB','bRL','bFL','bFR'])$(id).style.display=t;$('hint').style.display=TOUCH||mode!=='play'?'none':'';
  if(mode==='play'){bAB.textContent=P.T.ability;bAB.classList.toggle('passive',!!P.T.regen);}}
-function menuClick(e){const el=e.target.closest('[data-chc],[data-chtab],[data-ttl],[data-pnew],[data-psw],[data-pren],[data-prsave],[data-pdel],[data-pexp],[data-pcopy],[data-pimp],[data-go],[data-mech],[data-wpn],[data-mode],[data-diff],[data-gfx],[data-gtab],[data-gsel],[data-up],[data-buy],[data-paint],[data-reset],[data-map],[data-slot],[data-pick]');if(!el||el.disabled)return;const d=el.dataset;
- if(!d.reset)resetArm=false;if(!d.pdel)pdelArm=null;if(d.go)pren=null,pexp=false;
+function menuClick(e){const el=e.target.closest('[data-ptest],[data-ptreset],[data-chc],[data-chtab],[data-ttl],[data-pnew],[data-psw],[data-pren],[data-prsave],[data-pdel],[data-pexp],[data-pcopy],[data-pimp],[data-go],[data-mech],[data-wpn],[data-mode],[data-diff],[data-gfx],[data-gtab],[data-gsel],[data-up],[data-buy],[data-paint],[data-reset],[data-map],[data-slot],[data-pick]');if(!el||el.disabled)return;const d=el.dataset;
+ if(!d.reset)resetArm=false;if(!d.pdel&&!d.ptreset)pdelArm=null;if(d.go)pren=null,pexp=false;
  if(d.chc){chClaim(d.chc);renderMenu();return;}if(d.chtab){chTab=d.chtab;renderMenu();mc.scrollTop=0;return;}if(d.ttl){SAVE.title=d.ttl==='-'?'':d.ttl;persist();renderMenu();return;}
+ if(d.ptest){createTest();toast('🧪 Test pilot active — everything unlocked');gsel=null;slotSel=0;pickSel=null;preview();renderMenu();return;}
+ if(d.ptreset){if(pdelArm==='__rt'){resetTest();pdelArm=null;toast('🧪 Test pilot reset');gsel=null;slotSel=0;pickSel=null;preview();}else pdelArm='__rt';renderMenu();return;}
  if(d.pnew||d.psw||d.pren||d.prsave||d.pdel||d.pexp||d.pcopy||d.pimp){pilotClick(d);renderMenu();return;}
  if(d.mech){loadout.mech=d.mech;slotSel=0;pickSel=null;saveLoadout();preview();}
  if(d.slot){slotSel=+d.slot;pickSel=null;}
@@ -1192,7 +1206,7 @@ loadMap('arena',7);setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
 window.__game={THREE_V:THREE.Vector3,hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),abilityU:u=>ability(u),blocked:(x,z,r,y)=>blocked(x,z,r,y),groundAt:(x,z,y)=>groundAt(x,z,y),get A(){return A},newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout.mech=m;loadout.slots[m]=CFG.slots[m].map(sl=>adapt(w,sl,false));},setSlots:(m,a)=>{loadout.mech=m;loadout.slots[m]=a.slice();},slotsOf:t=>slotsOf(t),SIZES,menu:st=>{menuStep=st;renderMenu();},slot:i=>{slotSel=i;pickSel=null;renderMenu();},
  startMatch:(md,df,mp)=>{settings.mode=md;if(df)settings.diff=df;if(mp)settings.map=mp;newGame();},MAPS,get mapKey(){return mapKey},loadMap,setBaseProg:(t,v)=>{BASES[t].prog=v;},
- killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),get SAVE(){return SAVE},get PROFS(){return PROFS},chClaim,chDaily,chClaimable,CAREER,DPOOL,chEv,dayKey,cTier,get menuStep(){return menuStep},speedOf:u=>speedOf(u),createProf,renameProf,deleteProf,useProf,exportCode,importCode,buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},lineup:(w)=>{if(P){S.remove(P.g);P=null;}if(LINEUP)LINEUP.forEach(u=>S.remove(u.g));LINEUP=['guardian','strider','mender','phantom'].map((k,i)=>{const u=makeUnit('b',k,w||CFG.defSlots[k],null);u.g.position.set(-10.5+i*7,0,48);u.tYaw=u.legYaw=u.yaw=Math.PI*0.82;initFeet(u);animMech(u,.016);return u;});},renderMenu,go:s=>{menuStep=s;renderMenu();}};
+ killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),get SAVE(){return SAVE},get PROFS(){return PROFS},createTest,resetTest,testFill,isTest,chClaim,chDaily,chClaimable,CAREER,DPOOL,chEv,dayKey,cTier,get menuStep(){return menuStep},speedOf:u=>speedOf(u),createProf,renameProf,deleteProf,useProf,exportCode,importCode,buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},lineup:(w)=>{if(P){S.remove(P.g);P=null;}if(LINEUP)LINEUP.forEach(u=>S.remove(u.g));LINEUP=['guardian','strider','mender','phantom'].map((k,i)=>{const u=makeUnit('b',k,w||CFG.defSlots[k],null);u.g.position.set(-10.5+i*7,0,48);u.tYaw=u.legYaw=u.yaw=Math.PI*0.82;initFeet(u);animMech(u,.016);return u;});},renderMenu,go:s=>{menuStep=s;renderMenu();}};
 // barrel convergence: rotate each gun pivot so its +Z points at the aim point
 const _l=new THREE.Vector3();
 function aimGuns(u,pt,dt){const K=CFG.cam;u.top.updateMatrixWorld(true);for(const g of u.guns){g.rotation.order='YXZ';
