@@ -1,4 +1,4 @@
-/*v25 detail pass*/
+/*v26 armor detail*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -949,13 +949,13 @@ function _mergeGeos(list){const parts=[];let nv=0,ni=0;for(const m of list){m.up
   io+=idx?idx.length:n;vo+=n;}
  const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(P,3));G.setAttribute('normal',new THREE.BufferAttribute(N,3));G.setAttribute('uv',new THREE.BufferAttribute(UV,2));G.setIndex(new THREE.BufferAttribute(I,1));G.computeBoundingSphere();G.computeBoundingBox();G.userData.merged=1;return G;}
 function mergeUnit(u){if(u._merged||window.__noMerge)return;u._merged=1;const keep=new Set();_refWalk(u,keep,0,new Set());let before=0,after=0;
- const buckets=new Map();u.g.traverse(o=>{if(!o.isMesh)return;before++;if(keep.has(o)||o.children.length||o.isInstancedMesh||o.isSkinnedMesh||Array.isArray(o.material)||!o.visible||!o.parent||o.renderOrder||o.material.transparent)return;
+ armorUnit(u,keep);const buckets=new Map();u.g.traverse(o=>{if(!o.isMesh)return;before++;if(keep.has(o)||o.children.length||o.isInstancedMesh||o.isSkinnedMesh||Array.isArray(o.material)||!o.visible||!o.parent||o.renderOrder||o.material.transparent)return;
   const g=o.geometry;if(!g.attributes.position||!g.attributes.normal||g.morphAttributes&&Object.keys(g.morphAttributes).length)return;
-  const k=o.parent.uuid+'|'+o.material.uuid+'|'+(o.castShadow?1:0)+(o.receiveShadow?1:0);let b=buckets.get(k);if(!b)buckets.set(k,b=[]);b.push(o);});
- for(const b of buckets.values()){if(b.length<2)continue;const par=b[0].parent,G=_mergeGeos(b);const m=new THREE.Mesh(G,b[0].material);m.castShadow=b[0].castShadow;m.receiveShadow=b[0].receiveShadow;
+  const k=o.parent.uuid+'|'+o.material.uuid+'|'+(o.castShadow?1:0)+(o.receiveShadow?1:0)+'|'+(o.userData.pg||0);let b=buckets.get(k);if(!b)buckets.set(k,b=[]);b.push(o);});
+ for(const b of buckets.values()){if(b.length<2)continue;const par=b[0].parent,G=_mergeGeos(b);const m=new THREE.Mesh(G,b[0].material);m.castShadow=b[0].castShadow;m.receiveShadow=b[0].receiveShadow;m.userData.pg=b[0].userData.pg;
   for(const o of b)par.remove(o);par.add(m);}
  u.g.traverse(o=>{if(o.isMesh)after++;});u.meshN=[before,after];}
-function disposeMerged(root){root.traverse(o=>{if(o.isMesh&&o.geometry.userData.merged)o.geometry.dispose();});}
+function disposeMerged(root){root.traverse(o=>{if(o.isMesh&&o.geometry.userData.merged&&!o.geometry.userData.shared)o.geometry.dispose();});}
 // ---- graphics quality: low / med / high, Auto steps between them by measured fps ----
 CFG.gfx.med={pixelRatio:1,shadows:true,shadowMap:1024};
 if(!settings.gfxSel)settings.gfxSel=(settings.gfx==='low'?'auto':'auto');
@@ -983,7 +983,7 @@ function dmgTick(u,dt){if(!u.alive||!u.mats)return;const f=u.hp/u.max,b=Math.max
  if(b!==u.dmgB){if(!u.matBase)u.matBase=u.mats.map(m=>m.color.clone());const c=Math.max(0,(1-f)-.25)*.55;u.mats.forEach((m,i)=>m.color.copy(u.matBase[i]).multiplyScalar(1-c));
   if(u.dmgB!==undefined&&b>u.dmgB&&(b===4||b===7)&&!gfxLow()){u.top.getWorldPosition(_w);_w.y+=1.2;const sx=Math.random()<.5?-1:1;
    fx(_w.clone(),2.2,0,{geo:plateG,mat:u.mats[0],solid:1,grow:0,life:2.4,g:-24,spin:new THREE.Vector3(Rn(-8,8),Rn(-8,8),Rn(-8,8)),v:new THREE.Vector3(sx*Rn(4,8),Rn(6,10),Rn(-4,4))});sparks(_w);}
-  u.dmgB=b;}
+  plateTick(u,b);u.dmgB=b;}
  if(f<.6&&!gfxLow()&&Math.random()<dt*(f<.35?6:1.5)){u.top.getWorldPosition(_w);_w.x+=Rn(-.8,.8);_w.y+=Rn(.6,1.6);_w.z+=Rn(-.8,.8);fx(_w.clone(),.5,0x2a2a2a,{vy:2.5,grow:3,life:1.6,op:.35});}
  if(f<.2&&Math.random()<dt*(gfxLow()?3:10)){u.top.getWorldPosition(_w);_w.x+=Rn(-.6,.6);_w.y+=Rn(.8,1.4);_w.z+=Rn(-.6,.6);fx(_w.clone(),.7,Math.random()<.5?0xff7a20:0xffc040,{vy:3.5,grow:1.4,life:.35,op:.9});}}
 // ---- environment detail: clouds (1 instanced draw), ground decals (1 instanced draw), steam vents ----
@@ -1012,6 +1012,32 @@ function footGround(u,f){const p=u.g.position;const g=groundAt(f.x,f.z,p.y+.9);r
 // ---- shadow LOD: only mechs near the camera cast shadows (shadow pass draw calls scale with casters) ----
 let shT=0;function shadowLOD(dt){if((shT-=dt)>0)return;shT=.4;const lim=gfxHi()?55:35,cp=C.position;
  for(const u of U){const on=u.g.position.distanceTo(cp)<lim||u===P;if(u.shOn===on)continue;u.shOn=on;if(!u.shM){u.shM=[];u.g.traverse(o=>{if(o.isMesh&&o.castShadow)u.shM.push(o);});}for(const m of u.shM)m.castShadow=on;}}
+// ---- v26 armor: rounded/beveled boxes, raised plates with seams, bolt heads, frame ribs revealed when plates blow off ----
+const _rbC=new Map();
+function rbox(w,h,d,b){w=Math.round(w*100)/100;h=Math.round(h*100)/100;d=Math.round(d*100)/100;const k=w+','+h+','+d+','+b;let g=_rbC.get(k);if(g)return g;
+ const r=Math.min(.1,Math.min(w,h,d)*.2),N=2*b+1;g=new THREE.BoxGeometry(1,1,1,N,N,N);const P_=g.attributes.position,Nn=g.attributes.normal,hs=[w/2,h/2,d/2];
+ const mp=(u,hh)=>{const i=Math.round((u+.5)*N);return i<=b?-hh+r*i/b:hh-r*(N-i)/b;};const q=[0,0,0],c=[0,0,0];
+ for(let i=0;i<P_.count;i++){q[0]=mp(P_.getX(i),hs[0]);q[1]=mp(P_.getY(i),hs[1]);q[2]=mp(P_.getZ(i),hs[2]);let l=0;
+  for(let a=0;a<3;a++){const e=hs[a]-r;c[a]=Math.max(-e,Math.min(e,q[a]));const v=q[a]-c[a];l+=v*v;}l=Math.sqrt(l)||1;
+  const nx=(q[0]-c[0])/l,ny=(q[1]-c[1])/l,nz=(q[2]-c[2])/l;P_.setXYZ(i,c[0]+nx*r,c[1]+ny*r,c[2]+nz*r);Nn.setXYZ(i,nx,ny,nz);}
+ g.userData.shared=1;_rbC.set(k,g);return g;}
+const rivG=new THREE.CylinderGeometry(.045,.05,.04,6,1,true),rivM=M(0x9a9da0,{metal:.95,rough:.3});
+const _ax=[[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,1,0]];
+function armorUnit(u,keep){if(!u.mats||gfxLow()||window.__noArmor)return;const hiQ=gfxHi(),m=u.mats[0],dk=u.mats[1];const list=[];let pgN=0;
+ u.g.traverse(o=>{if(o.isMesh&&o.geometry===boxG&&!keep.has(o)&&!o.children.length&&o.visible&&!o.material.transparent)list.push(o);});
+ const inTop=o=>{for(let p=o.parent;p;p=p.parent){if(p===u.top)return true;if(p===u.g)return false;}return false;};
+ for(const o of list){const s=o.scale,W=Math.abs(s.x),H=Math.abs(s.y),D=Math.abs(s.z);if(Math.min(W,H,D)<.06)continue;
+  const mn=Math.min(W,H,D);if(!hiQ&&mn<.25)continue;o.geometry=rbox(W,H,D,hiQ&&mn>=.6?2:1);o.scale.set(Math.sign(s.x)||1,Math.sign(s.y)||1,Math.sign(s.z)||1);if(o.material!==m)continue;
+  const par=o.parent,top=inTop(o);if(top&&par.userData.pgS===undefined)par.userData.pgS=(pgN++%2?'A':'B');o.updateMatrix();const hd=[W/2,H/2,D/2],dm=[W,H,D];
+  for(const ax of _ax){const a=ax[0]?0:ax[1]?1:2,u1=a===0?2:0,u2=a===1?2:1,fa=dm[u1],fb=dm[u2];if(fa<.35||fb<.35||fa*fb<.3)continue;
+   const ins=Math.min(.09,Math.min(fa,fb)*.1),pa=fa-ins*2,pb=fb-ins*2,t=.07,sg=ax[0]+ax[1]+ax[2],pg=top?par.userData.pgS:0;
+   const pd=[0,0,0];pd[a]=t;pd[u1]=pa;pd[u2]=pb;const pl=new THREE.Mesh(rbox(pd[0],pd[1],pd[2],1),m);pl.position.set(ax[0],ax[1],ax[2]).multiplyScalar(hd[a]+t/2);pl.userData.pg=pg;pl.castShadow=o.castShadow;
+   const add=c=>{c.applyMatrix4(o.matrix);par.add(c);};add(pl);
+   if(top){for(const f of [-.22,.22]){const rd=[0,0,0];rd[a]=.02;rd[u1]=pa*.9;rd[u2]=.06;const r_=new THREE.Mesh(boxG,dk);r_.scale.set(rd[0],rd[1],rd[2]);const v=[0,0,0];v[a]=sg*(hd[a]+.01);v[u2]=f*pb;r_.position.set(v[0],v[1],v[2]);r_.castShadow=o.castShadow;add(r_);}}
+   if(hiQ)for(const i of [-1,1])for(const j of [-1,1]){const bt=new THREE.Mesh(rivG,dk);const v=[0,0,0];v[a]=sg*(hd[a]+t+.02);v[u1]=i*(pa/2-.07);v[u2]=j*(pb/2-.07);bt.position.set(v[0],v[1],v[2]);
+    if(a===0)bt.rotation.z=Math.PI/2;else if(a===2)bt.rotation.x=Math.PI/2;bt.userData.pg=pg;bt.castShadow=o.castShadow;add(bt);}}}}
+function plateTick(u,b){if(!u.plateSets){u.plateSets=[];u.g.traverse(o=>{if(o.isMesh&&o.userData.pg)u.plateSets.push(o);});}
+ for(const o of u.plateSets)o.visible=b<(o.userData.pg==='A'?4:7);}
 // ---------- v20: procedural WebAudio (buses: master > sfx / ui / amb), per-pilot volumes ----------
 let AC=null,BUS=null,NOISE=null,AMB_S=null;const SLAST={};
 const AUD_DEF={master:.8,sfx:.9,ui:.7,amb:.5,mute:false};
@@ -1413,7 +1439,7 @@ let LAST_REWARD=null,cupRAF=0;
 let last=performance.now(),menuA=0,fpsT=0,fpsN=0,fps=60,lowT=0;
 function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
  fpsT+=dt;fpsN++;if(fpsT>=.5){fps=fpsN/fpsT;fpsT=fpsN=0;autoTick(.5);if(mode==='play'&&settings.gfx==='high'&&settings.gfxSel!=='auto'&&!window.__noAuto){lowT=fps<CFG.gfx.autoFallbackFps?lowT+.5:0;if(lowT>=CFG.gfx.autoWindow){setGfx('low');toast('Low fps: graphics switched to LOW');}}}
- if(mode==='play'&&!PAUSED)update(dt);else if(mode==='menu')menuTick(dt);else if(mode==='over'){for(const u of U)animMech(u,dt);dmgTick(u,dt);}
+ if(mode==='play'&&!PAUSED)update(dt);else if(mode==='menu')menuTick(dt);else if(mode==='over'){for(const u of U){animMech(u,dt);dmgTick(u,dt);}}
  updFx(dt);updAmb(dt);if(mode!=='menu')cam(dt);skyDome.position.copy(C.position);if(mode==='play'&&!PAUSED)drawMini();R.render(S,C);}
 function update(dt){clock+=dt;const k=inp.keys;
  if(P.alive){let mx=inp.mx+((k.KeyD?1:0)-(k.KeyA?1:0)),mz=inp.mz+((k.KeyS?1:0)-(k.KeyW?1:0));
@@ -1508,7 +1534,7 @@ function hud(){const W=P.W,T=P.T;hudN++;
 // ---------- MENU ----------
 const menu=$('menu'),mc=$('mc');let menuStep='title';
 const statMax={hp:1300,speed:10};const bar=(l,v,t)=>`<div class="st"><span>${l}</span><div class="sb"><i style="width:${Math.max(4,v*100)}%"></i></div><em>${t}</em></div>`;
-function preview(){if(P)S.remove(P.g);P=makeUnit('b',loadout.mech,slotsOf(loadout.mech),null);applyPaint(P,paintOf(loadout.mech));P.g.position.set(0,0,48);P.tYaw=P.legYaw=Math.PI;P.yaw=Math.PI;P.pitch=.05;initFeet(P);animMech(P,.016);}
+function preview(){if(P)S.remove(P.g);P=makeUnit('b',loadout.mech,slotsOf(loadout.mech),null);applyPaint(P,paintOf(loadout.mech));mergeUnit(P);P.g.position.set(0,0,48);P.tYaw=P.legYaw=Math.PI;P.yaw=Math.PI;P.pitch=.05;initFeet(P);animMech(P,.016);}
 let LINEUP=null;
 function menuTick(dt){menuA+=dt*.35;if(LINEUP){for(const u of LINEUP){for(const w of u.ws)w.spin=1;animMech(u,dt);}C.position.set(9,7.5,28);C.lookAt(-1,2.4,48);return;}if(!P)return;const p=P.g.position;P.tYaw=Math.PI+Math.sin(menuA*.8)*.6;P.legYaw=Math.PI;for(const w of P.ws)w.spin=w.W.spin?1:0;animMech(P,dt);
  const a=Math.PI*0.75+menuA*0.3;const cx=p.x+Math.sin(a)*9,cz=p.z+Math.cos(a)*9;C.position.set(cx,4.5,cz);
@@ -1628,7 +1654,7 @@ function menuClick(e){const el=e.target.closest('[data-ptest],[data-ptreset],[da
 menu.addEventListener('click',menuClick);
 $('again').addEventListener('click',()=>newGame());$('tomenu').addEventListener('click',()=>goMenu());
 loadMap('arena',7);setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
-window.__game={THREE_V:THREE.Vector3,explode,pickGfx,setGfx,get gfxSel(){return settings.gfxSel},colR,sepUnits,inObst,gunBlocked,muzzle,R,S,get A(){return A},overview(){const c=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,800);c.position.set(0,A*1.55,A*1.05);c.lookAt(0,0,-A*.08);const f=S.fog;S.fog=null;R.render(S,c);S.fog=f;},hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
+window.__game={THREE_V:THREE.Vector3,mergeUnit,makeUnit,explode,pickGfx,setGfx,get gfxSel(){return settings.gfxSel},colR,sepUnits,inObst,gunBlocked,muzzle,R,S,get A(){return A},overview(){const c=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,800);c.position.set(0,A*1.55,A*1.05);c.lookAt(0,0,-A*.08);const f=S.fog;S.fog=null;R.render(S,c);S.fog=f;},hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),abilityU:u=>ability(u),blocked:(x,z,r,y)=>blocked(x,z,r,y),groundAt:(x,z,y)=>groundAt(x,z,y),get A(){return A},newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout.mech=m;loadout.slots[m]=CFG.slots[m].map(sl=>adapt(w,sl,false));},setSlots:(m,a)=>{loadout.mech=m;loadout.slots[m]=a.slice();},slotsOf:t=>slotsOf(t),SIZES,menu:st=>{menuStep=st;renderMenu();},slot:i=>{slotSel=i;pickSel=null;renderMenu();},
  startMatch:(md,df,mp)=>{settings.mode=md;if(df)settings.diff=df;if(mp)settings.map=mp;newGame();},MAPS,get mapKey(){return mapKey},loadMap,setBaseProg:(t,v)=>{BASES[t].prog=v;},
  killTeam:t=>{for(const u of U)if(u.team===t&&u.alive)hurt(u,1e6,null,null);},killUnit:u=>hurt(u,1e6,null,null),air:{shoot:(f,d,u,h,W)=>shoot(f,d,u,h,W),sweep:(o,d,L,ow)=>sweep(o,d,L,ow),hurt:(u,d,p,s)=>hurt(u,d,p,s),domeUp,domeSafe,fireWeapon:(u,w,a,h)=>fireWeapon(u,w,a,h),get B(){return B},inp},get SAVE(){return SAVE},get PROFS(){return PROFS},createTest,resetTest,testFill,isTest,chClaim,chDaily,chClaimable,CAREER,DPOOL,chEv,dayKey,cTier,get menuStep(){return menuStep},speedOf:u=>speedOf(u),createProf,renameProf,deleteProf,useProf,exportCode,importCode,buyUp,buyUnlock,buyPaint,resetProgress,upMech,upWpn,get reward(){return LAST_REWARD},lineup:(w)=>{if(P){S.remove(P.g);P=null;}if(LINEUP)LINEUP.forEach(u=>S.remove(u.g));LINEUP=['guardian','strider','mender','phantom'].map((k,i)=>{const u=makeUnit('b',k,w||CFG.defSlots[k],null);u.g.position.set(-10.5+i*7,0,48);u.tYaw=u.legYaw=u.yaw=Math.PI*0.82;initFeet(u);animMech(u,.016);return u;});},renderMenu,go:s=>{menuStep=s;renderMenu();}};
