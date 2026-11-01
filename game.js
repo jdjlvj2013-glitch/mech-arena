@@ -1,4 +1,4 @@
-/*v33 full-charge chain + % charge + gfx polish*/
+/*v34 online 2-player*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -778,14 +778,14 @@ function clearWorld(){for(const u of U)S.remove(u.g);if(P&&!U.includes(P))S.remo
 const rk=o=>{const k=Object.keys(o);return k[Math.floor(Math.random()*k.length)];};
 function spawn(u,x,z,yaw){mergeUnit(u);u.g.position.set(x,0,z);u.tYaw=u.legYaw=u.yaw=yaw;initFeet(u);U.push(u);}
 let lastMap=null;function pickMap(){if(settings.map!=='random'&&MAPS[settings.map])return settings.map;const k=MAP_KEYS.filter(k=>k!==lastMap);return k[Math.floor(Math.random()*k.length)];}
-function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clearWorld();lastMap=pickMap();loadMap(lastMap);const SZ=A-12;clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;chStart();const md=settings.mode;
+function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clearWorld();lastMap=pickMap();netRand(1,0);loadMap(lastMap,NET.role==="host"?NET.seed:undefined);netRand(0);const SZ=A-12;clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;chStart();const md=settings.mode;
  P=makeUnit('b',loadout.mech,slotsOf(loadout.mech),null);P.isPlayer=true;applyPaint(P,paintOf(loadout.mech));spawn(P,0,SZ,Math.PI);P.pitch=.05;camYaw=Math.PI;
  const team=md!=='duel';
  const TS=CFG.teamSize||6;
  if(team){for(let i=0;i<TS-1;i++){const a=(t=>makeUnit('b',t,aiSlots(t),CFG.allyProfile))(window.__forceAI||rk(CFG.mechs));a.role=md==='base'?(i%2?'def':'att'):'esc';const k=(i>>1)+1,sd=i%2?1:-1;spawn(a,sd*k*7,SZ+2+(k>1?3:0),Math.PI);makePlate(a,true);}}
  const n=team?TS:1;
  for(let i=0;i<n;i++){const e=(t=>makeUnit('r',t,aiSlots(t),md==='duel'?settings.diff:CFG.enemyProfile))(window.__forceAI||rk(CFG.mechs));e.role=md==='base'?(i%3===0?'def':'att'):'hunt';const k=(i+1)>>1,sd=i%2?1:-1;spawn(e,i?sd*k*7:0,-SZ-(i?2:0)-(k>1?3:0),0);makePlate(e,false);}
- clearSpawns();buildEnvDetail();
+ if(NET.role==="host")netSetup();clearSpawns();netRand(1,1);buildEnvDetail();netRand(0);
  showBases(md==='base');mode='play';showUI();mapBanner();drawMiniBase();}
 // ---------- projectiles & effects ----------
 const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1),shotgun:new THREE.BoxGeometry(.1,.1,.7)};
@@ -819,7 +819,8 @@ function pulseMul(w){const m=w.W.chMin??1;return m+(1-m)*Math.min(1,w.pc||0);}
 function chgPct(w){return Math.round(pulseMul(w)*100);}
 function pulseTick(u,dt){for(const w of u.ws){if(!w.W.chT)continue;const rdy=!w.reload&&w.fireCd<=0&&w.ammo>0&&u.alive;if(!rdy){if(w.reload)w.pc=0;w.pcF=0;continue;}
  w.pc=Math.min(1,(w.pc||0)+dt/(w.W.chT||1.6));if(w.pc>=1&&!w.pcF){w.pcF=1;if(u===P){sfx('pulseFull',{u});const mp=muzzle(u,w.gi);fx(mp,w.W.emp?1:.9,w.W.emp?0x80e0ff:0xdff8ff,{grow:3,life:.35,op:.9});}}}}
-function fireWeapon(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(w.W.emp)return chargeEmp(u,w,aimPt);if(u===P)STATS.shots++;const W=w.W,pr=u.prof;w.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,w.spin):1);w.ammo--;
+function fireWeapon(u,w,aimPt,homing){if(NET.role==="host")netFire(u,w,aimPt,homing);return fireWeapon0(u,w,aimPt,homing);}
+function fireWeapon0(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(w.W.emp)return chargeEmp(u,w,aimPt);if(u===P)STATS.shots++;const W=w.W,pr=u.prof;w.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,w.spin):1);w.ammo--;
  if(W.push)SHOTCM=pulseMul(w);const gi=w.gi,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
  const s=(W.pellets?0:W.spread)+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  u.kick[gi]=Math.min(1,u.kick[gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);sfx('shot',{u,fam:W.fam,size:W.size,gi});if(W.fam==='railgun')u.ventT=.7;
@@ -827,7 +828,7 @@ function fireWeapon(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(
  for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}SHOTCM=1;if(W.push)w.pc=0;if(w.ammo<=0)w.reload=W.reload;}
 function frontal(u,pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,l=Math.hypot(dx,dz)||1;return (dx*Math.sin(u.tYaw)+dz*Math.cos(u.tYaw))/l>0.25;}
 function dropShield(u,broken){if(!u.shieldOn)return;u.shieldOn=false;u.abCd=broken?u.T.shield.cd:Math.max(u.abCd,.4);}
-function hurt(u,d,pos,src){if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
+function hurt(u,d,pos,src){if(NET.role==="client")return;if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
  if(u.teth&&u.teth.t>0)d*=1+u.teth.amp;if(src===P&&u.team!==P.team)chDmg(Math.min(d,Math.max(0,u.hp)),HITF);u.hp-=d;u.lastHit=clock;if(u===P)sfx('hurt');else if(src===P)sfx('hit');if(src)u.lastAtt=src;const H=CFG.hitReact;
  if(pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,c=Math.cos(u.tYaw),s=Math.sin(u.tYaw),lz=dx*s+dz*c,lx=dx*c-dz*s,l=Math.hypot(lx,lz)||1,k=Math.min(H.maxFlinch,d*H.flinch);
   u.fl.x+=lz/l*k;u.fl.z+=-lx/l*k;}// torso tips away from the impact
@@ -837,7 +838,7 @@ function hurt(u,d,pos,src){if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u
 function killUnit(u,src){if(!u.alive)return;sfx('destroy',{u,foe:src===P&&u!==P});if(u.teth)dropTether(u);u.alive=false;u.hp=0;u.dying=0;if(u.plate)u.plate.visible=false;u.shieldOn=false;u.flash.forEach(f=>f.visible=false);
  if(src&&src!==u){src.kills++;if(src===P){STATS.kills++;chEv('kills',1);if(HITF)chEv('kill_'+HITF,1);}}for(const x of U)if(x.lockTgt===u)x.lockTgt=null;
  if(u===P&&mode==='play'){const a=mates('b')[0];if(a)SPEC=a;}}
-function ability(u){if(!u||!u.alive||mode!=='play')return;if(u.empT>0||(u.rootT>0&&(u.T.jump||u.T.dash||u.T.dive))){if(u===P)sfx('denied');return;}const T=u.T;if(abilityAir(u))return;
+function ability(u){if(!u||!u.alive||mode!=='play')return;if(NET.role==='client'&&u===P)netSend({t:'ab'});if(u.empT>0||(u.rootT>0&&(u.T.jump||u.T.dash||u.T.dive))){if(u===P)sfx('denied');return;}const T=u.T;if(abilityAir(u))return;
  if(T.lockdown){if(u.abCd<=0){lockdown(u);if(u===P)chEv('abil',1);}return;}
  if(T.shield){if(u.shieldOn)dropShield(u);else if(u.abCd<=0&&u.shieldHP>=T.shield.hp*T.shield.min&&u.shA<=0.5){u.shieldOn=true;if(u===P)chEv('abil',1);else sfx('shUp',{u});}}
  else if(T.jump){if(!u.air&&u.abCd<=0&&u.jumpWind<=0){u.jumpWind=CFG.gait.crouchJump;u.abCd=T.jump.cd;if(u===P){chEv('abil',1);chEv('jumps',1);}}}
@@ -1707,12 +1708,105 @@ function gfx33Tick(dt){if(vig)vig.style.display=g33Tier()===2&&mode!=='menu'?'bl
 // soft radial scorch texture instead of a flat disc
 {const st=g33Tex((g,w,h)=>{const gr=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);gr.addColorStop(0,'rgba(10,8,6,.95)');gr.addColorStop(.45,'rgba(25,20,15,.7)');gr.addColorStop(.8,'rgba(40,30,20,.25)');gr.addColorStop(1,'rgba(40,30,20,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);for(let i=0;i<40;i++){g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.arc(w/2+(Math.random()-.5)*w*.8,h/2+(Math.random()-.5)*h*.8,2+Math.random()*5,0,7);g.fill();}});
  scM.map=st;scM.color.setHex(0xffffff);scM.opacity=.85;scM.polygonOffset=true;scM.polygonOffsetFactor=-2;scM.needsUpdate=true;}
+// ---------- v34 online 2-player (PeerJS WebRTC, host-authoritative) ----------
+const NET={role:null,conn:null,peer:null,mode:'coop',code:'',ping:0,last:0,units:[],my:-1,R:null,ev:[],inp:null,keep:false,sT:0,iT:0,pT:0,seed:0,hi:null,fL:false,fR:false,stat:''};
+const NETPFX='mecharena-jdj34-';let _mr=null;
+function netRand(on,salt){if(!NET.role)return;if(on){if(!_mr)_mr=Math.random;Math.random=seeded((NET.seed|0)+salt*7919);}else if(_mr){Math.random=_mr;_mr=null;}}
+function netLib(){return window.Peer?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';s.onload=res;s.onerror=()=>rej(new Error('Could not load PeerJS (offline?)'));document.head.appendChild(s);});}
+function netSend(m){try{if(NET.conn&&NET.conn.open)NET.conn.send(m);}catch(e){}}
+// --- UI ---
+const netP=document.createElement('div');netP.id='netP';netP.style.cssText='position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:#000b;font-family:system-ui,sans-serif;color:#fff';
+netP.innerHTML=`<div style="background:#14202b;border:2px solid #2a8;border-radius:14px;padding:22px 26px;width:min(440px,92vw);text-align:center;box-shadow:0 10px 40px #000">
+<h2 style="margin:0 0 6px">🌐 ONLINE 2-PLAYER</h2><div style="opacity:.75;font-size:.9em;margin-bottom:12px">Each player uses their own mech &amp; loadout. Bots fill the other slots.</div>
+<div id="netHostBox"><div style="margin-bottom:8px">Host mode: <button id="nmC" class="nm">🤝 CO-OP</button> <button id="nmV" class="nm">⚔ VERSUS</button></div>
+<button id="netHost" style="font-size:1.1em;padding:10px 22px;background:#1b6;border:0;border-radius:8px;color:#fff;font-weight:bold">HOST GAME</button></div>
+<div style="margin:14px 0 6px;opacity:.6">— or —</div>
+<div id="netJoinBox"><input id="netCode" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" style="font-size:1.3em;width:7em;text-align:center;letter-spacing:.2em;text-transform:uppercase;padding:8px;border-radius:8px;border:2px solid #2a8;background:#0a1218;color:#fff">
+<button id="netJoin" style="font-size:1.1em;padding:10px 22px;background:#26a;border:0;border-radius:8px;color:#fff;font-weight:bold">JOIN</button></div>
+<div id="netMsg" style="margin:14px 0;min-height:2.6em;font-size:1.05em"></div>
+<button id="netX" style="padding:8px 18px;border-radius:8px;border:1px solid #888;background:#333;color:#fff">CANCEL</button>
+<div style="opacity:.5;font-size:.75em;margin-top:10px">Peer-to-peer via WebRTC. Strict firewalls / some mobile carriers may block it.</div></div>`;
+document.body.appendChild(netP);
+const netS=document.createElement('div');netS.id='netS';netS.style.cssText='position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:30;display:none;font:bold 12px system-ui;background:#000a;color:#8f8;padding:3px 10px;border-radius:10px;pointer-events:none';document.body.appendChild(netS);
+const nq=id=>document.getElementById(id);
+function netMsgSet(h){nq('netMsg').innerHTML=h;}
+function netModeBtns(){nq('nmC').style.cssText=`padding:6px 12px;border-radius:6px;border:2px solid ${NET.mode==='coop'?'#6f9':'#555'};background:${NET.mode==='coop'?'#164':'#222'};color:#fff`;nq('nmV').style.cssText=`padding:6px 12px;border-radius:6px;border:2px solid ${NET.mode==='vs'?'#f96':'#555'};background:${NET.mode==='vs'?'#622':'#222'};color:#fff`;}
+nq('nmC').onclick=()=>{NET.mode='coop';netModeBtns();};nq('nmV').onclick=()=>{NET.mode='vs';netModeBtns();};
+nq('netHost').onclick=()=>netHost();nq('netJoin').onclick=()=>netJoin(nq('netCode').value);nq('netCode').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')netJoin(nq('netCode').value);};
+nq('netX').onclick=()=>{netClose();netP.style.display='none';};
+function netOpen(msg){netModeBtns();nq('netHostBox').style.display=nq('netJoinBox').style.display='';netMsgSet(msg||'');netP.style.display='flex';}
+function netHide(){netP.style.display='none';}
+// --- connection ---
+function genCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=A[Math.random()*A.length|0];return s;}
+async function netHost(){netClose();try{netMsgSet('Connecting to broker…');await netLib();}catch(e){return netMsgSet('❌ '+e.message);}
+ NET.code=genCode();const pr=new Peer(NETPFX+NET.code,{debug:0});NET.peer=pr;nq('netJoinBox').style.display='none';
+ pr.on('open',()=>netMsgSet(`Room code<div id="netCodeShow" style="font-size:2.4em;font-weight:900;letter-spacing:.25em;color:#6f9;margin:4px 0">${NET.code}</div>${NET.mode==='coop'?'🤝 CO-OP (same team vs bots)':'⚔ VERSUS (opposite teams)'}<br><span style="opacity:.7">Friend: open this same page → 🌐 ONLINE → enter code → JOIN</span><br>⏳ Waiting for friend…`));
+ pr.on('error',e=>{if(e.type==='unavailable-id'){netHost();return;}if(!NET.conn)netMsgSet('❌ Broker error: '+e.type);});
+ pr.on('connection',c=>{if(NET.conn){c.on('open',()=>{c.send({t:'full'});setTimeout(()=>c.close(),300);});return;}NET.conn=c;NET.role='host';netWire(c);c.on('open',()=>{NET.last=performance.now();netSend({t:'lobby',mode:NET.mode});});});}
+async function netJoin(code){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==5)return netMsgSet('Enter the 5-character room code.');netClose();
+ try{netMsgSet('Connecting…');await netLib();}catch(e){return netMsgSet('❌ '+e.message);}
+ const pr=new Peer({debug:0});NET.peer=pr;NET.code=code;nq('netHostBox').style.display='none';
+ const to=setTimeout(()=>{if(!NET.conn||!NET.conn.open){netMsgSet('❌ Could not connect. Check the code; a strict firewall/NAT may block peer-to-peer.');netClose(true);}},15000);
+ pr.on('open',()=>{const c=pr.connect(NETPFX+code,{reliable:true,serialization:'json'});NET.conn=c;NET.role='client';netWire(c);
+  c.on('open',()=>{clearTimeout(to);NET.last=performance.now();netMsgSet('✅ Connected to room <b>'+code+'</b> — waiting for host…');netSend({t:'hello',mech:loadout.mech,slots:slotsOf(loadout.mech),paint:paintOf(loadout.mech),name:(curProf()||{}).name||'Pilot'});});});
+ pr.on('error',e=>{clearTimeout(to);netMsgSet(e.type==='peer-unavailable'?'❌ Room <b>'+code+'</b> not found. Check the code with the host.':'❌ Connection error: '+e.type);netClose(true);});}
+function netWire(c){c.on('data',netOnMsg);c.on('close',()=>netLost('Your partner disconnected.'));c.on('error',()=>netLost('Connection error.'));}
+function netClose(keepPanel){const p=NET.peer,c=NET.conn;try{if(c&&c.open)c.send({t:'bye'});}catch(e){}NET.conn=null;NET.peer=null;NET.role=null;NET.R=null;NET.inp=null;NET.units=[];NET.ev=[];netS.style.display='none';setTimeout(()=>{try{c&&c.close();}catch(e){}try{p&&p.destroy();}catch(e){}},150);if(_mr){Math.random=_mr;_mr=null;}}
+function netLost(why){if(!NET.role)return;const inMatch=mode==='play';netClose();if(inMatch){goMenu();}toast(why);if(inMatch||netP.style.display==='flex')netOpen('⚠ '+why);}
+// --- messages ---
+function netOnMsg(m){NET.last=performance.now();if(!m||!m.t)return;
+ if(m.t==='bye'){netLost(mode==='play'?'Your partner left the match.':'Your partner left.');return;}if(m.t==='p'){netSend({t:'q',ts:m.ts});return;}if(m.t==='q'){NET.ping=Math.round(performance.now()-m.ts);return;}
+ if(NET.role==='host'){
+  if(m.t==='hello'){NET.hi=m;netMsgSet(`✅ <b>${String(m.name).replace(/[<>&]/g,'')}</b> joined with ${CFG.mechs[m.mech]?CFG.mechs[m.mech].name:'?'} — starting…`);setTimeout(netStartHost,900);}
+  else if(m.t==='i')NET.inp=m;else if(m.t==='ab'){if(NET.R)ability(NET.R);}
+ }else{
+  if(m.t==='lobby'){NET.mode=m.mode;netMsgSet(`✅ Joined room <b>${NET.code}</b> · ${m.mode==='coop'?'🤝 CO-OP':'⚔ VERSUS'} — starting…`);}
+  else if(m.t==='full'){netMsgSet('❌ That room already has 2 players.');}
+  else if(m.t==='start')netStartClient(m);else if(m.t==='s')netSnap(m);
+  else if(m.t==='end'){if(mode==='play')end(NET.mode==='vs'?!m.win:m.win,m.why);}
+ }}
+function netStartHost(){const hi=NET.hi;if(!hi||!NET.conn)return;if(!CFG.mechs[hi.mech])hi.mech=Object.keys(CFG.mechs)[0];NET.seed=(Math.random()*1e9)|0;settings.mode='team';netHide();NET.keep=true;newGame();NET.keep=false;}
+function netSetup(){const hi=NET.hi,tm=NET.mode==='coop'?'b':'r';const bots=U.filter(u=>u!==P&&u.team===tm&&!u.isDome);const old=bots[bots.length-1];const idx=U.indexOf(old);
+ let slots=hi.slots;try{if(!Array.isArray(slots)||slots.length!==CFG.slots[hi.mech].length||slots.some(k=>!CFG.weapons[k]))slots=aiSlots(hi.mech);}catch(e){slots=aiSlots(hi.mech);}
+ const R=makeUnit(tm,hi.mech,slots,null);try{applyPaint(R,hi.paint||'default');}catch(e){}spawn(R,old.g.position.x,old.g.position.z,old.yaw);U.pop();S.remove(old.g);U[idx]=R;makePlate(R,tm==='b');R.remote=true;R.netName=hi.name;NET.R=R;
+ NET.units=U.filter(u=>!u.isDome);NET.units.forEach((u,i)=>u.nid=i);NET.my=-1;
+ netSend({t:'start',map:lastMap,seed:NET.seed,mode:NET.mode,you:R.nid,host:P.nid,hostName:(curProf()||{}).name||'Host',units:NET.units.map(u=>({team:u.team,type:u.type,slots:u.ws.map(w=>w.k),max:Math.round(u.max),p:[+u.g.position.x.toFixed(2),+u.g.position.z.toFixed(2),+u.yaw.toFixed(3)],paint:u===P?paintOf(loadout.mech):null}))});
+ netS.style.display='block';}
+function netStartClient(m){netHide();NET.keep=true;clearWorld();NET.keep=false;NET.mode=m.mode;NET.seed=m.seed;settings.mode='team';lastMap=m.map;netRand(1,0);loadMap(m.map,m.seed);netRand(0);clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;try{chStart();}catch(e){}
+ const sw=m.mode==='vs',tm=t=>sw?(t==='b'?'r':'b'):t;NET.my=m.you;
+ NET.units=m.units.map((d,i)=>{const me=i===m.you;const u=makeUnit(tm(d.team),d.type,d.slots,null);if(me)applyPaint(u,paintOf(loadout.mech));else if(d.paint){try{applyPaint(u,d.paint);}catch(e){}}spawn(u,d.p[0],d.p[1],d.p[2]);u.nid=i;if(!me){u.max=d.max;u.hp=d.max;makePlate(u,u.team==='b');}if(i===m.host)u.netName=m.hostName;return u;});
+ P=NET.units[m.you];P.isPlayer=true;P.pitch=.05;camYaw=P.yaw;
+ clearSpawns();netRand(1,1);buildEnvDetail();netRand(0);showBases(false);mode='play';showUI();mapBanner();drawMiniBase();try{lockAim();}catch(e){}netS.style.display='block';}
+const _nv=new THREE.Vector3(),_na=new THREE.Vector3();
+function netSnap(m){const us=NET.units;m.u.forEach((d,i)=>{const u=us[i];if(!u)return;
+ if(i===NET.my){u.hp=Math.min(u.max,d[6]*u.max/Math.max(1,d[12]||u.max));if(!d[7]&&u.alive)killUnit(u,null);return;}
+ u.net=d;u.hp=d[6];if(u.plate)updPlate(u);u.shieldOn=!!d[8];u.cloakT=d[9];if(!d[7]&&u.alive)killUnit(u,null);});
+ for(const e of m.e||[]){if(e[0]===NET.my)continue;const u=us[e[0]];if(!u||!u.alive)continue;const w=u.ws[e[1]];if(!w)continue;w.fireCd=0;w.reload=0;w.ammo=Math.max(w.ammo,1);w.chg=0;_na.set(e[2],e[3],e[4]);aimGuns(u,_na,1);try{fireWeapon0(u,w,_na.clone(),e[5]>=0?us[e[5]]:null);}catch(er){}}}
+const aDiff=(a,b)=>{let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d;};
+function netInterp(u,dt){const d=u.net;if(!d)return;const k=1-Math.exp(-12*dt);_nv.set(d[0],d[1],d[2]);const p=u.g.position;
+ u.vel.set((_nv.x-p.x)*k/Math.max(dt,1e-3),0,(_nv.z-p.z)*k/Math.max(dt,1e-3));p.lerp(_nv,k);u.yaw+=aDiff(u.yaw,d[3])*k;u.legYaw+=aDiff(u.legYaw,d[4])*k;u.tYaw+=aDiff(u.tYaw,d[11])*k;u.pitch+=(d[5]-u.pitch)*k;u.air=d[1]>.3;
+ if(d[10]!=null){_na.set(d[13],d[14],d[15]);aimGuns(u,_na,dt);}}
+function netRemote(u,dt){const I=NET.inp;if(!I)return;const k=1-Math.exp(-15*dt);_nv.set(I.p[0],I.p[1],I.p[2]);u.g.position.lerp(_nv,k);u.vel.set(I.v[0],I.v[1],I.v[2]);
+ u.yaw=I.yaw;u.tYaw=I.ty;u.legYaw=I.ly;u.pitch=I.pi;const AP=_na.set(I.a[0],I.a[1],I.a[2]);aimGuns(u,AP,dt);u.netAim=I.a;
+ for(const w of u.ws){const W=w.W,on=w.s<0?I.fL:I.fR;if(W.spin)w.spin=on&&!w.reload?Math.min(1,w.spin+dt/W.spin):Math.max(0,w.spin-dt);
+  if(on&&w.fireCd<=0&&w.ammo>0&&!w.reload&&(!W.spin||w.spin>.3)){aimGuns(u,AP,1);fireWeapon(u,w,AP.clone(),I.lk>=0?NET.units[I.lk]:null);}}}
+function netFire(u,w,a,h){if(u.nid==null||!a||NET.ev.length>80)return;NET.ev.push([u.nid,u.ws.indexOf(w),+a.x.toFixed(2),+a.y.toFixed(2),+a.z.toFixed(2),h&&h.nid!=null?h.nid:-1]);}
+const r2=v=>Math.round(v*100)/100;
+function netTick(dt,AP){if(!NET.role||!NET.conn)return;const now=performance.now();
+ if(now-NET.pT>1000){NET.pT=now;netSend({t:'p',ts:now});}
+ 
+ if(NET.role==='host'){if(now-NET.sT>=66){NET.sT=now;netSend({t:'s',u:NET.units.map(u=>{const p=u.g.position,a=u===P?(AP||p):(u.netAim?{x:u.netAim[0],y:u.netAim[1],z:u.netAim[2]}:(u.tgt&&u.tgt.g?u.tgt.g.position:null));return [r2(p.x),r2(p.y),r2(p.z),r2(u.yaw),r2(u.legYaw||0),r2(u.pitch||0),Math.round(u.hp),u.alive?1:0,u.shieldOn?1:0,r2(u.cloakT||0),a?1:null,r2(u.tYaw||0),Math.round(u.max),a?r2(a.x):0,a?r2(a.y+(a===p||u.tgt&&a===u.tgt.g.position?3:0)):0,a?r2(a.z):0];}),e:NET.ev});NET.ev=[];}}
+ else if(now-NET.iT>=50&&P){NET.iT=now;const p=P.g.position,a=AP||p;netSend({t:'i',p:[r2(p.x),r2(p.y),r2(p.z)],v:[r2(P.vel.x),r2(P.vel.y||0),r2(P.vel.z)],yaw:r2(P.yaw),ty:r2(P.tYaw||0),ly:r2(P.legYaw||0),pi:r2(P.pitch||0),a:[r2(a.x),r2(a.y),r2(a.z)],fL:P.alive&&!!NET.fL,fR:P.alive&&!!NET.fR,lk:P.lockTgt&&P.lockTgt.nid!=null&&P.lockT>=(P.W.lockTime||9)?P.lockTgt.nid:-1});}
+ if((NET.stT=(NET.stT||0)+dt)>.25){NET.stT=0;const pn=NET.role==='host'?(NET.R&&NET.R.netName):'';netS.textContent=`🟢 ONLINE ${NET.mode==='coop'?'CO-OP':'VERSUS'} · ${NET.role==='host'?'HOST':'GUEST'} · room ${NET.code} · ping ${NET.ping} ms`;netS.style.color=NET.ping>200?'#fd4':'#8f8';}}
+window.__net={fire:b=>{inp.fire=b;},face:u=>{const d=u.g.position.clone().sub(P.g.position);P.yaw=P.tYaw=Math.atan2(d.x,d.z);camYaw=P.yaw;},open:netOpen,host:netHost,join:netJoin,close:netClose,get NET(){return NET;}};
+setInterval(()=>{if(NET.role&&NET.conn&&NET.conn.open&&NET.last&&performance.now()-NET.last>8000)netLost('Connection lost (no data for 8 s).');if(NET.role&&NET.conn&&NET.conn.open&&mode!=='play'&&performance.now()-NET.pT>1000){NET.pT=performance.now();netSend({t:'p',ts:NET.pT});}},1000);
+addEventListener('pagehide',()=>{try{if(NET.conn&&NET.conn.open)NET.conn.send({t:'bye'});}catch(e){}});
 // ---------- loop ----------
 const fwd=new THREE.Vector3(),rt=new THREE.Vector3();
 function outcome(){const md=settings.mode,b=mates('b').length,r=mates('r').length;
  if(md==='base'){if(BASES.r.prog>=1)return[true,'Enemy base captured'];if(BASES.b.prog>=1)return[false,'Your base was captured'];}
  if(!r)return[true,md==='duel'?'Opponent destroyed':'All enemies destroyed'];if(!b)return[false,md==='duel'?'You were destroyed':'Your team was destroyed'];return null;}
-function end(win,why){mode='over';PAUSED=false;ambStop();sfx(win?'win':'lose');setTimeout(()=>sfx('coins',{n:win?8:4}),900);showUI();const md=settings.mode;$('mt').textContent=win?'VICTORY':'DEFEAT';$('mt').style.color=win?'#6f9':'#f66';
+function end(win,why){if(NET.role==='host')netSend({t:'end',win,why});mode='over';PAUSED=false;ambStop();sfx(win?'win':'lose');setTimeout(()=>sfx('coins',{n:win?8:4}),900);showUI();const md=settings.mode;$('mt').textContent=win?'VICTORY':'DEFEAT';$('mt').style.color=win?'#6f9':'#f66';
  $('mm').textContent=`${CFG.modes[md].name} ${CFG.modes[md].sub}${md==='duel'?' · '+CFG.diff[settings.diff].name:''}`;$('ml').textContent=why;
  $('mk').textContent=`Kills: ${STATS.kills}  ·  Team kills: ${U.filter(u=>u.team==='b').reduce((a,u)=>a+u.kills,0)}  ·  Accuracy: ${STATS.shots?Math.round(STATS.hits/STATS.shots*100):0}%`;
  document.exitPointerLock&&document.exitPointerLock();inp.fire=false;inp.mFire=false;
@@ -1725,7 +1819,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/
  fpsT+=dt;fpsN++;if(fpsT>=.5){fps=fpsN/fpsT;fpsT=fpsN=0;autoTick(.5);if(mode==='play'&&settings.gfx==='high'&&settings.gfxSel!=='auto'&&!window.__noAuto){lowT=fps<CFG.gfx.autoFallbackFps?lowT+.5:0;if(lowT>=CFG.gfx.autoWindow){setGfx('low');toast('Low fps: graphics switched to LOW');}}}
  if(mode==='play'&&!PAUSED)update(dt);else if(mode==='menu')menuTick(dt);else if(mode==='over'){for(const u of U){animMech(u,dt);}}
  updFx(dt);pfxUpd(dt);updAmb(dt);if(mode!=='menu')cam(dt);skyDome.position.copy(C.position);if(mode==='play'&&!PAUSED)drawMini();R.render(S,C);}
-function update(dt){clock+=dt;const k=inp.keys;
+let AP0=null;function update(dt){clock+=dt;const k=inp.keys;
  if(P.alive){let mx=inp.mx+((k.KeyD?1:0)-(k.KeyA?1:0)),mz=inp.mz+((k.KeyS?1:0)-(k.KeyW?1:0));
   if(k.ArrowLeft)P.yaw+=2*dt;if(k.ArrowRight)P.yaw-=2*dt;
   fwd.set(Math.sin(P.yaw),0,Math.cos(P.yaw));rt.set(-fwd.z,0,fwd.x);tickUnit(P,dt);tuneTick();
@@ -1733,12 +1827,12 @@ function update(dt){clock+=dt;const k=inp.keys;
   torso(P,P.yaw,dt,CFG.move.torsoK,CFG.move.torsoC);
   // FIRE = all mounts; L / R buttons (or 1 / 2 keys) fire one side's group. Each mount has its own cadence, ammo and reload.
   const fa=inp.fire||inp.mFire||k.KeyF,fL=fa||inp.fireL||k.Digit1||k.KeyQ,fR=fa||inp.fireR||k.Digit2||k.KeyC;
-  updateLock(dt);cam(0);const AP=playerAim();aimGuns(P,AP,dt);let snapped=false;
+  updateLock(dt);cam(0);const AP=playerAim();AP0=AP;NET.fL=fL;NET.fR=fR;aimGuns(P,AP,dt);let snapped=false;
   for(const w of P.ws){const W=w.W,on=w.s<0?fL:fR;if(W.spin)w.spin=on&&!w.reload?Math.min(1,w.spin+dt/W.spin):Math.max(0,w.spin-dt);
    if(on&&w.fireCd<=0&&w.ammo>0&&!w.reload&&(!W.spin||w.spin>.3)){if(!snapped){aimGuns(P,AP,1);snapped=true;}const locked=W.homing&&P.lockTgt&&P.lockT>=W.lockTime;fireWeapon(P,w,AP,locked?P.lockTgt:null);}}}
  else{P.vel.set(0,0,0);lockEl.style.display='none';}
- for(const u of U)if(u!==P&&u.alive){tickUnit(u,dt);if(!TF('aiOff'))aiTick(u,dt);}
- sepUnits();envTick(dt);
+ const NC=NET.role==='client';for(const u of U)if(u!==P&&u.alive){if(NC){if(!u.isDome)netInterp(u,dt);continue;}tickUnit(u,dt);if(u.remote)netRemote(u,dt);else if(!TF('aiOff'))aiTick(u,dt);}
+ if(!NC)sepUnits();envTick(dt);
  for(const u of U){if(!u.alive)u.vel.set(0,0,0);animMech(u,dt);pulseTick(u,dt);}
  tickBeams(dt);
  // projectiles (friendly fire off: sweeps/splash only test the shooter's foes)
@@ -1756,8 +1850,8 @@ function update(dt){clock+=dt;const k=inp.keys;
  tickFields(dt);
  if(settings.mode==='base')tickBases(dt);
  if(!P.alive&&(!SPEC||!SPEC.alive))SPEC=mates('b')[0]||SPEC;
- if(endT<0){const o=outcome();if(o){result=o;endT=clock+1.6;}}else if(clock>=endT){end(result[0],result[1]);return;}
- sndWatch(dt);hud();}
+ if(NC){}else if(endT<0){const o=outcome();if(o){result=o;endT=clock+1.6;}}else if(clock>=endT){end(result[0],result[1]);return;}
+ netTick(dt,AP0);sndWatch(dt);hud();}
 // lock-on: enemy nearest the crosshair, within cone, range and line of sight
 const lockEl=$('lock'),scr=new THREE.Vector3();
 function updateLock(dt){const hw=P.ws.find(w=>w.W.homing),W=hw?hw.W:P.W;if(!W.homing){lockEl.style.display='none';return;}
@@ -1890,7 +1984,7 @@ function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';co
  if(menuStep==='title'&&!curProf().name)menuStep='name';
  if(menuStep==='name')h=nameScreen();else if(menuStep==='pilot')h=pilotScreen();else if(menuStep==='chal')h=chalScreen();
  else if(menuStep==='title'){h=`<h1>MECH ARENA</h1><div class="wb">Welcome back, <b>${curProf().name}</b>${testTag(curProf())}${SAVE.title?` <span class="ttl">🎖 ${SAVE.title}</span>`:''} <button data-go="pilot" class="sw2">👤 PILOT · SWITCH</button></div>${coinTag()}<p class="sub">Win matches to earn coins. Upgrade and unlock gear in the Garage.</p>
-  <button class="big" data-go="mode">PLAY</button><button class="big alt" data-go="deploy">QUICK DEPLOY<br><small>${md.name}${settings.mode==='duel'?' ('+CFG.diff[settings.diff].name+')':''} · ${settings.map==='random'?'Random map':MAPS[settings.map].name} · ${Ms[loadout.mech].name} · ${slotsOf(loadout.mech).map(k=>Ws[k].name).join(' + ')}</small></button>
+  <button class="big" data-go="mode">PLAY</button><button class="big alt" onclick="__net.open()" style="background:linear-gradient(#1b6,#085)">🌐 ONLINE 2-PLAYER<br><small>Co-op or Versus with a friend · room code</small></button><button class="big alt" data-go="deploy">QUICK DEPLOY<br><small>${md.name}${settings.mode==='duel'?' ('+CFG.diff[settings.diff].name+')':''} · ${settings.map==='random'?'Random map':MAPS[settings.map].name} · ${Ms[loadout.mech].name} · ${slotsOf(loadout.mech).map(k=>Ws[k].name).join(' + ')}</small></button>
   <div class="trow"><button class="big gar" data-go="garage">🔧 GARAGE</button><button class="big gar chb" data-go="chal">🏅 CHALLENGES${chClaimable()?`<i class="badge">${chClaimable()}</i>`:''}</button></div>${tuneTitleBtns()}${gq}`;}
  else if(menuStep==='garage')h=garage();
  else if(menuStep==='mode'){h=`<h2>1 · SELECT MODE</h2><div class="cards">`+Object.entries(Md).map(([k,m])=>`<div class="card ${k===settings.mode?'sel':''}" data-mode="${k}"><div class="md">${m.sub}</div><b>${m.name}</b></div>`).join('')+`</div>
@@ -1907,7 +2001,7 @@ function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';co
   const w=upWpn(pickSel);h+=`<div class="det"><h3>${w.name} ${pickSel===cur[slotSel]?'<small>— equipped</small>':''}</h3>${wStats(w)}<p>${w.desc}</p>${buyBox(pickSel)}</div>
   <div class="row"><button data-go="mech">◀ BACK</button><button class="go" data-go="deploy" ${cur.some(isLocked)?'disabled':''}>DEPLOY</button></div>`;}
  mc.className=menuStep==='weapon'?'lo':'';mc.innerHTML=h;/*v13 sticky menu bar*/}
-function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();}
+function goMenu(){if(NET.role&&!NET.keep)netClose();clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();}
 function deskPanel(at,af,ac){const pct=v=>Math.max(0,Math.min(100,v*100)).toFixed(0)+'%';
  const rows=P.ws.map(w=>{const W=w.W;let st,f,col='#ff6';
   if(W.emp&&w.chg){f=Math.min(1,(clock-w.chg)/W.charge);st='DISCHARGING…';col='#8cf';}
@@ -2005,7 +2099,7 @@ function closeOvl(){OV.style.display='none';ovBack=null;}
 $('oBack').onclick=()=>{sfx('click');const b=ovBack;closeOvl();b&&b();};
 function tuneTitleBtns(){return `<div class="trow"><button class="gar" data-snd="1">🔊 SOUND</button>${isTest()?'<button class="gar tunb" data-tune="1">🛠 TUNING</button>':''}</div>`;}
 // pause (everyone): resume / sound / tuning (test only) / restart / quit
-function openPause(){if(mode!=='play')return;PAUSED=true;inp.fire=inp.mFire=false;inp.mx=inp.mz=0;
+function openPause(){if(mode!=='play')return;PAUSED=!NET.role;inp.fire=inp.mFire=false;inp.mx=inp.mz=0;
  openOvl('PAUSED',`<div class="pz"><button class="big" data-pz="resume">▶ RESUME</button><button data-pz="snd">🔊 SOUND</button>${isTest()?'<button class="tunb" data-pz="tune">🛠 TUNING</button><button data-pz="restart">↻ RESTART WITH TUNING</button>':''}<button data-pz="quit">⏏ QUIT TO MENU</button></div>`,resumeGame);}
 function resumeGame(){closeOvl();PAUSED=false;last=performance.now();}
 // ---------- sound settings ----------
