@@ -1,4 +1,4 @@
-/*v32 EMP charge range + pulse charge indicator*/
+/*v33 full-charge chain + % charge + gfx polish*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -94,34 +94,34 @@ const VAR={minigun:{S:['Light SMG','Compact rapid-fire SMG. Light and quick to r
  shotgun:{S:['Scatter Pistol','Short-range sidearm shotgun.'],L:['Heavy Scattergun','Massive close-range blast.']}};
 CFG.weapons.laser={name:'Beam Laser',desc:'Continuous hitscan beam. Damage ticks while you hold fire; builds heat and locks out on overheat.',fam:'laser',size:'M',
  dmg:9,interval:0.1,range:62,mag:1,reload:3,spread:0,speed:999,hitscan:true,beam:true,heat:0.25,cool:0.4,color:0xff3050,kick:0.03,jolt:0.004,aiBurst:22};
-CFG.weapons.emp={name:'EMP Cannon',desc:'Tesla coil. CHARGE WEAPON: builds charge while ready (1.6 s to full) — damage ×1→×2 and range 45→60 m, holds at max, resets after each shot. Fires a CHAIN LIGHTNING bolt: hits the target, then arcs to up to 2 more enemies within 8 m (each jump deals 65% of the last). Every enemy it touches loses shields, jump, dash and regen and is slowed. Arcs need line of sight and can\'t find cloaked Wraiths.',fam:'emp',size:'M',
- dmg:60,interval:2.2,range:45,rMin:45,rMax:60,chT:1.6,chMax:2,mag:4,reload:4.5,spread:0,speed:999,hitscan:true,emp:true,charge:.7,stun:3,slow:.6,jumps:2,chainR:8,chainFall:.65,kick:.5,jolt:.05,aiBurst:1};
+CFG.weapons.emp={name:'EMP Cannon',desc:'Tesla coil. CHARGE WEAPON: builds charge while ready (1.6 s to full). Listed damage is at FULL charge (100%); no charge deals 40%, partial charge scales between. Range grows 45→60 m with charge. Holds at max, resets after each shot. Only a FULLY CHARGED shot unleashes CHAIN LIGHTNING: it arcs to up to 2 more enemies within 14 m, each taking half the damage of the previous one. Every enemy it touches loses shields, jump, dash and regen and is slowed. Arcs need line of sight and can\'t find cloaked Wraiths.',fam:'emp',size:'M',
+ dmg:120,interval:2.2,range:45,rMin:45,rMax:60,chT:1.6,chMin:.4,mag:4,reload:4.5,spread:0,speed:999,hitscan:true,emp:true,charge:.7,stun:3,slow:.6,jumps:2,chainR:14,chainFall:.5,kick:.5,jolt:.05,aiBurst:1};
 CFG.weapons.nanite={name:'Nanite Injector',desc:'Syringe launcher. Darts inject nanites that eat armor over time and feed a share back to you as repairs.',fam:'nanite',size:'M',
  dmg:10,interval:.35,range:50,mag:12,reload:3.2,spread:.012,speed:85,dot:60,dotT:3,leech:.35,kick:.12,jolt:.01,aiBurst:4};
 CFG.weapons.lockbolt={name:'Lockbolt',desc:'Magnetic tether launcher. Each bolt latches a glowing tether onto the target: while tethered it takes extra damage from ALL sources and is slowed. Tether snaps if it stretches too far.',fam:'lockbolt',size:'M',
  dmg:52,interval:.9,range:72,mag:5,reload:3.4,spread:.006,speed:130,tether:3.5,amp:.2,tslow:.25,kick:.35,jolt:.03,aiBurst:2};
 VAR.lockbolt={S:['Lockpick','Light tether pistol. Quick bolts, short tether.'],L:['Deadbolt','Heavy tether lance. Huge bolt, long tether, big damage amp.']};
-VAR.emp={S:['Arc Zapper','Small Tesla coil. Fast charge (1.2 s): ×2 dmg, 45→60 m. Short stun. Chains to 2 more enemies within 6.5 m (60% per jump).'],L:['Storm Coil','Huge Tesla tower. Slow charge (2 s): ×2 dmg, 45→60 m. Long stun. Chains to 3 more enemies within 9.5 m (70% per jump).']};
+VAR.emp={S:['Arc Zapper','Small Tesla coil. Fast charge (1.2 s), 45→60 m. Short stun. Full charge chains to 2 more enemies within 12 m (half damage per jump).'],L:['Storm Coil','Huge Tesla tower. Slow charge (2 s), 45→60 m. Long stun. Full charge chains to 3 more enemies within 16 m (half damage per jump).']};
 VAR.nanite={S:['Nanite Dart','Light syringe pistol. Fast darts, small dose.'],L:['Nanite Lance','Heavy syringe. Big dose, strong leech.']};
 VAR.laser={S:['Pulse Laser','Light beam sidearm. Low heat, quick cool-down.'],L:['Heavy Lance','Searing heavy beam. Huge damage and reach, runs hot.']};
 CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of small missiles that seek the enemy nearest your aim. Fired from altitude they dive in for bonus damage (up to +50% at 10 m up), which makes it the flyer weapon.',fam:'swarm',size:'M',
  dmg:20,interval:.16,range:75,mag:12,reload:3.8,spread:.05,speed:62,splash:1.8,seek:.9,turnRate:3.2,altBonus:.5,kick:.15,jolt:.01,aiBurst:6};
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
-CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: hold fire and each orb grows from 1× to 2.5× damage over 1.6 s, then holds at MAX (orb glows blue→white with sparks and a segmented charge meter, harder shove).',fam:'pulse',size:'M',
- dmg:46,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMax:2.5,kick:.4,jolt:.04,aiBurst:2};
+CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: listed damage is at FULL charge (100%); an uncharged orb deals 40% and it builds to 100% over 1.6 s, then holds at MAX (orb glows blue→white with sparks and a segmented charge meter, harder shove).',fam:'pulse',size:'M',
+ dmg:115,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMin:.4,kick:.4,jolt:.04,aiBurst:2};
 CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a chance to JAM the target: it forces weapons into a full reload (laser / heat weapons are forced into overheat). Medium jams 2 weapons per proc. Targets get a few seconds of jam resistance after it wears off.',fam:'jammer',size:'M',
  dmg:24,interval:.6,range:62,mag:8,reload:3.2,spread:.008,speed:120,jam:.5,jamN:2,jamMul:.8,kick:.2,jolt:.02,aiBurst:3};
 VAR.jammer={S:['Jam Pistol','Light scrambler. Fast shots, small chance to jam ONE weapon.'],L:['Blackout Array','Heavy scrambler dish. Slow, but most hits jam ALL of the target\'s weapons.']};
-VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges to 2.5× damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges to 2.5× damage in 2 s.']};
+VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges from 40% to 100% damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges from 40% to 100% damage in 2 s.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
  W.dmg=+(b.dmg*q.dmg).toFixed(1);W.interval=+(b.interval*q.int).toFixed(3);W.range=Math.round(b.range*q.range);W.reload=+(b.reload*q.reload).toFixed(2);W.mag=Math.max(2,Math.round(b.mag*q.mag));
  if(W.splash)W.splash=+(b.splash*(z==='L'?1.4:.75)).toFixed(1);if(W.spin)W.spin=b.spin*(z==='L'?1.6:.6);W.kick=b.kick*q.sc;W.jolt=b.jolt*q.dmg;if(W.beam){W.mag=1;W.interval=0.1;W.dmg=+(b.dmg*(z==='S'?.68:1.5)).toFixed(1);W.heat=z==='S'?.22:.3;W.cool=z==='S'?.5:.33;W.color=z==='S'?0xff60a0:0xff5020;W.aiBurst=z==='S'?26:18;}
- if(W.emp){const S_=z==='S';W.dmg=S_?40:110;W.interval=S_?1.8:2.6;W.range=45;W.rMin=45;W.rMax=60;W.chT=S_?1.2:2;W.chMax=2;W.mag=S_?4:3;W.reload=S_?4:5.2;W.charge=S_?.45:1;W.stun=S_?2:4;W.slow=S_?.7:.5;W.jumps=S_?2:3;W.chainR=S_?6.5:9.5;W.chainFall=S_?.6:.7;W.aiBurst=1;}
+ if(W.emp){const S_=z==='S';W.dmg=S_?80:220;W.interval=S_?1.8:2.6;W.range=45;W.rMin=45;W.rMax=60;W.chT=S_?1.2:2;W.chMin=.4;W.mag=S_?4:3;W.reload=S_?4:5.2;W.charge=S_?.45:1;W.stun=S_?2:4;W.slow=S_?.7:.5;W.jumps=S_?2:3;W.chainR=S_?12:16;W.chainFall=.5;W.aiBurst=1;}
  if(W.tether){const S_=z==='S';W.dmg=S_?30:95;W.interval=S_?.65:1.25;W.range=S_?60:88;W.mag=S_?6:4;W.reload=S_?2.8:4.2;W.tether=S_?2.5:4.5;W.amp=S_?.15:.3;W.tslow=S_?.18:.35;W.speed=S_?140:120;W.aiBurst=S_?3:1;}
  if(W.dot!==undefined){const S_=z==='S';W.dmg=S_?6:16;W.interval=S_?.28:.45;W.range=S_?45:55;W.mag=S_?10:14;W.reload=S_?2.8:3.6;W.dot=S_?36:100;W.dotT=S_?2.5:3.5;W.leech=S_?.3:.4;W.speed=S_?95:75;W.aiBurst=S_?5:3;}
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
  if(W.jam){const S_=z==='S';W.jam=S_?.3:.75;W.jamN=S_?1:99;W.jamMul=S_?.55:1;W.dmg=S_?10:60;W.interval=S_?.32:1.2;W.mag=S_?12:4;W.speed=S_?135:105;W.aiBurst=S_?5:1;}
- if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMax=2.5;W.dmg=S_?26:82;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
+ if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMin=.4;W.dmg=S_?65:205;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
 {const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
@@ -322,7 +322,7 @@ function loadMap(key,seed){const m=MAPS[key];mapKey=key;MAP=m;A=Math.round(m.A*M
  for(const c of [...MAPG.children]){MAPG.remove(c);if(c.isInstancedMesh)c.dispose();}obst.length=0;obstMeshes.length=0;
  paintSky(m.sky);S.background.setHex(m.bg);S.fog.color.setHex(m.fog[0]);HEMI.color.setHex(m.hemi[0]);HEMI.groundColor.setHex(m.hemi[1]);HEMI.intensity=m.hemi[2];dl.color.setHex(m.sun[0]);dl.intensity=m.sun[1];
  if(groundMat.map)groundMat.map.dispose();groundMat.map=groundTex(m.ground);groundMat.map.repeat.set(m.rep,m.rep);groundMat.needsUpdate=true;ground.scale.set(A*2,A*2,1);
- m.build();expand(key,m.A);detail(key);flushBatch();
+ m.build();expand(key,m.A);detail(key);flushBatch();if(typeof gfx33Map==='function')gfx33Map(m);
  // non-batched collision shapes (rocks/domes/tanks/pillars) still need ray targets: map them to their instanced mesh by proximity is overkill; use invisible proxy boxes merged in one InstancedMesh
  const px=obst.filter(o=>!o.m);if(px.length){const im=new THREE.InstancedMesh(boxG,new THREE.MeshBasicMaterial({visible:false}),px.length);px.forEach((o,i)=>{_o.position.set(o.x,o.h/2,o.z);_o.rotation.set(0,0,0);_o.scale.set(o.hx*2,o.h,o.hz*2);_o.updateMatrix();im.setMatrixAt(i,_o.matrix);o.m=im;});im.computeBoundingSphere();MAPG.add(im);obstMeshes.push(im);}
  const bz=A-13;CFG.capture.bases={b:[0,bz],r:[0,-bz]};if(typeof BASES!=='undefined')for(const [t,[x,z]] of Object.entries(CFG.capture.bases)){const b=BASES[t];if(b){b.x=x;b.z=z;b.g.position.set(x,0,z);}}
@@ -790,7 +790,7 @@ function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clear
 // ---------- projectiles & effects ----------
 const PG={minigun:new THREE.BoxGeometry(.12,.12,1),railgun:new THREE.BoxGeometry(.18,.18,4),hornet:new THREE.BoxGeometry(.35,.35,1),shotgun:new THREE.BoxGeometry(.1,.1,.7)};
 const PM={minigun:new THREE.MeshBasicMaterial({color:0xffee66}),railgun:new THREE.MeshBasicMaterial({color:0x80e8ff}),hornet:new THREE.MeshBasicMaterial({color:0xffaa22}),shotgun:new THREE.MeshBasicMaterial({color:0xffcc88})};
-function shoot(from,dir,u,homing,W){W=W||u.W;if(W.seek&&!homing)homing=seekT(u,from,dir,W);const m=new THREE.Mesh(PG[W.fam],PM[W.fam]);m.scale.setScalar(SIZES[W.size].sc*(SHOTCM>1?1+(SHOTCM-1)*.08:1));m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
+function shoot(from,dir,u,homing,W){W=W||u.W;if(W.seek&&!homing)homing=seekT(u,from,dir,W);const m=new THREE.Mesh(PG[W.fam],PM[W.fam]);m.scale.setScalar(SIZES[W.size].sc*(W.chMin?1+.12*Math.max(0,(SHOTCM-W.chMin)/(1-W.chMin)):1));m.position.copy(from);m.lookAt(from.clone().add(dir));S.add(m);
  B.push({m,v:dir.clone().multiplyScalar(W.speed),owner:u.team,src:u,W,dist:0,dmg:W.dmg*(u.prof?u.prof.dmgMul:1)*(CFG.firepower[u.type]||1)*(W.altBonus?shotMul(u,W):1)*SHOTCM,cm:SHOTCM,homing});}
 PG.lockbolt=new THREE.OctahedronGeometry(.22,0).scale(1,1,3);PM.lockbolt=new THREE.MeshBasicMaterial({color:0xc090ff});
 PG.nanite=new THREE.CylinderGeometry(.06,.02,.7,5).rotateX(Math.PI/2);PM.nanite=new THREE.MeshBasicMaterial({color:0x50ff80});
@@ -815,7 +815,8 @@ function shake(a){shakeA=Math.min(1,shakeA+a);}
 function muzzle(u,i){u.flash[i].visible=true;u.flash[i].rotation.z=Math.random()*3;u.flashT=.05;const p=new THREE.Vector3();u.guns[i].updateMatrixWorld(true);return safeMuzzle(u,i,u.guns[i].localToWorld(p.set(0,u.guns[i].userData.my||0,u.guns[i].userData.mz||u.mz)));}
 let SHOTCM=1;
 function effR(w){const W=w.W;return W.rMax?W.rMin+(W.rMax-W.rMin)*Math.min(1,w.pc||0):W.range;}
-function pulseMul(w){return 1+((w.W.chMax||1)-1)*Math.min(1,w.pc||0);}
+function pulseMul(w){const m=w.W.chMin??1;return m+(1-m)*Math.min(1,w.pc||0);}
+function chgPct(w){return Math.round(pulseMul(w)*100);}
 function pulseTick(u,dt){for(const w of u.ws){if(!w.W.chT)continue;const rdy=!w.reload&&w.fireCd<=0&&w.ammo>0&&u.alive;if(!rdy){if(w.reload)w.pc=0;w.pcF=0;continue;}
  w.pc=Math.min(1,(w.pc||0)+dt/(w.W.chT||1.6));if(w.pc>=1&&!w.pcF){w.pcF=1;if(u===P){sfx('pulseFull',{u});const mp=muzzle(u,w.gi);fx(mp,w.W.emp?1:.9,w.W.emp?0x80e0ff:0xdff8ff,{grow:3,life:.35,op:.9});}}}}
 function fireWeapon(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(w.W.emp)return chargeEmp(u,w,aimPt);if(u===P)STATS.shots++;const W=w.W,pr=u.prof;w.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,w.spin):1);w.ammo--;
@@ -969,20 +970,28 @@ function tickBeams(dt){for(const u of U)if(u.beams)for(const b of u.beams){b.use
 function chargeEmp(u,w,aimPt){if(w.chg)return false;const W=w.W,pr=u.prof;w.chg=clock;w.aimPt=aimPt.clone();w.fireCd=W.charge+W.interval*(pr?pr.fireMul:1);sfx('charge',{u,d:W.charge});return true;}
 function zap(a,b,c,n){const pts=[a.clone()];const d=b.clone().sub(a);for(let i=1;i<n;i++){const q=a.clone().addScaledVector(d,i/n);q.x+=Rn(-.6,.6);q.y+=Rn(-.6,.6);q.z+=Rn(-.6,.6);pts.push(q);}pts.push(b.clone());for(let i=0;i<pts.length-1;i++)bolt(pts[i],pts[i+1],c);}
 function empHit(t,W,src){if(t.isDome){const h=t.host;domeHurt(t,W.dmg*1.5+h.T.dome.empDrain,null,src);t=h;if(!t.alive)return;}if(t.domeOn)domeDrop(t,false);if(src===P)chEv('emps',1);t.empT=Math.max(t.empT||0,W.stun);t.empSlow=W.slow;if(t.shieldOn)dropShield(t);t.dashT=0;if(t===P){shake(.25);toast&&toast('⚡ EMP — systems offline');}}
-function empShot(u,w,aimPt){HITF='emp';if(u!==P)window.__empN=(window.__empN||0)+1;const W=w.W,pr=u.prof;if(u===P)STATS.shots++;w.ammo--;if(w.ammo<=0)w.reload=W.reload;const cm=pulseMul(w),R=effR(w);w.pc=0;w.pcF=0;w.lastCm=cm;w.lastR=R;
+function empShot(u,w,aimPt){HITF='emp';if(u!==P)window.__empN=(window.__empN||0)+1;const W=w.W,pr=u.prof;if(u===P)STATS.shots++;w.ammo--;if(w.ammo<=0)w.reload=W.reload;const cm=pulseMul(w),R=effR(w),full=(w.pc||0)>=1;w.pc=0;w.pcF=0;w.lastCm=cm;w.lastR=R;
  const f=muzzle(u,w.gi);const d=aimPt.clone().sub(f).normalize();const sw=sweep(f,d,R,u.team);const L=sw?sw.t:R;const e=f.clone().addScaledVector(d,L);
  zap(f,e,0x80e0ff,Math.max(4,L/4|0));if(!gfxLow())zap(f,e,0xffffff,Math.max(3,L/6|0));fx(e,2.4,0x80e0ff,{grow:2,life:.35,op:.8});sparks(e,0x80e0ff);sparks(e,0xffffff);flashLight(e,3);
  u.kick[w.gi]=Math.min(1,u.kick[w.gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);if(u===P)shake(.08);sfx('shot',{u,fam:W.fam,size:W.size,gi:w.gi});
  const dm=W.dmg*(pr?pr.dmgMul:1)*(CFG.firepower[u.type]||1)*cm;
- if(sw&&sw.u){hurt(sw.u,dm,e,u);empHit(sw.u,W,u);if(u===P){STATS.hits++;hitMarkT=.18;}chainArc(u,W,sw.u.isDome?sw.u.host:sw.u,dm);}}
+ if(sw&&sw.u){hurt(sw.u,dm,e,u);empHit(sw.u,W,u);if(u===P){STATS.hits++;hitMarkT=.18;}if(full)chainArc(u,W,sw.u.isDome?sw.u.host:sw.u,dm);else if(window.__chainDbg)window.__chainDbg.notFull++;}}
 const _ca=new THREE.Vector3(),_cb=new THREE.Vector3();
-function chainArc(u,W,t0,dm){if(!t0||!t0.g)return 0;const hit=new Set([t0]);let cur=t0,m=1,n=0;
- for(let j=0;j<(W.jumps||0);j++){_ca.copy(cur.g.position);_ca.y+=2.5;let best=null,bd=W.chainR||0;
-  for(const t of foes(u.team)){if(!t.alive||t.isDome||hit.has(t)||cloakHid(t,null))continue;const d=t.g.position.distanceTo(cur.g.position);if(d>bd)continue;_cb.copy(t.g.position);_cb.y+=2.5;if(!los(_ca,_cb))continue;bd=d;best=t;}
-  if(!best)break;m*=W.chainFall||.65;_cb.copy(best.g.position);_cb.y+=2.5;zap(_ca.clone(),_cb.clone(),0x80e0ff,Math.max(3,bd/2|0));if(!gfxLow())zap(_ca.clone(),_cb.clone(),0xffffff,3);sparks(_cb.clone(),0x80e0ff);
-  if(!domeSafe(best,_ca,u.team)){hurt(best,dm*m,_cb.clone(),u);empHit(best,Object.assign({},W,{stun:W.stun*m,dmg:W.dmg*m}),u);}
+function chainArc(u,W,t0,dm){if(!t0||!t0.g)return 0;const hit=new Set([t0]);let cur=t0,m=1,n=0;const D=window.__chainDbg;if(D)D.full++;
+ for(let j=0;j<(W.jumps||0);j++){_ca.copy(cur.g.position);_ca.y+=3;let best=null,bd=W.chainR||0;
+  for(const t of foes(u.team)){if(!t.alive||t.isDome||hit.has(t)||cloakHid(t,null))continue;const d=t.g.position.distanceTo(cur.g.position);if(d>bd)continue;_cb.copy(t.g.position);_cb.y+=3;
+   if(!los(_ca,_cb)){_ca.y+=3;_cb.y+=3;const ok=los(_ca,_cb);_ca.y-=3;_cb.y-=3;if(!ok){if(D)D.los++;continue;}}bd=d;best=t;}
+  if(!best)break;m*=W.chainFall||.5;_cb.copy(best.g.position);_cb.y+=3;chainBolt(_ca,_cb);
+  if(!domeSafe(best,_ca,u.team)){hurt(best,dm*m,_cb.clone(),u);empHit(best,Object.assign({},W,{stun:W.stun*Math.max(.5,m),dmg:W.dmg*m}),u);}
   hit.add(best);cur=best;n++;}
-window.__chainN=(window.__chainN||0)+n;return n;}
+ if(D)D.jumps+=n;window.__chainN=(window.__chainN||0)+n;return n;}
+// v33: bright, thick, long-lived chain bolts (bypass the shared tracer cap) + crackle sound + flash
+const CHB=[];const chM1=new THREE.MeshBasicMaterial({color:0x7fe8ff,transparent:true,opacity:.95,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}),chM2=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending,fog:false});
+const chG=new THREE.BoxGeometry(1,1,1);
+function chainBolt(a,b){const lo=gfxLow(),L=a.distanceTo(b),n=Math.max(4,L/1.6|0);for(let s=0;s<(lo?1:2);s++){let p=a.clone();const d=b.clone().sub(a);for(let i=1;i<=n;i++){const q=i===n?b.clone():a.clone().addScaledVector(d,i/n);if(i<n){q.x+=Rn(-.9,.9);q.y+=Rn(-.9,.9);q.z+=Rn(-.9,.9);}
+  for(const [mat,w] of [[chM1,.32],[chM2,.12]]){const sg=new THREE.Mesh(chG,mat);sg.position.copy(p).add(q).multiplyScalar(.5);sg.lookAt(q);sg.scale.set(w,w,p.distanceTo(q)+.05);S.add(sg);CHB.push({s:sg,t:.45});}p=q;}}
+ fx(b.clone(),2.6,0x9ff4ff,{grow:2.5,life:.4,op:.9});fx(a.clone(),1.6,0xffffff,{grow:2,life:.25,op:.8});sparks(b.clone(),0xffffff);sparks(b.clone(),0x80e0ff);flashLight(b,5);sfx('chain',{p:b.clone()});}
+function updChain(dt){for(let i=CHB.length-1;i>=0;i--){const g=CHB[i];g.t-=dt;g.s.visible=g.t>.12||Math.random()<.6;if(g.t<=0){S.remove(g.s);CHB.splice(i,1);}}}
 function naniteHit(t,W,src,dmg){if(t.isDome)return;const fp=src&&src.prof?src.prof.dmgMul:1;const dps=W.dot*fp*(CFG.firepower[src.type]||1)/W.dotT;if(!t.dot||t.dot.dps<=dps)t.dot={dps,t:W.dotT,src,leech:W.leech};else t.dot.t=W.dotT;if(src&&src.alive){const h0=src.hp;src.hp=Math.min(src.max,src.hp+dmg*W.leech);if(src===P)chEv('heal',src.hp-h0);}}
 // ---------- v25: detail pass with a perf budget — static-mesh merging, quality levels + Auto, pooled particles, damage states, shockwaves, clouds, ground decals, steam vents ----------
 // ---- merge static leaf meshes per (parent, material) so detail costs geometry, not draw calls ----
@@ -1298,6 +1307,7 @@ function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===
  case'shHit':if(!gate('shh'+(u&&u._sid),.07))return;tone({f:rj(900),d:.12,v:.08*V,pan});nz({f:2600,q:3,d:.07,v:.12*V,pan});break;
  case'shBreak':nz({type:'highpass',f:2500,d:.5,v:.3*V,pan});tone({type:'triangle',f:900,f2:120,d:.45,v:.1*V,pan});break;
  case'lockdown':tone({f:130,f2:55,a:.05,d:1.1,v:.25*V,pan});tone({type:'square',f:440,f2:880,d:.35,v:.05*V,lp:1800,pan});break;
+ case'chain':tone({type:'sawtooth',f:2200,f2:300,a:.005,d:.22,v:.11*V,lp:5000,pan});tone({type:'square',f:90,f2:60,a:.005,d:.25,v:.08*V,pan});tone({type:'sawtooth',f:3400,f2:900,a:.002,d:.08,v:.06*V,pan});break;
  case'pulseFull':tone({type:'triangle',f:520,f2:1560,a:.01,d:.18,v:.12*V,pan});tone({f:1560,d:.12,v:.06*V,pan});break;
  case'charge':tone({type:'sawtooth',f:200,f2:1400,a:.02,d:o.d||.4,v:.05*V,lp:3000,pan});break;
  case'stun':tone({type:'square',f:58,d:.7,v:.08,lp:600});nz({type:'highpass',f:4000,d:.4,v:.15});tone({type:'square',f:1800,f2:300,d:.3,v:.04});break;
@@ -1430,7 +1440,7 @@ function detail(key){AMB=[];const low=lowG(),k=low?.5:1;
  for(const b of BIRDS)S.remove(b.g);BIRDS=[];if(key!=='arctic'&&key!=='city'){const bm=new THREE.MeshBasicMaterial({color:0x222222,side:THREE.DoubleSide});for(let i=0;i<(low?2:6);i++){const g=new THREE.Group(),w1=new THREE.Mesh(boxG,bm),w2=new THREE.Mesh(boxG,bm);w1.scale.set(1,.05,.35);w2.scale.set(1,.05,.35);w1.position.x=.5;w2.position.x=-.5;g.add(w1,w2);S.add(g);BIRDS.push({g,w1,w2,r:R2(15,A*.8),h:R2(24,36),a:R2(0,6.3),s:R2(.15,.3)*(rnd()<.5?1:-1),ph:R2(0,6)});}}
 }
 const _av=new THREE.Vector3();
-function updAmb(dt){updSeg(dt);const low=lowG(),rate=low?.3:1,t=clock||performance.now()/1000;FLK.color.setHex(Math.random()<.06?0x403020:(Math.random()<.5?0xffe0a0:0xfff0c0));
+function updAmb(dt){updSeg(dt);updChain(dt);if(typeof gfx33Tick==='function')gfx33Tick(dt);const low=lowG(),rate=low?.3:1,t=clock||performance.now()/1000;FLK.color.setHex(Math.random()<.06?0x403020:(Math.random()<.5?0xffe0a0:0xfff0c0));
  if(BLINK)BLINK.color.setHex(((t*2)|0)%2?0xff2020:0x300000);
  for(const b of BIRDS){b.a+=b.s*dt;b.g.position.set(Math.cos(b.a)*b.r,b.h+Math.sin(t+b.ph)*1.5,Math.sin(b.a)*b.r);b.g.rotation.y=-b.a+(b.s>0?0:Math.PI);const f=Math.sin(t*9+b.ph)*.6;b.w1.rotation.z=f;b.w2.rotation.z=-f;}
  if(mode!=='play'||FX.length>CFG.fx.maxFx*.7)return;const cp=C.position;
@@ -1675,6 +1685,28 @@ function createTest(){const ex=Object.keys(PROFS.list).find(k=>PROFS.list[k].tes
 function resetTest(){const k=Object.keys(PROFS.list).find(k=>PROFS.list[k].test);if(!k)return null;const p=PROFS.list[k];p.save=freshSave();p.loadout=freshLoadout();p.stats=freshStats();useProf(k);return k;}
 const testTag=q=>q&&q.test?' <span class="ttag">🧪 TEST</span>':'';
 if(isTest()){testFill();persist();}
+// ===== v33 graphics polish: sun glare + HIGH-only vignette, ground scatter (pebbles + tufts), soft scorch decals. Tiered: LOW none, MED reduced, HIGH full =====
+function g33Tier(){return settings.gfx==='low'?0:settings.gfx==='high'?2:1;}
+function g33Tex(draw,w=128,h=128){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
+const glareT=g33Tex((g,w,h)=>{const gr=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);gr.addColorStop(0,'rgba(255,250,230,1)');gr.addColorStop(.12,'rgba(255,240,200,.7)');gr.addColorStop(.4,'rgba(255,220,160,.15)');gr.addColorStop(1,'rgba(255,200,150,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);});
+let glare=null,vig=null;
+function g33Clouds(m){const T=g33Tier();
+ if(!glare){glare=new THREE.Sprite(new THREE.SpriteMaterial({map:glareT,transparent:true,depthWrite:false,depthTest:true,fog:false,blending:THREE.AdditiveBlending,opacity:.75}));glare.scale.setScalar(70);S.add(glare);}
+ if(!vig){vig=document.createElement('div');vig.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(10,8,20,.38) 100%);mix-blend-mode:multiply';document.body.appendChild(vig);}vig.style.display=T===2?'block':'none';}
+function g33Scatter(m){const T=g33Tier();if(!T)return;const pal={desert:[0xb08a58,0x8a7a3a],arena:[0x6b6352,0x5a6a3a],city:[0x5a5650,0x4a5a3a],port:[0x505860,0x3c5040],arctic:[0xc8d4dc,0x9aa8b0],canyon:[0x8a5a3c,0x7a6a3a]}[mapKey]||[0x777060,0x5a6a3a];
+ const N=T===2?1400:600,pg=new THREE.DodecahedronGeometry(.22,0),tg=new THREE.ConeGeometry(.12,.55,4);tg.translate(0,.27,0);
+ const pm=new THREE.MeshStandardMaterial({color:pal[0],roughness:.95,flatShading:true}),tm=new THREE.MeshStandardMaterial({color:pal[1],roughness:1,flatShading:true});
+ const ip=new THREE.InstancedMesh(pg,pm,N),it=new THREE.InstancedMesh(tg,tm,mapKey==='arctic'?1:N>>1);const o=new THREE.Object3D(),col=new THREE.Color();let a=0,b=0;
+ for(let i=0;i<N*3&&(a<N||b<it.count);i++){const x=(Math.random()*2-1)*(A-2),z=(Math.random()*2-1)*(A-2);if(blocked(x,z,.6))continue;
+  if(a<N){o.position.set(x,.03,z);o.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);const s=.4+Math.random()*1.4;o.scale.set(s,s*.55,s);o.updateMatrix();ip.setMatrixAt(a,o.matrix);col.setHex(pal[0]).multiplyScalar(.75+Math.random()*.4);ip.setColorAt(a,col);a++;}
+  else if(b<it.count){for(let k=0;k<3&&b<it.count;k++){o.position.set(x+Math.random()*.6,0,z+Math.random()*.6);o.rotation.set((Math.random()-.5)*.5,Math.random()*3,(Math.random()-.5)*.5);const s=.7+Math.random()*.8;o.scale.set(s,s,s);o.updateMatrix();it.setMatrixAt(b,o.matrix);b++;}}}
+ ip.count=a;it.count=b;ip.receiveShadow=it.receiveShadow=true;ip.castShadow=T===2;ip.computeBoundingSphere();it.computeBoundingSphere();MAPG.add(ip);if(b)MAPG.add(it);}
+function gfx33Map(m){try{g33Clouds(m);g33Scatter(m);}catch(e){console.warn('gfx33',e);}}
+function gfx33Tick(dt){if(vig)vig.style.display=g33Tier()===2&&mode!=='menu'?'block':'none';
+ if(glare&&typeof sunM!=='undefined'){sunM.getWorldPosition(glare.position);glare.position.multiplyScalar(.9);glare.visible=g33Tier()>0;}}
+// soft radial scorch texture instead of a flat disc
+{const st=g33Tex((g,w,h)=>{const gr=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);gr.addColorStop(0,'rgba(10,8,6,.95)');gr.addColorStop(.45,'rgba(25,20,15,.7)');gr.addColorStop(.8,'rgba(40,30,20,.25)');gr.addColorStop(1,'rgba(40,30,20,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);for(let i=0;i<40;i++){g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.arc(w/2+(Math.random()-.5)*w*.8,h/2+(Math.random()-.5)*h*.8,2+Math.random()*5,0,7);g.fill();}});
+ scM.map=st;scM.color.setHex(0xffffff);scM.opacity=.85;scM.polygonOffset=true;scM.polygonOffsetFactor=-2;scM.needsUpdate=true;}
 // ---------- loop ----------
 const fwd=new THREE.Vector3(),rt=new THREE.Vector3();
 function outcome(){const md=settings.mode,b=mates('b').length,r=mates('r').length;
@@ -1719,7 +1751,7 @@ function update(dt){clock+=dt;const k=inp.keys;
   let mult=1;if(W.falloff&&b.dist>W.range*W.falloff)mult=1-.5*(b.dist-W.range*W.falloff)/(W.range*(1-W.falloff));
   if(hit||b.dist>=W.range){const pos=p.clone();
    HITF=W.fam;if(W.splash){boom(pos,hit?3:1.5,0xff7700);flashLight(pos,2);if(hitU)hurt(hitU,b.dmg,pos,b.src);for(const u of foes(b.owner)){if(u===hitU)continue;const dd=u.g.position.clone().setY(u.g.position.y+2.5).distanceTo(pos);if(dd<W.splash&&!domeSafe(u,pos,b.owner))hurt(u,b.dmg*.5*(1-dd/W.splash),pos,b.src);}}
-   else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult)*(hitU.isDome&&b.cm>1.5?1.5/b.cm:1),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push*(1+((b.cm||1)-1)*.5));if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6*(1+((b.cm||1)-1)*.25),0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
+   else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult)*(hitU.isDome&&b.cm>.6?.6/b.cm:1),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push*(.6+.8*(b.cm||1)));if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6*(1+((b.cm||1)-1)*.25),0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
    S.remove(b.m);B.splice(i,1);}}
  tickFields(dt);
  if(settings.mode==='base')tickBases(dt);
@@ -1767,10 +1799,10 @@ function hud(){const W=P.W,T=P.T;hudN++;
  // per-mount ammo / reload list + group button rings
  const frac=w=>w.W.chT&&!w.reload&&!w.chg&&w.pc>0?w.pc:w.W.emp&&w.chg?'FIRING '+Math.round(Math.min(1,(clock-w.chg)/w.W.charge)*100)+'%':w.W.beam?(w.reload?1-w.reload/w.W.reload:1-(w.heat||0)):w.reload?1-w.reload/w.W.reload:w.ammo/w.W.mag,grp=g=>{const a=P.ws.filter(w=>w.s===g);return a.length?a.reduce((t,w)=>t+frac(w),0)/a.length:0;};
  {let pi=$('pulInd');if(!pi){pi=document.createElement('div');pi.id='pulInd';pi.innerHTML='<b></b><i><s></s></i>';pi.style.cssText='position:fixed;left:50%;top:calc(50% + 38px);transform:translateX(-50%);z-index:20;pointer-events:none;font:700 12px system-ui;color:#9ff;text-align:center;text-shadow:0 0 4px #000;display:none';pi.querySelector('i').style.cssText='display:block;width:90px;height:6px;margin:3px auto 0;background:#0008;border:1px solid #6dd;border-radius:3px;overflow:hidden';pi.querySelector('s').style.cssText='display:block;height:100%;width:0;background:#4bd';document.body.appendChild(pi);}
-  const pw=mode==='play'&&P&&P.alive?P.ws.filter(w=>w.W.chT):[];pi.style.display=pw.length?'block':'none';if(pw.length){const rows=[];for(const nm of['push','emp']){const g=pw.filter(w=>w.W[nm]);if(!g.length)continue;const w=g.reduce((a,b)=>(b.reload?0:b.pc||0)>(a.reload?0:a.pc||0)?b:a),pc=w.reload?0:Math.min(1,w.pc||0),mx=pc>=1,W=w.W,lab=nm==='push'?'PULSE':'EMP',x=(1+(W.chMax-1)*pc).toFixed(1);const col=`rgb(${Math.round(80+175*pc)},${Math.round(200+55*pc)},255)`;let seg='';for(let k=0;k<10;k++)seg+=`<span style="display:inline-block;width:8px;height:6px;margin:0 1px;border-radius:2px;background:${(k+1)/10<=pc+.001?col:'#0007'};box-shadow:${mx?'0 0 6px '+col:'none'}"></span>`;rows.push(`<div style="color:${mx?'#fff':'#9ff'};${mx?'animation:none;text-shadow:0 0 8px #7ff,0 0 3px #000':''}">${mx?'⚡ ':''}${lab} ${mx?'MAX ':''}×${x}${W.rMax?' · '+Math.round(effR(w))+' m':''}</div><div style="margin:2px 0 4px">${seg}</div>`);}pi.innerHTML=rows.join('');}}
+  const pw=mode==='play'&&P&&P.alive?P.ws.filter(w=>w.W.chT):[];pi.style.display=pw.length?'block':'none';if(pw.length){const rows=[];for(const nm of['push','emp']){const g=pw.filter(w=>w.W[nm]);if(!g.length)continue;const w=g.reduce((a,b)=>(b.reload?0:b.pc||0)>(a.reload?0:a.pc||0)?b:a),pc=w.reload?0:Math.min(1,w.pc||0),mx=pc>=1,W=w.W,lab=nm==='push'?'PULSE':'EMP',x=chgPct(w)+'%';const col=`rgb(${Math.round(80+175*pc)},${Math.round(200+55*pc)},255)`;let seg='';for(let k=0;k<10;k++)seg+=`<span style="display:inline-block;width:8px;height:6px;margin:0 1px;border-radius:2px;background:${(k+1)/10<=pc+.001?col:'#0007'};box-shadow:${mx?'0 0 6px '+col:'none'}"></span>`;rows.push(`<div style="color:${mx?'#fff':'#9ff'};${mx?'animation:none;text-shadow:0 0 8px #7ff,0 0 3px #000':''}">${mx?'⚡ ':''}${lab} ${mx?'MAX ':''}${x}${W.rMax?' · '+Math.round(effR(w))+' m':''}</div><div style="margin:2px 0 4px">${seg}</div>`);}pi.innerHTML=rows.join('');}}
 
  {let ei=$('empInd');if(!ei){ei=document.createElement('div');ei.id='empInd';ei.textContent='⚡ EMP — ABILITY OFFLINE';document.body.appendChild(ei);}ei.style.display=mode==='play'&&P&&P.empT>0?'block':'none';if(P&&P.empT>0)ei.textContent='⚡ EMP — ABILITY OFFLINE '+P.empT.toFixed(1)+'s';}
- if((hudN&3)===0){$('gunt').innerHTML=P.ws.map(w=>`<div class="wl${w.reload?' rl':''}${w.W.beam?' hb'+((w.heat||0)>.7?' hot':''):''}"><b>${w.s<0?'◀L':'R▶'}</b><span class="szb z${w.W.size}">${w.W.size}</span> ${w.W.name}<em>${w.W.beam?(w.reload?'OVERHEAT '+w.reload.toFixed(1)+'s':'HEAT '+Math.round((w.heat||0)*100)+'%'):w.reload?'RELOAD '+w.reload.toFixed(1)+'s':w.W.chT&&!w.reload&&w.pc>0?(w.pc>=1?'MAX ×'+w.W.chMax:'CHG ×'+pulseMul(w).toFixed(1))+(w.W.rMax?' '+Math.round(effR(w))+'m':'')+' '+w.ammo+'/'+w.W.mag:w.ammo+'/'+w.W.mag}</em><i style="width:${frac(w)*100}%"></i></div>`).join('');
+ if((hudN&3)===0){$('gunt').innerHTML=P.ws.map(w=>`<div class="wl${w.reload?' rl':''}${w.W.beam?' hb'+((w.heat||0)>.7?' hot':''):''}"><b>${w.s<0?'◀L':'R▶'}</b><span class="szb z${w.W.size}">${w.W.size}</span> ${w.W.name}<em>${w.W.beam?(w.reload?'OVERHEAT '+w.reload.toFixed(1)+'s':'HEAT '+Math.round((w.heat||0)*100)+'%'):w.reload?'RELOAD '+w.reload.toFixed(1)+'s':w.W.chT&&!w.reload&&w.pc>0?(w.pc>=1?'MAX 100%':'CHG '+chgPct(w)+'%')+(w.W.rMax?' '+Math.round(effR(w))+'m':'')+' '+w.ammo+'/'+w.W.mag:w.ammo+'/'+w.W.mag}</em><i style="width:${frac(w)*100}%"></i></div>`).join('');
   const all=P.ws.reduce((t,w)=>t+frac(w),0)/P.ws.length,rl=P.ws.every(w=>w.reload);gunBar.style.width=all*100+'%';gunBar.style.background=rl?'#fa4':'#ff6';ring(bMG,all,rl?'#fa48':'#f448');bMG.textContent=rl?'RELOAD':'FIRE';
   ring($('bFL'),grp(-1),'#fc48');ring($('bFR'),grp(1),'#fc48');}
  let af=1,at='',ac='#6cf';
@@ -1801,8 +1833,8 @@ const lockTag=k=>isLocked(k)?`<small class="lk">🔒 🪙${CFG.econ.locked[k]}</
 const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',swarm:'✈',pulse:'◉',jammer:'⌁'})[CFG.weapons[k].fam];
 const szTag=k=>{const z=CFG.weapons[k].size;return `<span class="szb z${z}">${z}</span>`;};let slotSel=0,pickSel=null;
 function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}${bar('TETHER',w.tether/5,w.tether+'s · +'+Math.round(w.amp*100)+'% dmg taken')}${bar('RANGE',w.range/130,w.range+' m')}${bar('RATE',.4/w.interval,(1/w.interval).toFixed(1)+' /s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} bolts · reload ${w.reload}s · tethered target slowed ${Math.round(w.tslow*100)}% and takes +${Math.round(w.amp*100)}% damage from everyone</p>`;
- if(w.emp)return `${bar('DAMAGE',w.dmg/150,w.dmg+' + EMP')}${bar('CHAIN',w.jumps/4,'+'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.rMax/130,w.rMin+' → '+w.rMax+' m charged')}${bar('CHARGE',1-w.chT/2.5,'×'+w.chMax+' dmg & max range in '+w.chT+'s')}${bar('WIND-UP',1-w.charge/1.5,w.charge+'s trigger delay')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
- if(w.push)return `${bar('DAMAGE',w.dmg*w.chMax/250,w.dmg+' → '+Math.round(w.dmg*w.chMax)+' charged')}${bar('CHARGE',1-w.chT/2.5,'×'+w.chMax+' in '+w.chT+'s, holds at max')}${bar('SHOVE',w.push/16,w.push+' → '+(w.push*(1+(w.chMax-1)*.5)).toFixed(1))}${bar('RANGE',w.range/130,w.range+' m')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} orbs · ${w.interval}s between · reload ${w.reload}s · charges while ready (don't fire); charged damage to Aegis domes capped at ×1.5</p>`;
+ if(w.emp)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max + EMP · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHAIN',w.jumps/4,'FULL CHARGE ONLY · +'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.rMax/130,w.rMin+' → '+w.rMax+' m charged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% dmg & max range in '+w.chT+'s')}${bar('WIND-UP',1-w.charge/1.5,w.charge+'s trigger delay')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
+ if(w.push)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max (full charge) · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% in '+w.chT+'s, holds at max')}${bar('SHOVE',w.push/16,(w.push*(.6+.8*w.chMin)).toFixed(1)+' → '+(w.push*1.4).toFixed(1))}${bar('RANGE',w.range/130,w.range+' m')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} orbs · ${w.interval}s between · reload ${w.reload}s · charges while ready (don't fire); charged damage to Aegis domes capped at 60%</p>`;
  if(w.dot)return `${bar('DAMAGE',(w.dmg+w.dot)/150,w.dmg+' + '+w.dot+' over '+w.dotT+'s')}${bar('LEECH',w.leech/.5,Math.round(w.leech*100)+'% healed')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',(w.dmg/w.interval)/150,Math.round(w.dmg/w.interval+w.dot/w.dotT))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} doses · reload ${w.reload}s · damage over time heals you</p>`;if(w.beam){const dps=w.dmg/w.interval;return `${bar('DAMAGE',dps/230,Math.round(dps)+' /s beam')}${bar('HEAT',w.heat/.4,'full in '+(1/w.heat).toFixed(1)+'s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · hitscan beam · cools ${Math.round(w.cool*100)}%/s · overheat lockout ${w.reload}s</p>`;}const rate=1/w.interval,dps=w.dmg*(w.pellets||1)*rate;return `${bar('DAMAGE',w.dmg*(w.pellets||1)/230,w.dmg+(w.pellets?' ×'+w.pellets:' / hit'))}${bar('FIRE RATE',Math.min(1,rate/14),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · mag ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p>`;}
 function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m) for ${m.dome.dur}s, heals ${Math.round(m.dome.heal*100)}% of absorbed damage, ${m.dome.cd}s cooldown (${m.dome.brokeCd}s if broken)`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:m.cloak?`${m.cloak.dur}s cloak (untargetable, hidden beyond ${m.cloak.near} m), ${m.cloak.cd}s cooldown`:m.regen?`+${m.regen.rate} HP/s after ${m.regen.delay}s`:'';}
 function buyBox(k){const c=CFG.econ.locked[k];return isLocked(k)?`<div class="buy"><span>🔒 Locked</span>${SAVE.coins>=c?`<button class="go" data-buy="${k}">UNLOCK 🪙${c}</button>`:`<button disabled>🪙${c} — need ${c-SAVE.coins} more</button>`}</div>`:'';}
@@ -1879,7 +1911,7 @@ function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(
 function deskPanel(at,af,ac){const pct=v=>Math.max(0,Math.min(100,v*100)).toFixed(0)+'%';
  const rows=P.ws.map(w=>{const W=w.W;let st,f,col='#ff6';
   if(W.emp&&w.chg){f=Math.min(1,(clock-w.chg)/W.charge);st='DISCHARGING…';col='#8cf';}
-  else if(W.chT&&!w.reload&&w.pc>0){f=w.pc;st=(w.pc>=1?'⚡ MAX ×'+W.chMax:'CHARGING ×'+pulseMul(w).toFixed(1))+(W.rMax?' · '+Math.round(effR(w))+'m':'')+' · '+w.ammo+'/'+W.mag;col=w.pc>=1?'#7ff':'#4bd';}
+  else if(W.chT&&!w.reload&&w.pc>0){f=w.pc;st=(w.pc>=1?'⚡ MAX 100%':'CHARGING '+chgPct(w)+'%')+(W.rMax?' · '+Math.round(effR(w))+'m':'')+' · '+w.ammo+'/'+W.mag;col=w.pc>=1?'#7ff':'#4bd';}
   else if(w.reload){f=1-w.reload/W.reload;st=(W.beam?'OVERHEAT ':'RELOAD ')+w.reload.toFixed(1)+'s';col='#fa4';}
   else if(W.beam){f=1-(w.heat||0);st='HEAT '+Math.round((w.heat||0)*100)+'%';col=(w.heat||0)>.7?'#f64':'#6cf';}
   else{f=w.ammo/W.mag;st=w.ammo+'/'+W.mag;}
@@ -1984,7 +2016,7 @@ function openSound(back){const a=aud(),row=(k,l)=>`<div class="trw"><label>${l}<
  <p class="ab">Saved per pilot. On iPad/iPhone sound starts after your first tap.</p></div></div>`,back);}
 function audSet(k,v){SAVE.audio=Object.assign(aud(),{[k]:v});audApply();try{persist();}catch(e){}}
 // ---------- tuning panel ----------
-const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',jumps:'Chain jumps',chainR:'Chain radius (m)',chainFall:'Chain dmg per jump ×',rMin:'Min range (no charge)',rMax:'Max range (full charge)',chT:'Charge time (s)',chMax:'Pulse max charge ×',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
+const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',jumps:'Chain jumps',chainR:'Chain radius (m)',chainFall:'Chain dmg per jump ×',rMin:'Min range (no charge)',rMax:'Max range (full charge)',chT:'Charge time (s)',chMin:'Uncharged damage fraction',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
 const tOver=()=>SAVE.tune||(SAVE.tune={});
 function tStep(d){d=Math.abs(d);return d>=100?1:d>=10?.1:d>=1?.01:.001;}
 function tRow(path,label){const def=tGet(TDEF,path),cur=path in tOver()?tOver()[path]:def,mx=Math.max(Math.abs(def)*3,1),st=tStep(def||1),ch=path in tOver();
@@ -2035,4 +2067,4 @@ addEventListener('keydown',e=>{if(mode!=='play'||(e.target&&/INPUT|SELECT|TEXTAR
 applyTune();
 if(window.__game){if(window.__game.useProf)window.__game.useProf=useProf;if(window.__game.goMenu)window.__game.goMenu=goMenu;}
 Object.assign(window.__game||{},{applyTune,sfx,openTune,openSound,openPause,TDEF,TF,aud,get PAUSED(){return PAUSED;}});
-window.__v31={chainArc:(u,W,t,d)=>chainArc(u,W,t,d),empShot:(u,w,a)=>empShot(u,w,a),pulseMul:w=>pulseMul(w),effR:w=>effR(w),fireWeapon:(u,w,a)=>fireWeapon(u,w,a),get B(){return B;},get U(){return U;}};
+window.__v31={chainArc:(u,W,t,d)=>chainArc(u,W,t,d),empShot:(u,w,a)=>empShot(u,w,a),pulseMul:w=>pulseMul(w),effR:w=>effR(w),chgPct:w=>chgPct(w),fireWeapon:(u,w,a)=>fireWeapon(u,w,a),get B(){return B;},get U(){return U;}};
