@@ -1,4 +1,4 @@
-/*v35 online 2-player relay fallback*/
+/*v36 online lobby, modes, rematch, reconnect*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -778,10 +778,10 @@ function clearWorld(){for(const u of U)S.remove(u.g);if(P&&!U.includes(P))S.remo
 const rk=o=>{const k=Object.keys(o);return k[Math.floor(Math.random()*k.length)];};
 function spawn(u,x,z,yaw){mergeUnit(u);u.g.position.set(x,0,z);u.tYaw=u.legYaw=u.yaw=yaw;initFeet(u);U.push(u);}
 let lastMap=null;function pickMap(){if(settings.map!=='random'&&MAPS[settings.map])return settings.map;const k=MAP_KEYS.filter(k=>k!==lastMap);return k[Math.floor(Math.random()*k.length)];}
-function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clearWorld();lastMap=pickMap();netRand(1,0);loadMap(lastMap,NET.role==="host"?NET.seed:undefined);netRand(0);const SZ=A-12;clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;chStart();const md=settings.mode;
+function newGame(){try{if(typeof lockAim==='function')lockAim();}catch(e){}clearWorld();lastMap=(NET.role==="host"&&NET.map&&MAPS[NET.map])?NET.map:pickMap();netRand(1,0);loadMap(lastMap,NET.role==="host"?NET.seed:undefined);netRand(0);const SZ=A-12;clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;chStart();const md=settings.mode;
  P=makeUnit('b',loadout.mech,slotsOf(loadout.mech),null);P.isPlayer=true;applyPaint(P,paintOf(loadout.mech));spawn(P,0,SZ,Math.PI);P.pitch=.05;camYaw=Math.PI;
  const team=md!=='duel';
- const TS=CFG.teamSize||6;
+ const TS=(NET.role&&NET.ts)||CFG.teamSize||6;
  if(team){for(let i=0;i<TS-1;i++){const a=(t=>makeUnit('b',t,aiSlots(t),CFG.allyProfile))(window.__forceAI||rk(CFG.mechs));a.role=md==='base'?(i%2?'def':'att'):'esc';const k=(i>>1)+1,sd=i%2?1:-1;spawn(a,sd*k*7,SZ+2+(k>1?3:0),Math.PI);makePlate(a,true);}}
  const n=team?TS:1;
  for(let i=0;i<n;i++){const e=(t=>makeUnit('r',t,aiSlots(t),md==='duel'?settings.diff:CFG.enemyProfile))(window.__forceAI||rk(CFG.mechs));e.role=md==='base'?(i%3===0?'def':'att'):'hunt';const k=(i+1)>>1,sd=i%2?1:-1;spawn(e,i?sd*k*7:0,-SZ-(i?2:0)-(k>1?3:0),0);makePlate(e,false);}
@@ -1728,81 +1728,140 @@ async function relayOpen(code,me){await sbLib();if(!SBC)SBC=window.supabase.crea
  await new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('relay timeout')),10000);ch.subscribe(st=>{if(st==='SUBSCRIBED'){clearTimeout(t);c.open=true;res();}else if((st==='CHANNEL_ERROR'||st==='TIMED_OUT')&&!c.open){clearTimeout(t);rej(new Error('relay '+st));}else if(st==='CLOSED'&&c.open&&!c.dead){c.open=false;c.emit('close');}});});
  return c;}
 function netSend(m){try{if(NET.conn&&NET.conn.open)NET.conn.send(m);}catch(e){}}
+// --- v36 modes / persistence ---
+const NMODES={coop:{n:'🤝 CO-OP',d:'You two on one team + 4 bots vs 6 bots',sm:'team',ts:6},vs:{n:'⚔ VERSUS',d:'Opposite teams, 5 bots on each side',sm:'team',ts:6},duel:{n:'🥊 1v1 DUEL',d:'Just you two — no bots',sm:'duel',ts:1},duo:{n:'👥 2v2',d:'Each of you + 1 bot teammate',sm:'team',ts:2}};
+const LSK='mecharena_net';let GID='';try{GID=localStorage.getItem('mecharena_gid')||'';if(!GID){GID=Math.random().toString(36).slice(2,10);localStorage.setItem('mecharena_gid',GID);}}catch(e){GID=Math.random().toString(36).slice(2,10);}
+NET.map='random';NET.myReady=false;NET.rm=false;let AUTO_UNTIL=0,AUTO_N=0;
+function netSave(){if(!NET.role||!NET.code)return;try{localStorage.setItem(LSK,JSON.stringify({code:NET.code,role:NET.role,mode:NET.mode,map:NET.map,t:Date.now()}));}catch(e){}}
+function netForget(){AUTO_UNTIL=0;try{localStorage.removeItem(LSK);}catch(e){}}
+function netSaved(){try{const r=JSON.parse(localStorage.getItem(LSK)||'null');if(r&&r.code&&Date.now()-r.t<15*60e3)return r;}catch(e){}return null;}
+const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,'');
+const myName=()=>(curProf()||{}).name||'Pilot';
+const mechN=k=>CFG.mechs[k]?CFG.mechs[k].name:'?';
 // --- UI ---
 const netP=document.createElement('div');netP.id='netP';netP.style.cssText='position:fixed;inset:0;z-index:60;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding:calc(6px + env(safe-area-inset-top)) env(safe-area-inset-right) calc(6px + env(safe-area-inset-bottom)) env(safe-area-inset-left);background:#000b;font-family:system-ui,sans-serif;color:#fff';
-netP.innerHTML=`<div style="background:#14202b;border:2px solid #2a8;border-radius:14px;padding:22px 26px;width:min(440px,92vw);text-align:center;box-shadow:0 10px 40px #000">
-<h2 style="margin:0 0 6px">🌐 ONLINE 2-PLAYER</h2><div style="opacity:.75;font-size:.9em;margin-bottom:12px">Each player uses their own mech &amp; loadout. Bots fill the other slots.</div>
-<div id="netHostBox"><div style="margin-bottom:8px">Host mode: <button id="nmC" class="nm">🤝 CO-OP</button> <button id="nmV" class="nm">⚔ VERSUS</button></div>
-<button id="netHost" style="font-size:1.1em;padding:10px 22px;background:#1b6;border:0;border-radius:8px;color:#fff;font-weight:bold">HOST GAME</button></div>
-<div style="margin:14px 0 6px;opacity:.6">— or —</div>
+const BTN='padding:8px 14px;border-radius:8px;border:0;color:#fff;font-weight:bold;font-size:1em;margin:3px';
+netP.innerHTML=`<div id="netBox" style="background:#14202b;border:2px solid #2a8;border-radius:14px;padding:18px 22px;width:min(520px,94vw);text-align:center;box-shadow:0 10px 40px #000;margin:auto">
+<h2 style="margin:0 0 6px">🌐 ONLINE 2-PLAYER</h2>
+<div id="netPre"><div style="opacity:.75;font-size:.9em;margin-bottom:10px">Each player uses their own mech &amp; loadout. You can change mode, map and mechs in the lobby.</div>
+<div id="netHostBox"><button id="netHost" style="${BTN};font-size:1.1em;padding:10px 22px;background:#1b6">HOST GAME</button></div>
+<div style="margin:10px 0 6px;opacity:.6">— or —</div>
 <div id="netJoinBox"><input id="netCode" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" style="font-size:1.3em;width:7em;text-align:center;letter-spacing:.2em;text-transform:uppercase;padding:8px;border-radius:8px;border:2px solid #2a8;background:#0a1218;color:#fff">
-<button id="netJoin" style="font-size:1.1em;padding:10px 22px;background:#26a;border:0;border-radius:8px;color:#fff;font-weight:bold">JOIN</button></div>
-<div id="netMsg" style="margin:14px 0;min-height:2.6em;font-size:1.05em"></div>
-<button id="netX" style="padding:8px 18px;border-radius:8px;border:1px solid #888;background:#333;color:#fff">CANCEL</button>
-<div style="opacity:.5;font-size:.75em;margin-top:10px">Peer-to-peer via WebRTC. Strict firewalls / some mobile carriers may block it.</div></div>`;
+<button id="netJoin" style="${BTN};font-size:1.1em;padding:10px 22px;background:#26a">JOIN</button></div></div>
+<div id="netLob" style="display:none"></div>
+<div id="netMsg" style="margin:10px 0;min-height:1.4em;font-size:1em"></div>
+<button id="netX" style="padding:8px 18px;border-radius:8px;border:1px solid #888;background:#333;color:#fff">CANCEL</button></div>`;
 document.body.appendChild(netP);
 const netS=document.createElement('div');netS.id='netS';netS.style.cssText='position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:30;display:none;font:bold 12px system-ui;background:#000a;color:#8f8;padding:3px 10px;border-radius:10px;pointer-events:none';document.body.appendChild(netS);
+const netBack=document.createElement('button');netBack.id='netBack';netBack.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:59;display:none;padding:8px 16px;border-radius:10px;border:2px solid #2a8;background:#14202bee;color:#6f9;font:bold 14px system-ui';netBack.textContent='🌐 BACK TO ONLINE LOBBY';document.body.appendChild(netBack);
+const netRe=document.createElement('div');netRe.id='netRe';netRe.style.cssText='position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:59;display:none;font:bold 14px system-ui';document.body.appendChild(netRe);
 const nq=id=>document.getElementById(id);
 function netMsgSet(h){nq('netMsg').innerHTML=h;}
-function netModeBtns(){nq('nmC').style.cssText=`padding:6px 12px;border-radius:6px;border:2px solid ${NET.mode==='coop'?'#6f9':'#555'};background:${NET.mode==='coop'?'#164':'#222'};color:#fff`;nq('nmV').style.cssText=`padding:6px 12px;border-radius:6px;border:2px solid ${NET.mode==='vs'?'#f96':'#555'};background:${NET.mode==='vs'?'#622':'#222'};color:#fff`;}
-nq('nmC').onclick=()=>{NET.mode='coop';netModeBtns();};nq('nmV').onclick=()=>{NET.mode='vs';netModeBtns();};
-nq('netHost').onclick=()=>netHost();nq('netJoin').onclick=()=>netJoin(nq('netCode').value);nq('netCode').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')netJoin(nq('netCode').value);};
-nq('netX').onclick=()=>{netClose();netP.style.display='none';};
-function netOpen(msg){netModeBtns();nq('netHostBox').style.display=nq('netJoinBox').style.display='';netMsgSet(msg||'');netP.style.display='flex';}
-function netHide(){netP.style.display='none';}
+nq('netHost').onclick=()=>netHost();nq('netJoin').onclick=()=>{AUTO_UNTIL=0;netJoin(nq('netCode').value);};nq('netCode').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')netJoin(nq('netCode').value);};
+nq('netX').onclick=()=>{netForget();netClose();netP.style.display='none';netUi();};
+netBack.onclick=()=>{saveLoadout();netShowLobby();netLobChanged();};
+netP.addEventListener('click',e=>{const b=e.target.closest('[data-nm],[data-nact]');if(!b||b.disabled)return;const d=b.dataset;
+ if(d.nm){if(NET.role==='client')return;NET.mode=d.nm;return netLobChanged();}
+ const a=d.nact;if(a==='ready'){NET.myReady=!NET.myReady;netLobChanged();}else if(a==='mech')netEditMech();else if(a==='start')netTryStart(true);
+ else if(a==='leave'){netSend({t:'bye',x:1});netForget();netClose();netP.style.display='none';netUi();}else if(a==='recon'){const r=netSaved();if(r)netReconnect(r);}});
+netP.addEventListener('change',e=>{if(e.target.id==='netMap'&&NET.role==='host'){NET.map=e.target.value;netLobChanged();}});
+function netOpen(msg){if(NET.role)return netShowLobby();nq('netPre').style.display='';nq('netLob').style.display='none';nq('netX').style.display='';nq('netHostBox').style.display=nq('netJoinBox').style.display='';netMsgSet(msg||'');netP.style.display='flex';netUi();}
+function netHide(){netP.style.display='none';netUi();}
+function netShowLobby(){NET.editing=false;nq('netPre').style.display='none';nq('netLob').style.display='';nq('netX').style.display='none';netP.style.display='flex';NET.lobH='';netLobRender();netUi();}
+function netEditMech(){NET.editing=true;netP.style.display='none';if(mode!=='menu')goMenu();menuStep='mech';renderMenu();netUi();}
+function netUi(){const inMenu=mode==='menu',hid=netP.style.display!=='flex';netBack.style.display=NET.role&&inMenu&&hid?'block':'none';
+ const r=!NET.role&&inMenu&&hid&&netSaved();netRe.style.display=r?'block':'none';
+ if(r&&netRe.dataset.k!==r.code){netRe.dataset.k=r.code;netRe.innerHTML=`<button data-re="1" style="padding:8px 14px;border-radius:10px;border:2px solid #2a8;background:#14202bee;color:#6f9;font:bold 14px system-ui">🔁 Reconnect to room ${esc(r.code)}</button><button data-re="x" style="margin-left:6px;padding:8px 10px;border-radius:10px;border:1px solid #888;background:#222c;color:#ccc">✕</button>`;}}
+netRe.addEventListener('click',e=>{const b=e.target.closest('[data-re]');if(!b)return;if(b.dataset.re==='x'){netForget();netUi();return;}const r=netSaved();if(r)netReconnect(r);});
+function netReconnect(r){NET.mode=NMODES[r.mode]?r.mode:'coop';NET.map=r.map||'random';if(r.role==='host')netHost(r.code);else{AUTO_UNTIL=Date.now()+120e3;AUTO_N=0;netJoin(r.code,true);}}
+function netLobChanged(){if(NET.role==='host')netBcast();else netSendMe();netLobRender();netSave();if(NET.role==='host')netTryStart(false);}
+function netBcast(){if(NET.role==='host'&&NET.conn)netSend({t:'lob',mode:NET.mode,map:NET.map,h:{n:myName(),m:loadout.mech,r:!!NET.myReady},g:NET.hi?{n:NET.hi.name,m:NET.hi.mech,r:!!NET.hi.ready}:null});}
+function netMeMsg(t){return {t,mech:loadout.mech,slots:slotsOf(loadout.mech),paint:paintOf(loadout.mech),name:myName(),ready:!!NET.myReady,gid:GID};}
+function netSendMe(){if(NET.role==='client'&&NET.conn)netSend(netMeMsg('me'));}
+let _sig='';
+function netLobRender(){if(!NET.role||nq('netLob').style.display==='none'||netP.style.display!=='flex')return;const host=NET.role==='host',L=NET.lob||{};
+ const me={n:myName(),m:loadout.mech,r:!!NET.myReady};let H,G;if(host){H=me;G=NET.conn&&NET.hi?{n:NET.hi.name,m:NET.hi.mech,r:!!NET.hi.ready}:null;}else{H=L.h||null;G=me;}
+ const row=(ic,p,you)=>p?`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0a1218;border-radius:8px;padding:6px 10px;margin:4px 0"><span style="text-align:left">${ic} <b>${esc(p.n)}</b>${you?' <span style="opacity:.6">(you)</span>':''}<br><span style="opacity:.8;font-size:.85em">🤖 ${esc(mechN(p.m))}</span></span><span style="font-weight:bold;color:${p.r?'#6f9':'#fc6'}">${p.r?'✅ READY':'⏳ not ready'}</span></div>`:`<div style="background:#0a1218;border-radius:8px;padding:8px 10px;margin:4px 0;opacity:.75">⏳ ${host?'Waiting for friend — they open this page → 🌐 ONLINE → enter the code → JOIN':'Waiting for host…'}</div>`;
+ const conn=!!NET.conn;
+ const mb=Object.entries(NMODES).map(([k,v])=>`<button data-nm="${k}" id="nm_${k}" ${host?'':'disabled'} style="padding:6px 10px;margin:2px;border-radius:6px;border:2px solid ${NET.mode===k?'#6f9':'#555'};background:${NET.mode===k?'#164':'#222'};color:#fff;font-size:.9em;opacity:${host||NET.mode===k?1:.55}">${v.n}</button>`).join('');
+ const mapSel=host?`<select id="netMap" style="padding:5px;border-radius:6px;background:#0a1218;color:#fff;border:1px solid #2a8">${['random',...MAP_KEYS].map(k=>`<option value="${k}" ${NET.map===k?'selected':''}>${k==='random'?'🎲 Random':esc(MAPS[k].name)}</option>`).join('')}</select>`:`<b>${NET.map==='random'||!MAPS[NET.map]?'🎲 Random':esc(MAPS[NET.map].name)}</b>`;
+ const both=conn&&H&&G&&H.r&&G.r;
+ const h=`<div style="font-size:.9em;opacity:.85">Room <b id="netCodeShow" style="letter-spacing:.2em;color:#6f9;font-size:1.5em">${esc(NET.code)}</b> · ${conn?(NET.via==='relay'?'📡 relay':'⚡ direct')+' · '+NET.ping+' ms':'not connected'}</div>
+<div style="margin:6px 0 2px">${mb}</div><div style="font-size:.8em;opacity:.7">${NMODES[NET.mode]?NMODES[NET.mode].d:''}${host?'':' (host picks)'}</div>
+<div style="margin:6px 0;font-size:.9em">Map: ${mapSel}</div>
+${row('👑',H,host)}${row('🎮',conn?G:null,!host)}
+<div style="margin-top:6px"><button data-nact="mech" style="${BTN};background:#456">🔧 CHANGE MECH</button><button data-nact="ready" id="netReady" style="${BTN};background:${NET.myReady?'#1b6':'#a70'}">${NET.myReady?'✅ READY':'☐ READY'}</button>${host?`<button data-nact="start" id="netStart" ${both?'':'disabled'} style="${BTN};background:${both?'#1b6':'#344'};opacity:${both?1:.6}">▶ START</button>`:''}<button data-nact="leave" style="${BTN};background:#622">🚪 LEAVE</button></div>
+${host&&conn&&!both?'<div style="font-size:.8em;opacity:.7;margin-top:4px">Start unlocks when both players are READY.</div>':''}`;
+ if(h!==NET.lobH){NET.lobH=h;nq('netLob').innerHTML=h;}}
 // --- connection ---
 function genCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=A[Math.random()*A.length|0];return s;}
-function netUse(c,how){if(NET.conn&&NET.conn!==c)return false;NET.conn=c;NET.via=how;return true;}
-async function netHost(){netClose();netMsgSet('Opening room…');NET.code=genCode();NET.role='host';NET.via='';const code=NET.code;let ready=0;
- const shown=()=>{if(ready++||NET.code!==code)return;netMsgSet(`Room code<div id="netCodeShow" style="font-size:2.4em;font-weight:900;letter-spacing:.25em;color:#6f9;margin:4px 0">${code}</div>${NET.mode==='coop'?'🤝 CO-OP (same team vs bots)':'⚔ VERSUS (opposite teams)'}<br><span style="opacity:.7">Friend: open this same page → 🌐 ONLINE → enter code → JOIN</span><br>⏳ Waiting for friend… <span style="opacity:.6;font-size:.8em">(keep this tab open &amp; in front)</span>`);};
- nq('netJoinBox').style.display='none';
- const onHello=(c,how)=>m=>{if(m&&m.t==='hello'&&!NET.conn){netUse(c,how);NET.last=performance.now();netSend({t:'lobby',mode:NET.mode,via:how});}if(c===NET.conn)netOnMsg(m);else if(m&&m.t==='hello')c.send({t:'full'});};
- let fails=0;const fail=w=>{if(++fails>=2&&NET.code===code)netErr('Could not open a room ('+w+'). Check your internet.',()=>netHost());};
- if(!NORELAY)relayOpen(code,'h').then(r=>{if(NET.code!==code)return r.close();NET.relay=r;r.on('data',onHello(r,'relay'));r.on('close',()=>{if(NET.conn===r)netLost('Relay connection closed.');});shown();}).catch(e=>{console.warn(e);fail('relay');});else fails++;
- if(!NOP2P)netLib().then(()=>{if(NET.code!==code)return;const pr=new Peer(NETPFX+code,{debug:0,config:ICE});NET.peer=pr;
-  pr.on('open',shown);pr.on('error',e=>{console.warn('peer',e.type);if(e.type==='unavailable-id'&&!NET.conn&&!ready){netHost();return;}if(!ready)fail('p2p '+e.type);});
-  pr.on('connection',c=>{c.on('open',()=>{});c.on('data',onHello(c,'p2p'));c.on('close',()=>{if(NET.conn===c)netLost('Your partner disconnected.');});c.on('error',()=>{if(NET.conn===c)netLost('Connection error.');});});}).catch(e=>fail('p2p lib'));else fails++;}
-function netErr(msg,retry){netMsgSet('❌ '+msg+'<br><button id="netRetry" style="margin-top:8px;padding:8px 18px;border-radius:8px;border:0;background:#c80;color:#fff;font-weight:bold">↻ RETRY</button>');netClose();nq('netHostBox').style.display=nq('netJoinBox').style.display='';const b=nq('netRetry');if(b)b.onclick=retry;}
-async function netJoin(code){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==5)return netMsgSet('Enter the 5-character room code.');netClose();
- NET.code=code;NET.role='client';NET.via='';nq('netHostBox').style.display='none';netMsgSet('Connecting (direct)…');let done=false,relay=null,peerC=null;const t0=performance.now();
- const hello=()=>({t:'hello',mech:loadout.mech,slots:slotsOf(loadout.mech),paint:paintOf(loadout.mech),name:(curProf()||{}).name||'Pilot'});
- const pick=(c,how)=>{if(done||NET.code!==code)return;done=true;NET.conn=c;NET.via=how;NET.last=performance.now();c.on('data',m=>{if(NET.conn===c){NET.heard=1;netOnMsg(m);}});c.on('close',()=>{if(NET.conn===c)netLost('Your partner disconnected.');});
+function netHost(reuse){netClose();netMsgSet('Opening room…');const code=reuse||genCode();NET.code=code;NET.role='host';NET.via='';NET.myReady=false;let ready=0,tries=0;
+ const shown=()=>{if(NET.code!==code)return;if(!ready++){netSave();netShowLobby();netMsgSet(reuse?'🔁 Room re-opened — waiting for your friend to reconnect…':'');}};
+ netShowLobby();
+ const onData=(c,how)=>m=>{if(m&&(m.t==='hello')){if(!NET.conn||(NET.hi&&m.gid&&NET.hi.gid===m.gid&&NET.conn!==c)){const old=NET.conn;NET.conn=c;NET.via=how;NET.last=performance.now();if(old&&old!==NET.relay)try{old.close();}catch(e){}}else if(NET.conn!==c){c.send({t:'full'});return;}}
+  if(c===NET.conn)netOnMsg(m);};
+ let fails=0;const fail=w=>{if(++fails>=2&&NET.code===code)netErr('Could not open a room ('+w+'). Check your internet.',()=>netHost(reuse));};
+ const openRelay=()=>relayOpen(code,'h').then(r=>{if(NET.code!==code)return r.close();NET.relay=r;r.on('data',onData(r,'relay'));r.on('close',()=>{if(NET.code!==code)return;if(NET.conn===r)netLost('Relay connection closed.');if(NET.relay===r){NET.relay=null;setTimeout(()=>{if(NET.code===code&&NET.role==='host')openRelay().catch(()=>{});},2000);}});shown();});
+ if(!NORELAY)openRelay().catch(e=>{console.warn(e);fail('relay');});else fails++;
+ const mkPeer=()=>{if(NET.code!==code)return;const pr=new Peer(NETPFX+code,{debug:0,config:ICE});NET.peer=pr;
+  pr.on('open',shown);pr.on('disconnected',()=>{setTimeout(()=>{try{if(NET.peer===pr&&!pr.destroyed)pr.reconnect();}catch(e){}},1500);});
+  pr.on('error',e=>{console.warn('peer',e.type);if(e.type==='unavailable-id'){try{pr.destroy();}catch(er){}if(NET.peer===pr)NET.peer=null;if(reuse&&++tries<20){setTimeout(mkPeer,3000);return;}if(!reuse&&!NET.conn&&!ready){netHost();return;}}if(!ready&&e.type!=='unavailable-id')fail('p2p '+e.type);});
+  pr.on('connection',c=>{c.on('data',onData(c,'p2p'));c.on('close',()=>{if(NET.conn===c)netLost('Your partner disconnected.');});c.on('error',()=>{if(NET.conn===c)netLost('Connection error.');});});};
+ if(!NOP2P)netLib().then(mkPeer).catch(e=>fail('p2p lib'));else fails++;}
+function netErr(msg,retry){const auto=NET.role==='client'&&AUTO_UNTIL>Date.now(),code=NET.code;netClose();
+ if(auto){AUTO_N++;netOpen(`🔁 Reconnecting to room <b>${esc(code)}</b>… (try ${AUTO_N+1})<br><span style="opacity:.7;font-size:.85em">${msg}</span>`);nq('netHostBox').style.display='none';setTimeout(()=>{if(AUTO_UNTIL>Date.now()&&!NET.role&&netP.style.display==='flex')netJoin(code,true);},3000);return;}
+ netOpen('❌ '+msg+'<br><button id="netRetry" style="margin-top:8px;padding:8px 18px;border-radius:8px;border:0;background:#c80;color:#fff;font-weight:bold">↻ RETRY</button>');const b=nq('netRetry');if(b)b.onclick=retry;}
+async function netJoin(code,auto){code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==5)return netMsgSet('Enter the 5-character room code.');if(!auto)AUTO_UNTIL=0;netClose();
+ NET.code=code;NET.role='client';NET.via='';NET.myReady=false;NET.lob=null;nq('netHostBox').style.display='none';netP.style.display='flex';if(!auto)netMsgSet('Connecting (direct)…');let done=false,relay=null,peerC=null;
+ const pick=(c,how)=>{if(done||NET.code!==code)return;done=true;NET.conn=c;NET.via=how;NET.last=performance.now();c.on('data',m=>{if(NET.conn===c){if(!NET.heard){NET.heard=1;AUTO_UNTIL=0;AUTO_N=0;netSave();netMsgSet('');}netOnMsg(m);}});c.on('close',()=>{if(NET.conn===c)netLost('Your partner disconnected.');});
   if(c!==relay&&relay)relay.close();if(c!==peerC){try{peerC&&peerC.close();NET.peer&&NET.peer.destroy();}catch(e){}NET.peer=null;}
-  netMsgSet(`✅ Connected to room <b>${code}</b> via ${how==='p2p'?'direct (P2P)':'relay'} — waiting for host…`);c.send(hello());};
- // relay channel opens in parallel; used if direct P2P isn't open after 5 s (or immediately if P2P is unavailable)
- const relayP=NORELAY?Promise.reject(new Error('off')):relayOpen(code,'g').then(r=>{relay=r;NET.relay=r;return r;});relayP.catch(()=>{});
- const goRelay=why=>{relayP.then(r=>{if(done)return;netMsgSet('Direct link '+why+' — switching to relay…');pick(r,'relay');setTimeout(()=>{if(NET.code===code&&NET.conn===r&&mode!=='play'&&!NET.heard)netErr(`Room <b>${code}</b> didn't answer. Check the code, and make sure the host's game tab is open and in front.`,()=>netJoin(code));},7000);}).catch(()=>{if(!done)netErr('Could not connect (direct '+why+', relay unavailable). Check your internet.',()=>netJoin(code));});};
- setTimeout(()=>{if(!done)goRelay('timed out');},5000);
+  netShowLobby();netMsgSet(`✅ Connected via ${how==='p2p'?'direct (P2P)':'relay'} — waiting for host…`);c.send(netMeMsg('hello'));};
+ const relayP=NORELAY?Promise.reject(new Error('off')):relayOpen(code,'g').then(r=>{if(done||NET.code!==code){r.close();throw new Error('stale');}relay=r;NET.relay=r;return r;});relayP.catch(()=>{});
+ const goRelay=why=>{relayP.then(r=>{if(done)return;pick(r,'relay');setTimeout(()=>{if(NET.code===code&&NET.conn===r&&!NET.heard)netErr(`Room <b>${code}</b> didn't answer. Check the code, and make sure the host's game tab is open and in front.`,()=>netJoin(code));},7000);}).catch(()=>{if(!done&&NET.code===code)netErr('Could not connect (direct '+why+', relay unavailable). Check your internet.',()=>netJoin(code));});};
+ setTimeout(()=>{if(!done&&NET.code===code)goRelay('timed out');},5000);
  if(NOP2P)return goRelay('disabled');
  netLib().then(()=>{if(done||NET.code!==code)return;const pr=new Peer({debug:0,config:ICE});NET.peer=pr;
   pr.on('open',()=>{if(done)return;const c=pr.connect(NETPFX+code,{reliable:true,serialization:'json'});peerC=c;c.on('open',()=>pick(c,'p2p'));c.on('error',()=>goRelay('failed'));});
   pr.on('error',e=>{console.warn('peer',e.type);if(!done)goRelay(e.type==='peer-unavailable'?'not found':'failed');});}).catch(()=>goRelay('unavailable'));}
-function netClose(keepPanel){const p=NET.peer,c=NET.conn,r=NET.relay;try{if(c&&c.open)c.send({t:'bye'});}catch(e){}NET.conn=null;NET.peer=null;NET.relay=null;NET.role=null;NET.R=null;NET.inp=null;NET.units=[];NET.ev=[];NET.heard=0;NET.via='';NET.code='';NET.last=0;netS.style.display='none';setTimeout(()=>{try{c&&c.close();}catch(e){}try{r&&r.close();}catch(e){}try{p&&p.destroy();}catch(e){}},150);if(_mr){Math.random=_mr;_mr=null;}}
-function netLost(why){if(!NET.role)return;const inMatch=mode==='play';netClose();if(inMatch){goMenu();}toast(why);if(inMatch||netP.style.display==='flex')netOpen('⚠ '+why);}
+function netRestoreMode(){if(NET.spMode!=null){settings.mode=NET.spMode;NET.spMode=null;}}
+function netClose(){const p=NET.peer,c=NET.conn,r=NET.relay;try{if(c&&c.open)c.send({t:'bye'});}catch(e){}NET.conn=null;NET.peer=null;NET.relay=null;NET.role=null;NET.R=null;NET.inp=null;NET.hi=null;NET.lob=null;NET.units=[];NET.ev=[];NET.heard=0;NET.via='';NET.code='';NET.last=0;NET.myReady=false;NET.rm=false;NET.editing=false;netRestoreMode();netS.style.display='none';setTimeout(()=>{try{c&&c.close();}catch(e){}try{r&&r.close();}catch(e){}try{p&&p.destroy();}catch(e){}},150);if(_mr){Math.random=_mr;_mr=null;}netUi();}
+function netDropGuest(why){const c=NET.conn;NET.conn=null;NET.hi=null;NET.R=null;NET.inp=null;NET.myReady=false;NET.rm=false;NET.last=0;if(c&&c!==NET.relay)try{c.close();}catch(e){}
+ if(mode==='play'||mode==='over')goMenu();toast(why);if(!NET.editing)netShowLobby();netMsgSet('⚠ '+esc(why)+' Room stays open — they can rejoin with the same code.');}
+function netLost(why,final){if(!NET.role)return;if(NET.role==='host')return netDropGuest(why);const code=NET.code,inMatch=mode==='play'||mode==='over';netClose();if(inMatch)goMenu();toast(why);
+ if(!final){AUTO_UNTIL=Date.now()+120e3;AUTO_N=0;netOpen(`⚠ ${esc(why)}<br>🔁 Reconnecting to room <b>${esc(code)}</b>…`);nq('netHostBox').style.display='none';setTimeout(()=>{if(AUTO_UNTIL>Date.now()&&!NET.role&&netP.style.display==='flex')netJoin(code,true);},2500);}
+ else netOpen('⚠ '+esc(why));}
+function netQuitMatch(){netSend({t:'quit'});goMenu();}
+function netRematch(){NET.myReady=true;if(NET.role==='host')NET.rm=true;goMenu();netLobChanged();netMsgSet('↻ Rematch requested — starts when both are READY'+(NET.role==='host'?'.':' and the host starts.'));}
+function netAfterMenu(){netRestoreMode();netS.style.display='none';if(!NET.editing)netShowLobby();netUi();}
+function netOver(){const on=!!NET.role;$('again').textContent=on?'↻ REMATCH':'PLAY AGAIN';$('tomenu').textContent=on?'🌐 BACK TO LOBBY':'MAIN MENU';}
+function netTryStart(manual){if(NET.role!=='host')return;if(!NET.conn||!NET.hi){if(manual)netMsgSet('Waiting for your friend to join.');return;}
+ if(!(NET.myReady&&NET.hi.ready)){if(manual)netMsgSet('Both players must be READY.');return;}if(!manual&&!NET.rm)return;
+ NET.rm=false;NET.myReady=false;NET.hi.ready=false;netMsgSet('');netStartHost();}
 // --- messages ---
 function netOnMsg(m){NET.last=performance.now();if(!m||!m.t)return;
- if(m.t==='bye'){netLost(mode==='play'?'Your partner left the match.':'Your partner left.');return;}if(m.t==='p'){netSend({t:'q',ts:m.ts});return;}if(m.t==='q'){NET.ping=Math.round(performance.now()-m.ts);return;}
+ if(m.t==='bye'){netLost(mode==='play'?'Your partner left the match.':'Your partner left.',!!m.x);return;}if(m.t==='p'){netSend({t:'q',ts:m.ts});return;}if(m.t==='q'){NET.ping=Math.round(performance.now()-m.ts);return;}
+ if(m.t==='quit'){if(mode==='play'||mode==='over'){toast('Your partner left the match');goMenu();}netMsgSet('⚠ Your partner left the match — you are both back in the lobby.');return;}
  if(NET.role==='host'){
-  if(m.t==='hello'){NET.hi=m;netMsgSet(`✅ <b>${String(m.name).replace(/[<>&]/g,'')}</b> joined with ${CFG.mechs[m.mech]?CFG.mechs[m.mech].name:'?'} — starting…`);setTimeout(netStartHost,900);}
+  if(m.t==='hello'||m.t==='me'){const fresh=m.t==='hello';NET.hi=Object.assign(NET.hi&&!fresh?NET.hi:{},m);if(!CFG.mechs[NET.hi.mech])NET.hi.mech=Object.keys(CFG.mechs)[0];if(fresh){netMsgSet(`✅ <b>${esc(m.name)}</b> joined!`);if(mode==='play'||mode==='over')goMenu();else if(!NET.editing)netShowLobby();}netBcast();netLobRender();netSave();netTryStart(false);}
   else if(m.t==='i')NET.inp=m;else if(m.t==='ab'){if(NET.R)ability(NET.R);}
  }else{
-  if(m.t==='lobby'){NET.mode=m.mode;netMsgSet(`✅ Joined room <b>${NET.code}</b> · ${m.mode==='coop'?'🤝 CO-OP':'⚔ VERSUS'} — starting…`);}
+  if(m.t==='lob'){NET.lob=m;NET.mode=NMODES[m.mode]?m.mode:'coop';NET.map=m.map||'random';netLobRender();netSave();}
   else if(m.t==='full'){netMsgSet('❌ That room already has 2 players.');}
-  else if(m.t==='start')netStartClient(m);else if(m.t==='s')netSnap(m);
-  else if(m.t==='end'){if(mode==='play')end(NET.mode==='vs'?!m.win:m.win,m.why);}
+  else if(m.t==='start'){NET.myReady=false;netStartClient(m);}else if(m.t==='s')netSnap(m);
+  else if(m.t==='end'){if(mode==='play')end(NET.mode!=='coop'?!m.win:m.win,m.why);}
  }}
-function netStartHost(){const hi=NET.hi;if(!hi||!NET.conn)return;if(!CFG.mechs[hi.mech])hi.mech=Object.keys(CFG.mechs)[0];NET.seed=(Math.random()*1e9)|0;settings.mode='team';netHide();NET.keep=true;newGame();NET.keep=false;}
+function netStartHost(){const hi=NET.hi;if(!hi||!NET.conn)return;if(!CFG.mechs[hi.mech])hi.mech=Object.keys(CFG.mechs)[0];const md=NMODES[NET.mode]||NMODES.coop;NET.seed=(Math.random()*1e9)|0;if(NET.spMode==null)NET.spMode=settings.mode;settings.mode=md.sm;NET.ts=md.ts;NET.editing=false;netHide();NET.keep=true;newGame();NET.keep=false;netUi();}
 function netSetup(){const hi=NET.hi,tm=NET.mode==='coop'?'b':'r';const bots=U.filter(u=>u!==P&&u.team===tm&&!u.isDome);const old=bots[bots.length-1];const idx=U.indexOf(old);
  let slots=hi.slots;try{if(!Array.isArray(slots)||slots.length!==CFG.slots[hi.mech].length||slots.some(k=>!CFG.weapons[k]))slots=aiSlots(hi.mech);}catch(e){slots=aiSlots(hi.mech);}
  const R=makeUnit(tm,hi.mech,slots,null);try{applyPaint(R,hi.paint||'default');}catch(e){}spawn(R,old.g.position.x,old.g.position.z,old.yaw);U.pop();S.remove(old.g);U[idx]=R;makePlate(R,tm==='b');R.remote=true;R.netName=hi.name;NET.R=R;
  NET.units=U.filter(u=>!u.isDome);NET.units.forEach((u,i)=>u.nid=i);NET.my=-1;
- netSend({t:'start',map:lastMap,seed:NET.seed,mode:NET.mode,you:R.nid,host:P.nid,hostName:(curProf()||{}).name||'Host',units:NET.units.map(u=>({team:u.team,type:u.type,slots:u.ws.map(w=>w.k),max:Math.round(u.max),p:[+u.g.position.x.toFixed(2),+u.g.position.z.toFixed(2),+u.yaw.toFixed(3)],paint:u===P?paintOf(loadout.mech):null}))});
+ netSend({t:'start',map:lastMap,seed:NET.seed,mode:NET.mode,smode:settings.mode,you:R.nid,host:P.nid,hostName:(curProf()||{}).name||'Host',units:NET.units.map(u=>({team:u.team,type:u.type,slots:u.ws.map(w=>w.k),max:Math.round(u.max),p:[+u.g.position.x.toFixed(2),+u.g.position.z.toFixed(2),+u.yaw.toFixed(3)],paint:u===P?paintOf(loadout.mech):null}))});
  netS.style.display='block';}
-function netStartClient(m){netHide();NET.keep=true;clearWorld();NET.keep=false;NET.mode=m.mode;NET.seed=m.seed;settings.mode='team';lastMap=m.map;netRand(1,0);loadMap(m.map,m.seed);netRand(0);clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;try{chStart();}catch(e){}
- const sw=m.mode==='vs',tm=t=>sw?(t==='b'?'r':'b'):t;NET.my=m.you;
+function netStartClient(m){NET.editing=false;netHide();if(mode==='play'||mode==='over'){}if(NET.spMode==null)NET.spMode=settings.mode;NET.keep=true;clearWorld();NET.keep=false;NET.mode=m.mode;NET.seed=m.seed;settings.mode=m.smode||'team';lastMap=m.map;netRand(1,0);loadMap(m.map,m.seed);netRand(0);clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;try{chStart();}catch(e){}
+ const sw=m.mode!=='coop',tm=t=>sw?(t==='b'?'r':'b'):t;NET.my=m.you;
  NET.units=m.units.map((d,i)=>{const me=i===m.you;const u=makeUnit(tm(d.team),d.type,d.slots,null);if(me)applyPaint(u,paintOf(loadout.mech));else if(d.paint){try{applyPaint(u,d.paint);}catch(e){}}spawn(u,d.p[0],d.p[1],d.p[2]);u.nid=i;if(!me){u.max=d.max;u.hp=d.max;makePlate(u,u.team==='b');}if(i===m.host)u.netName=m.hostName;return u;});
  P=NET.units[m.you];P.isPlayer=true;P.pitch=.05;camYaw=P.yaw;
- clearSpawns();netRand(1,1);buildEnvDetail();netRand(0);showBases(false);mode='play';showUI();mapBanner();drawMiniBase();try{lockAim();}catch(e){}netS.style.display='block';}
+ clearSpawns();netRand(1,1);buildEnvDetail();netRand(0);showBases(false);mode='play';showUI();mapBanner();drawMiniBase();try{lockAim();}catch(e){}netS.style.display='block';netUi();}
 const _nv=new THREE.Vector3(),_na=new THREE.Vector3();
 function netSnap(m){const us=NET.units;m.u.forEach((d,i)=>{const u=us[i];if(!u)return;
  if(i===NET.my){u.hp=Math.min(u.max,d[6]*u.max/Math.max(1,d[12]||u.max));if(!d[7]&&u.alive)killUnit(u,null);return;}
@@ -1823,10 +1882,12 @@ function netTick(dt,AP){if(!NET.role||!NET.conn)return;const now=performance.now
  
  if(NET.role==='host'){if(now-NET.sT>=66){NET.sT=now;netSend({t:'s',u:NET.units.map(u=>{const p=u.g.position,a=u===P?(AP||p):(u.netAim?{x:u.netAim[0],y:u.netAim[1],z:u.netAim[2]}:(u.tgt&&u.tgt.g?u.tgt.g.position:null));return [r2(p.x),r2(p.y),r2(p.z),r2(u.yaw),r2(u.legYaw||0),r2(u.pitch||0),Math.round(u.hp),u.alive?1:0,u.shieldOn?1:0,r2(u.cloakT||0),a?1:null,r2(u.tYaw||0),Math.round(u.max),a?r2(a.x):0,a?r2(a.y+(a===p||u.tgt&&a===u.tgt.g.position?3:0)):0,a?r2(a.z):0];}),e:NET.ev});NET.ev=[];}}
  else if(now-NET.iT>=50&&P){NET.iT=now;const p=P.g.position,a=AP||p;netSend({t:'i',p:[r2(p.x),r2(p.y),r2(p.z)],v:[r2(P.vel.x),r2(P.vel.y||0),r2(P.vel.z)],yaw:r2(P.yaw),ty:r2(P.tYaw||0),ly:r2(P.legYaw||0),pi:r2(P.pitch||0),a:[r2(a.x),r2(a.y),r2(a.z)],fL:P.alive&&!!NET.fL,fR:P.alive&&!!NET.fR,lk:P.lockTgt&&P.lockTgt.nid!=null&&P.lockT>=(P.W.lockTime||9)?P.lockTgt.nid:-1});}
- if((NET.stT=(NET.stT||0)+dt)>.25){NET.stT=0;const pn=NET.role==='host'?(NET.R&&NET.R.netName):'';netS.textContent=`🟢 ONLINE ${NET.mode==='coop'?'CO-OP':'VERSUS'} · ${NET.role==='host'?'HOST':'GUEST'} · ${NET.via==='relay'?'📡 RELAY':'⚡ P2P'} · room ${NET.code} · ping ${NET.ping} ms`;netS.style.color=NET.ping>200?'#fd4':'#8f8';}}
-window.__net={fire:b=>{inp.fire=b;},face:u=>{const d=u.g.position.clone().sub(P.g.position);P.yaw=P.tYaw=Math.atan2(d.x,d.z);camYaw=P.yaw;},open:netOpen,host:netHost,join:netJoin,close:netClose,get NET(){return NET;}};
-setInterval(()=>{if(NET.role&&NET.conn&&NET.conn.open&&NET.last&&performance.now()-NET.last>8000)netLost('Connection lost (no data for 8 s).');if(NET.role&&NET.conn&&NET.conn.open&&mode!=='play'&&performance.now()-NET.pT>1000){NET.pT=performance.now();netSend({t:'p',ts:NET.pT});}},1000);
+ if((NET.stT=(NET.stT||0)+dt)>.25){NET.stT=0;const pn=NET.role==='host'?(NET.R&&NET.R.netName):'';netS.textContent=`🟢 ONLINE ${(NMODES[NET.mode]||{n:''}).n} · ${NET.role==='host'?'HOST':'GUEST'} · ${NET.via==='relay'?'📡 RELAY':'⚡ P2P'} · room ${NET.code} · ping ${NET.ping} ms`;netS.style.color=NET.ping>200?'#fd4':'#8f8';}}
+window.__net={fire:b=>{inp.fire=b;},face:u=>{const d=u.g.position.clone().sub(P.g.position);P.yaw=P.tYaw=Math.atan2(d.x,d.z);camYaw=P.yaw;},open:netOpen,host:netHost,join:netJoin,close:netClose,lobby:netShowLobby,edit:netEditMech,rematch:netRematch,quit:netQuitMatch,saved:netSaved,ui:netUi,get NET(){return NET;}};
+setInterval(()=>{if(NET.role&&NET.conn&&NET.conn.open&&NET.last&&performance.now()-NET.last>10000)netLost('Connection lost (no data for 10 s).');if(NET.role){netLobRender();netUi();if(NET.conn&&(NET.sT2=(NET.sT2||0)+1)%3===0){netSave();if(mode==='menu'){if(NET.role==='host')netBcast();else{const sg=JSON.stringify(netMeMsg('me'));if(sg!==_sig){_sig=sg;netSendMe();}}}}}if(NET.role&&NET.conn&&NET.conn.open&&mode!=='play'&&performance.now()-NET.pT>1000){NET.pT=performance.now();netSend({t:'p',ts:NET.pT});}},1000);
 addEventListener('pagehide',()=>{try{if(NET.conn&&NET.conn.open)NET.conn.send({t:'bye'});}catch(e){}});
+// remembered room: auto-rejoin shortly after a reload, otherwise offer a button
+setTimeout(()=>{const r=netSaved();if(!r||NET.role)return;if(curProf()&&mode==='menu'&&Date.now()-r.t<180e3)netReconnect(r);else netUi();},1200);
 // ---------- loop ----------
 const fwd=new THREE.Vector3(),rt=new THREE.Vector3();
 function outcome(){const md=settings.mode,b=mates('b').length,r=mates('r').length;
@@ -1838,7 +1899,7 @@ function end(win,why){if(NET.role==='host')netSend({t:'end',win,why});mode='over
  document.exitPointerLock&&document.exitPointerLock();inp.fire=false;inp.mFire=false;
  const rw=reward(win,why);LAST_REWARD=rw;const ce=$('coins');ce.innerHTML=rw.rows.map((r,i)=>`<div class="cr" style="animation-delay:${i*.25}s"><span>${r[0]}</span><b>${r[1]>=0?'+':''}${r[1]}</b></div>`).join('')+`<div class="ct"><span>TOTAL</span><b>🪙 +<i id="cup">0</i></b></div><div class="cb">Balance: 🪙 <i id="cbal">${SAVE.coins-rw.tot}</i></div>`+chResults();
  const t0=performance.now(),dur=1200+rw.rows.length*250,b0=SAVE.coins-rw.tot;cancelAnimationFrame(cupRAF);
- const step=n=>{const f=Math.min(1,(n-t0)/dur),e=1-Math.pow(1-f,3);$('cup').textContent=Math.round(rw.tot*e);$('cbal').textContent=Math.round(b0+rw.tot*e);if(f<1)cupRAF=requestAnimationFrame(step);};cupRAF=requestAnimationFrame(step);}
+ const step=n=>{const f=Math.min(1,(n-t0)/dur),e=1-Math.pow(1-f,3);$('cup').textContent=Math.round(rw.tot*e);$('cbal').textContent=Math.round(b0+rw.tot*e);if(f<1)cupRAF=requestAnimationFrame(step);};cupRAF=requestAnimationFrame(step);netOver();}
 let LAST_REWARD=null,cupRAF=0;
 let last=performance.now(),menuA=0,fpsT=0,fpsN=0,fps=60,lowT=0;
 function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
@@ -2027,7 +2088,7 @@ function renderMenu(){const Ms=CFG.mechs,Ws=CFG.weapons,Md=CFG.modes;let h='';co
   const w=upWpn(pickSel);h+=`<div class="det"><h3>${w.name} ${pickSel===cur[slotSel]?'<small>— equipped</small>':''}</h3>${wStats(w)}<p>${w.desc}</p>${buyBox(pickSel)}</div>
   <div class="row"><button data-go="mech">◀ BACK</button><button class="go" data-go="deploy" ${cur.some(isLocked)?'disabled':''}>DEPLOY</button></div>`;}
  mc.className=menuStep==='weapon'?'lo':'';mc.innerHTML=h;/*v13 sticky menu bar*/}
-function goMenu(){if(NET.role&&!NET.keep)netClose();clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();}
+function goMenu(){clearWorld();if(mapKey!=='arena')loadMap('arena',7);showBases(false);mode='menu';menuStep='title';preview();renderMenu();showUI();if(NET.role)netAfterMenu();else netUi();}
 function deskPanel(at,af,ac){const pct=v=>Math.max(0,Math.min(100,v*100)).toFixed(0)+'%';
  const rows=P.ws.map(w=>{const W=w.W;let st,f,col='#ff6';
   if(W.emp&&w.chg){f=Math.min(1,(clock-w.chg)/W.charge);st='DISCHARGING…';col='#8cf';}
@@ -2059,10 +2120,10 @@ function menuClick(e){const el=e.target.closest('[data-ptest],[data-ptreset],[da
  if(d.buy){if(buyUnlock(d.buy)){toast(`${(CFG.mechs[d.buy]||CFG.weapons[d.buy]).name} unlocked!`);if(menuStep==='weapon'&&CFG.weapons[d.buy]){slotsOf(loadout.mech)[slotSel]=d.buy;saveLoadout();}preview();}}
  if(d.paint){const k=d.paint;if(SAVE.paints.includes(k)||buyPaint(k)){SAVE.paint[gsel]=k;persist();preview();}}
  if(d.reset){if(resetArm){resetArm=false;resetProgress();gsel=null;preview();toast('Progress reset');}else resetArm=true;}
- if(d.go){if(d.go==='garage'){gsel=null;}if(d.go==='deploy'){if(isLocked(loadout.mech)||slotsOf(loadout.mech).some(isLocked)){toast('Unlock your selected gear in the Garage first');menuStep='mech';renderMenu();return;}saveLoadout();newGame();return;}menuStep=d.go;}
+ if(d.go){if(d.go==='garage'){gsel=null;}if(d.go==='deploy'){if(isLocked(loadout.mech)||slotsOf(loadout.mech).some(isLocked)){toast('Unlock your selected gear in the Garage first');menuStep='mech';renderMenu();return;}saveLoadout();if(NET.role){netShowLobby();netLobChanged();return;}newGame();return;}menuStep=d.go;}
  renderMenu();}
 menu.addEventListener('click',menuClick);
-$('again').addEventListener('click',()=>newGame());$('tomenu').addEventListener('click',()=>goMenu());
+$('again').addEventListener('click',()=>NET.role?netRematch():newGame());$('tomenu').addEventListener('click',()=>goMenu());
 loadMap('arena',7);setGfx(settings.gfx);goMenu();requestAnimationFrame(loop);
 window.__game={end,THREE_V:THREE.Vector3,mergeUnit,makeUnit,explode,pickGfx,setGfx,get gfxSel(){return settings.gfxSel},colR,sepUnits,inObst,gunBlocked,muzzle,R,S,get A(){return A},overview(){const c=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,800);c.position.set(0,A*1.55,A*1.05);c.lookAt(0,0,-A*.08);const f=S.fog;S.fog=null;R.render(S,c);S.fog=f;},hurt,STATS,C,cam,obst,obstMeshes,BASES,CFG,get U(){return U},get E(){return foes('b')},get P(){return P},get B(){return B},get mode(){return mode},get fps(){return fps},get SPEC(){return SPEC},get settings(){return settings},
  ability:()=>ability(P),abilityU:u=>ability(u),blocked:(x,z,r,y)=>blocked(x,z,r,y),groundAt:(x,z,y)=>groundAt(x,z,y),get A(){return A},newGame,goMenu,setGfx,get loadout(){return loadout},setLoadout:(m,w)=>{loadout.mech=m;loadout.slots[m]=CFG.slots[m].map(sl=>adapt(w,sl,false));},setSlots:(m,a)=>{loadout.mech=m;loadout.slots[m]=a.slice();},slotsOf:t=>slotsOf(t),SIZES,menu:st=>{menuStep=st;renderMenu();},slot:i=>{slotSel=i;pickSel=null;renderMenu();},
@@ -2171,7 +2232,7 @@ OV.addEventListener('input',e=>{const el=e.target,ds=el.dataset;
  const p=ds.tp||ds.tn;if(!p)return;const v=+el.value;const row=el.closest('.trw');row.querySelectorAll('input').forEach(i=>{if(i!==el)i.value=v;});tSetVal(p,v);row.classList.toggle('ch',p in tOver());const d=el.closest('details');d&&tRefresh(d);});
 OV.addEventListener('change',e=>{const el=e.target,k=el.dataset.ts;if(!k)return;const t=tOver();if(k==='teamSize'){const v=+el.value;if(v===TDEF.teamSize)delete t.teamSize;else t.teamSize=v;}else{if(el.value)t[k]=el.value;else delete t[k];}tPersist();const d=el.closest('details');d&&tRefresh(d);});
 OV.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const ds=b.dataset;if(b.id!=='oBack')sfx('click');
- if(ds.pz){if(ds.pz==='resume')resumeGame();else if(ds.pz==='snd')openSound(openPause);else if(ds.pz==='tune')openTune(openPause);else if(ds.pz==='restart'){closeOvl();PAUSED=false;newGame();}else if(ds.pz==='quit'){closeOvl();PAUSED=false;goMenu();}return;}
+ if(ds.pz){if(ds.pz==='resume')resumeGame();else if(ds.pz==='snd')openSound(openPause);else if(ds.pz==='tune')openTune(openPause);else if(ds.pz==='restart'){closeOvl();PAUSED=false;NET.role?netQuitMatch():newGame();}else if(ds.pz==='quit'){closeOvl();PAUSED=false;NET.role?netQuitMatch():goMenu();}return;}
  if(ds.amute){audSet('mute',!aud().mute);b.classList.toggle('on',aud().mute);b.textContent=aud().mute?'MUTED':'ON';return;}
  if(ds.atest){sfx(ds.atest,{u:P&&P.alive?P:null,fam:'minigun'});return;}
  if(ds.tf){const t=tOver(),k='flag.'+ds.tf;if(t[k])delete t[k];else t[k]=true;tPersist();b.classList.toggle('on',!!t[k]);b.textContent=t[k]?'ON':'OFF';const d=b.closest('details');d&&tRefresh(d);return;}
