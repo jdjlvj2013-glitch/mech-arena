@@ -1,4 +1,4 @@
-/*v37 4-player lobby + secondary abilities*/
+/*v38 Mender repair aura*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -17,8 +17,8 @@ const CFG={
    ability:'JUMP',desc:'Agile frame. Jump-jets launch you over cover and onto containers and platforms.',
    jump:{vel:19.6,cd:4.5,airSpeed:1.3,airCtl:0.65}},
   mender:{name:'Mender',hp:850,speed:9,mass:1,color:0x3d8a3a,enemyColor:0x9a2f45,
-   ability:'REGEN',desc:'Repair frame. After 3s without taking damage, auto-repairs 60 HP per second. Two Medium arm mounts (a Small also fits either one).',
-   regen:{delay:3,rate:60}},
+   ability:'REGEN',desc:'Field medic. After 3s without taking damage, auto-repairs 50 HP per second. Always projects a 13 m REPAIR AURA: teammates inside it are healed 30 HP per second. Two Medium arm mounts (a Small also fits either one).',
+   regen:{delay:3,rate:50,aura:13,ally:30}},
  },
  weapons:{
   minigun:{name:'Minigun',desc:'Huge fire rate, low damage per bullet. Spins up. Damage falls off past 60% range.',
@@ -157,7 +157,7 @@ function mechAt(k,L){const b=CFG.mechs[k],T=JSON.parse(JSON.stringify(b));T.colo
  T.hp=Math.round(b.hp*(1+P.armor.per*a));T.speed=+(b.speed*(1+P.speed.per*s)).toFixed(2);
  if(T.shield)T.shield.hp=Math.round(b.shield.hp*(1+P.ability.per*ab));
  if(T.jump)T.jump.cd=+(b.jump.cd*(1-0.08*ab)).toFixed(2);
- if(T.regen)T.regen.rate=Math.round(b.regen.rate*(1+0.12*ab));
+ if(T.regen){T.regen.rate=Math.round(b.regen.rate*(1+0.12*ab));if(b.regen.ally)T.regen.ally=Math.round(b.regen.ally*(1+0.12*ab));}
  if(T.lockdown)T.lockdown.dur=+(b.lockdown.dur*(1+.1*ab)).toFixed(2);
  if(T.dash)T.dash.cd=+(b.dash.cd*(1-0.08*ab)).toFixed(2);
  if(T.cloak)T.cloak.dur=+(b.cloak.dur*(1+.08*ab)).toFixed(2);
@@ -2062,7 +2062,7 @@ function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}
  if(w.emp)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max + EMP · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHAIN',w.jumps/4,'FULL CHARGE ONLY · +'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.rMax/130,w.rMin+' → '+w.rMax+' m charged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% dmg & max range in '+w.chT+'s')}${bar('WIND-UP',1-w.charge/1.5,w.charge+'s trigger delay')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
  if(w.push)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max (full charge) · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% in '+w.chT+'s, holds at max')}${bar('SHOVE',w.push/16,(w.push*(.6+.8*w.chMin)).toFixed(1)+' → '+(w.push*1.4).toFixed(1))}${bar('RANGE',w.range/130,w.range+' m')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} orbs · ${w.interval}s between · reload ${w.reload}s · charges while ready (don't fire); charged damage to Aegis domes capped at 60%</p>`;
  if(w.dot)return `${bar('DAMAGE',(w.dmg+w.dot)/150,w.dmg+' + '+w.dot+' over '+w.dotT+'s')}${bar('LEECH',w.leech/.5,Math.round(w.leech*100)+'% healed')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',(w.dmg/w.interval)/150,Math.round(w.dmg/w.interval+w.dot/w.dotT))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} doses · reload ${w.reload}s · damage over time heals you</p>`;if(w.beam){const dps=w.dmg/w.interval;return `${bar('DAMAGE',dps/230,Math.round(dps)+' /s beam')}${bar('HEAT',w.heat/.4,'full in '+(1/w.heat).toFixed(1)+'s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · hitscan beam · cools ${Math.round(w.cool*100)}%/s · overheat lockout ${w.reload}s</p>`;}const rate=1/w.interval,dps=w.dmg*(w.pellets||1)*rate;return `${bar('DAMAGE',w.dmg*(w.pellets||1)/230,w.dmg+(w.pellets?' ×'+w.pellets:' / hit'))}${bar('FIRE RATE',Math.min(1,rate/14),rate.toFixed(1)+' /s')}${bar('RANGE',w.range/130,w.range+' m')}${bar('DPS',dps/150,Math.round(dps))}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · mag ${w.mag} · reload ${w.reload}s${w.homing?` · lock ${w.lockTime}s · splash ${w.splash}m`:''}</p>`;}
-function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m) for ${m.dome.dur}s, heals ${Math.round(m.dome.heal*100)}% of absorbed damage, ${m.dome.cd}s cooldown (${m.dome.brokeCd}s if broken)`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:m.cloak?`${m.cloak.dur}s cloak (untargetable, hidden beyond ${m.cloak.near} m), ${m.cloak.cd}s cooldown`:m.regen?`+${m.regen.rate} HP/s after ${m.regen.delay}s`:'';}
+function abText(m){return m.lockdown?`${m.lockdown.r} m root field for ${m.lockdown.dur}s, ${m.lockdown.cd}s cooldown, ${m.lockdown.range} m throw`:m.shield?`${m.shield.hp} HP toggle shield, ${m.shield.cd}s break lockout`:m.jump?`${m.jump.cd}s cooldown`:m.dash?`${m.dash.cd}s cooldown`:m.dome?`${m.dome.hp} HP force dome (${m.dome.r} m) for ${m.dome.dur}s, heals ${Math.round(m.dome.heal*100)}% of absorbed damage, ${m.dome.cd}s cooldown (${m.dome.brokeCd}s if broken)`:m.dive?`${m.dive.dmg} dmg dive strike, ${m.dive.cd}s cd · ${m.fly.fuel}s fuel, ${m.fly.ceil} m ceiling`:m.cloak?`${m.cloak.dur}s cloak (untargetable, hidden beyond ${m.cloak.near} m), ${m.cloak.cd}s cooldown`:m.regen?`+${m.regen.rate} HP/s after ${m.regen.delay}s`+(m.regen.aura?` · aura heals allies ${m.regen.ally} HP/s within ${m.regen.aura} m`:''):'';}
 function buyBox(k){const c=CFG.econ.locked[k];return isLocked(k)?`<div class="buy"><span>🔒 Locked</span>${SAVE.coins>=c?`<button class="go" data-buy="${k}">UNLOCK 🪙${c}</button>`:`<button disabled>🪙${c} — need ${c-SAVE.coins} more</button>`}</div>`:'';}
 // garage stat rows: label, current, next
 function mechRows(k){const L=levelsOf(k,'mech'),T=mechAt(k,L),out=[];
@@ -2253,7 +2253,7 @@ function openSound(back){const a=aud(),row=(k,l)=>`<div class="trw"><label>${l}<
  <p class="ab">Saved per pilot. On iPad/iPhone sound starts after your first tap.</p></div></div>`,back);}
 function audSet(k,v){SAVE.audio=Object.assign(aud(),{[k]:v});audApply();try{persist();}catch(e){}}
 // ---------- tuning panel ----------
-const TLBL={hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',jumps:'Chain jumps',chainR:'Chain radius (m)',chainFall:'Chain dmg per jump ×',rMin:'Min range (no charge)',rMax:'Max range (full charge)',chT:'Charge time (s)',chMin:'Uncharged damage fraction',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
+const TLBL={aura:'Aura radius (m)',ally:'Ally heal/s (aura)',hp:'HP',speed:'Speed',dmg:'Damage',interval:'Fire interval (s)',range:'Range',mag:'Magazine',reload:'Reload (s)',heat:'Heat/s',cool:'Cool/s',stun:'EMP stun (s)',resist:'Debuff resistance (s)',jam:'Jam chance',jamN:'Weapons jammed',jamMul:'Jam reload ×',near:'Visible within (m)',fireReveal:'Fire reveal (s)',hitReveal:'Hit reveal (s)',fireCost:'Cloak cost per shot (s)',speedMul:'Cloaked speed ×',slow:'Slow',blast:'Blast radius',dot:'Nanite DoT',dotT:'DoT time',leech:'Leech',tether:'Tether',amp:'Tether amp',tslow:'Tether slow',charge:'Charge (s)',jumps:'Chain jumps',chainR:'Chain radius (m)',chainFall:'Chain dmg per jump ×',rMin:'Min range (no charge)',rMax:'Max range (full charge)',chT:'Charge time (s)',chMin:'Uncharged damage fraction',splash:'Splash',spread:'Spread',cd:'Cooldown',dur:'Duration',brokeCd:'Cooldown if broken (s)',heal:'Heal % of absorbed',empDrain:'EMP dome drain',r:'Radius',vel:'Jump velocity',regen:'Regen',rate:'Rate'};
 const tOver=()=>SAVE.tune||(SAVE.tune={});
 function tStep(d){d=Math.abs(d);return d>=100?1:d>=10?.1:d>=1?.01:.001;}
 function tRow(path,label){const def=tGet(TDEF,path),cur=path in tOver()?tOver()[path]:def,mx=Math.max(Math.abs(def)*3,1),st=tStep(def||1),ch=path in tOver();
@@ -2450,3 +2450,19 @@ function secStats(k){const C=CFG.sec[k];return `<small>(${({regen:`${C.hps} HP/s
 {const r0=renderMenu;renderMenu=function(){const r=r0.apply(this,arguments);try{if(mode==='menu'&&(menuStep==='weapon'||menuStep==='mech')&&!document.getElementById('saPick')){const rows=mc.querySelectorAll('.row');const last=rows[rows.length-1];if(last)last.insertAdjacentHTML('beforebegin',secPickHtml());else mc.insertAdjacentHTML('beforeend',secPickHtml());}}catch(e){console.warn(e);}return r;};}
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('[data-sa]');if(!b)return;e.stopPropagation();const k=b.dataset.sa==='none'?'':b.dataset.sa;if(!loadout.sa)loadout.sa={};loadout.sa[loadout.mech]=k;saveLoadout();try{sfx('click');}catch(_){}renderMenu();},true);
 window.__secHurt=(u,d,p,s)=>hurt(u,d,p,s);window.__sec={use:secTry,apply:(k,tg)=>secApply(P,k,tg),get P(){return P},get U(){return U},get F(){return SAF},set(k){if(!loadout.sa)loadout.sa={};loadout.sa[loadout.mech]=k;saveLoadout();if(P)P.sa=k;},coins:()=>SAVE.coins};
+/* v38 Mender repair aura: host-authoritative ally heal, local visuals */
+const auraG=new THREE.TorusGeometry(1,.025,4,72),auraD=new THREE.CircleGeometry(1,48);
+function auraOn(m){return m.alive&&m.T&&m.T.regen&&m.T.regen.aura&&!(m.empT>0)&&!m.isDome;}
+function auraTick(dt){if(!P)return;const auth=NET.role!=='client';
+ for(const x of U)x.auraT=Math.max(0,(x.auraT||0)-dt);
+ for(const m of U){const on=auraOn(m),R=on?m.T.regen.aura:0;
+  if(on&&!m.auraM){const g=new THREE.Group(),c=m.team===P.team?'#5f9':'#f86';const e=new THREE.Mesh(auraG,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.7,depthWrite:false}));e.rotation.x=Math.PI/2;const d=new THREE.Mesh(auraD,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.12,depthWrite:false}));d.rotation.x=-Math.PI/2;g.add(e,d);S.add(g);m.auraM=g;}
+  if(m.auraM){m.auraM.visible=on;if(!on)continue;const p=m.g.position;m.auraM.position.set(p.x,p.y+.25,p.z);m.auraM.scale.setScalar(R);m.auraM.children[0].material.opacity=.7+.25*Math.sin(clock*4);}
+  if(!on)continue;const p=m.g.position,rate=m.T.regen.ally*(m.prof?m.prof.hpMul:1);
+  for(const x of U){if(x===m||!x.alive||x.team!==m.team||x.isDome||x.hp>=x.max)continue;if(x.g.position.distanceTo(p)>R)continue;
+   x.auraT=.3;x.auraR=rate;if(auth)x.hp=Math.min(x.max,x.hp+rate*dt);
+   if(Math.random()<dt*6){const q=x.g.position;fx(new THREE.Vector3(q.x+(Math.random()-.5)*2.5,q.y+1.5+Math.random()*2.5,q.z+(Math.random()-.5)*2.5),.3,'#6f9',{vy:2.5,life:.6});}}}}
+{const c0=clearWorld;clearWorld=function(){for(const u of U)if(u.auraM){S.remove(u.auraM);u.auraM=null;}return c0.apply(this,arguments);};}
+{const l0=stList;stList=function(u){const L=l0(u)||[];if(u&&u.auraT>0)L.push(['b','✚','+'+Math.round(u.auraR||0),'Mender aura']);return L;};}
+{const t0=netTick;netTick=function(dt,ap){auraTick(dt);return t0(dt,ap);};}
+window.__aura={on:auraOn};
