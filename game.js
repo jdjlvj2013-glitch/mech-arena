@@ -1,4 +1,4 @@
-/*v39.1 Siege Ridge map*/
+/*v39.1.1 stairs fix*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -356,7 +356,9 @@ function loadMap(key,seed){const m=MAPS[key];mapKey=key;MAP=m;A=Math.round(m.A*M
  bakeEnv();applyDraw();return m;}
 
 function blocked(x,z,r,y=0){for(const o of obst)if(o.h>y+0.4&&!(o.y0>y+4.5)&&Math.abs(x-o.x)<o.hx+r&&Math.abs(z-o.z)<o.hz+r)return o;return null;}
-function groundAt(x,z,y){let g=0;for(const o of obst)if(o.h<=y+0.45&&o.h>g&&Math.abs(x-o.x)<o.hx+.5&&Math.abs(z-o.z)<o.hz+.5)g=o.h;return g;}
+function groundAt(x,z,y,pad=.5){let g=0;for(const o of obst)if(o.h<=y+0.45&&o.h>g&&!(o.y0>y+.45)&&Math.abs(x-o.x)<o.hx+pad&&Math.abs(z-o.z)<o.hz+pad)g=o.h;return g;}
+// v39.1.1: support under a mech's whole footprint (not just its centre) + step-up, so stairs/ramps are walkable at every mech radius
+function standAt(u){const p=u.g.position;return groundAt(p.x,p.z,p.y,Math.max(.5,colR(u)*.6));}
 function los(a,b){const d=b.clone().sub(a),L=d.length(),n=Math.ceil(L/1.5);for(let i=1;i<n;i++){const p=a.clone().addScaledVector(d,i/n);for(const o of obst)if(p.y<o.h&&!(o.y0>p.y)&&Math.abs(p.x-o.x)<o.hx&&Math.abs(p.z-o.z)<o.hz)return false;}return true;}
 // ---------- shared mech geometry/materials ----------
 const TM={p:{stripe:M(0xf0f0f0),visor:new THREE.MeshBasicMaterial({color:0x40e0ff})},e:{stripe:M(0x111111),visor:new THREE.MeshBasicMaterial({color:0xff4020})}};
@@ -882,7 +884,7 @@ function tickUnit(u,dt){const T=u.T;tickAir(u,dt);u.abCd=Math.max(0,u.abCd-dt);f
  if(T.shield&&!(u.empT>0)&&!u.shieldOn&&clock-(u.shHit||-99)>T.shield.regenDelay)u.shieldHP=Math.min(T.shield.hp,u.shieldHP+T.shield.regen*dt);
  for(const w of u.ws)if(w.W.beam){w.beamT=(w.beamT||0)-dt;if(w.beamT<=0)w.heat=Math.max(0,(w.heat||0)-w.W.cool*dt);}
  if(!(u.empT>0)&&T.regen&&clock-u.lastHit>T.regen.delay&&u.hp<u.max&&u.hp>0)u.hp=Math.min(u.max,u.hp+T.regen.rate*(u.prof?u.prof.hpMul:1)*dt);
- const p=u.g.position,gy=groundAt(p.x,p.z,p.y);
+ const p=u.g.position,gy=standAt(u);if(!u.air&&gy>p.y&&gy-p.y<=.46)p.y=gy;// climb a step
  if(u.air||p.y>gy+.01){u.air=true;if(u.diving)diveMove(u,dt);else if(!u.flyOn){u.vy-=CFG.gravity*dt*(T.fly?T.fly.glide:1);if(T.fly&&u.vy<-12)u.vy=-12;}p.y+=u.vy*dt;if(p.y<=gy){if(u.diving){p.y=gy;diveImpact(u);}const iv=-u.vy;p.y=gy;u.vy=0;u.air=false;u.crouch=Math.min(1,Math.max(u.crouch,iv/16));u.dip=Math.min(.6,iv/40);unstick(u);
    pDust({x:p.x,y:gy+.3,z:p.z},1.1,gfxLow()?2:6,4+iv*.2);if(u===P)shake(CFG.cam.shakeLand*Math.min(1,iv/15));sfx('land',{u,k:Math.min(1.3,iv/14)});}}}
 // never end up inside a box or past the arena edge (after landing/dash): nudge to the nearest free spot
