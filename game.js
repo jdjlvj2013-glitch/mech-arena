@@ -1,4 +1,4 @@
-/*v39.2.2 TEST: compact mortar model*/
+/*v39.2.3 TEST: compact mortar + housing, weapon icons*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -438,7 +438,7 @@ const decalMats={};function decalMat(team,type){const k=team+type;if(decalMats[k
  return decalMats[k]=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2});}
 const planeG=new THREE.PlaneGeometry(1,1),droneG=new THREE.OctahedronGeometry(.32,0),rotorG=new THREE.TorusGeometry(.38,.04,4,12),dishG=new THREE.CylinderGeometry(.45,.1,.18,10),clawG=new THREE.ConeGeometry(.12,.55,4);
 // leg specs: x/z hip offset, hx/hz foot home offset (lower-local), l1/l2 bone lengths, rev = reverse (digitigrade) knee, grp = gait group (legs in a group step together), w = thickness
-const MORT_VIS=.6;// v39.2.2: compact mortar model (visual only)
+const MORT_VIS=.5;// v39.2.2: compact mortar model (visual only)
 const FRAMES={
  guardian:{legs:[{x:-1.15,z:.95,hx:-1.75,hz:1.35,grp:0},{x:1.15,z:-.95,hx:1.75,hz:-1.35,grp:0,rev:1},{x:1.15,z:.95,hx:1.75,hz:1.35,grp:1},{x:-1.15,z:-.95,hx:-1.75,hz:-1.35,grp:1,rev:1}].map(l=>({...l,l1:1.05,l2:1.3,w:1.15})),
   tw:[3.0,1.35,2.5],hips:[2.5,.6,2.2]},
@@ -548,9 +548,9 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
   const dc=team==='b'?0x50c8ff:0xff6a8a;domeM=new THREE.Group();domeM.position.y=1;const sm1=new THREE.Mesh(sphG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
   const sm2=new THREE.Mesh(icoG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.22,wireframe:true,depthWrite:false}));domeM.add(sm1,sm2);domeM.visible=false;g.add(domeM);}
  else if(type==='siege'){// v39.2 artillery: armored slab hull, low cab, howitzer cradle on the back, fold-out outriggers
-  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,dk,tw[0]*.8,.5,.4,0,cy-.4,tw[2]/2+.15);add(top,boxG,m,1.4,.7,1.0,0,tY+.2,.65);add(top,boxG,tm.visor,1.1,.14,.05,0,tY+.3,1.16);
-  add(top,boxG,tm.stripe,tw[0]+.05,.14,tw[2]+.05,0,cy-.25,0);vent=add(top,boxG,ventMat,1.2,.1,.6,0,tY+.01,-.2);add(top,boxG,dk,1.5,.55,1.6,0,tY+.28,-.75);
-  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY,.2);add(pv,boxG,m,.8,.35,1.6,s*.1,.1,0,0,0,s*-.3);pads.push(pv);}
+  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,dk,tw[0]*.8,.5,.4,0,cy-.4,tw[2]/2+.15);add(top,boxG,m,1.2,.45,.9,0,tY+.1,.7);add(top,boxG,tm.visor,1.0,.12,.05,0,tY+.15,1.16);
+  add(top,boxG,tm.stripe,tw[0]+.05,.14,tw[2]+.05,0,cy-.25,0);vent=add(top,boxG,ventMat,1.2,.1,.6,0,tY+.01,-.2);add(top,boxG,dk,.8,.22,.9,0,tY+.1,-.95);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY-.1,.2);add(pv,boxG,m,.55,.22,1.1,s*.1,.05,0,0,0,s*-.3);pads.push(pv);}
   const br=new THREE.Group();g.add(br);const ym=M(0xd0a020,{metal:.4,rough:.5});
   for(const [sx,sz] of [[-1,1],[1,1],[-1,-1],[1,-1]]){const a=grp(br,sx*1.5,1.3,sz*1.3);a.rotation.order='YXZ';a.rotation.y=Math.atan2(sx,sz);a.rotation.x=.55;add(a,boxG,dk,.32,.32,2.3,0,0,1.15);add(a,boxG,ym,.8,.14,.8,0,-.12,2.3);}
   br.visible=false;g.userData.brace=br;}
@@ -578,10 +578,10 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
  antP=new THREE.Group();antP.position.set(type==='mender'?.55:type==='locke'?.45:.6,tY+(type==='mender'?.5:.1),-.5);top.add(antP);add(antP,antG,MS.metal,1,type==='mender'?1.8:1,1,0,type==='mender'?1.1:.65,0);
  add(antP,jointG,BLINK,.25,.25,.25,0,type==='mender'?2.25:1.3,0);if(type==='mender')add(antP,dishG,MS.metal,1,1,1,0,1.5,0,.5,0,0);
  // ---- weapon hardpoints (CFG.slots order); each mount builds its own weapon model, scaled by size ----
- const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95*MORT_VIS,flak:1.15};let coil=null;
+ const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95,flak:1.15};let coil=null;
  if(typeof slots==='string')slots=CFG.slots[type].map(()=>slots);
  CFG.slots[type].forEach((sl,i)=>{const s=sl.s,k=slots[i]||CFG.defSlots[type][i],Wd=CFG.weapons[k],wpn=Wd.fam,z=Wd.size,sc=SIZES[z].sc,big=z==='L',sm=z==='S';let x,y,z0;
-  if(type==='siege'&&sl.mt){x=0;y=tY+.55;z0=-.95;}
+  if(type==='siege'&&sl.mt){x=0;y=tY+.35;z0=-1.0;}
   else if(type==='aegis'&&sl.z==='S'){x=0;y=tY+1.75;z0=.35;}
   else if(type==='locke'&&sl.z==='S'){x=0;y=cy+1.55;z0=-.1;add(top,cylG,dk,.4,.3,.4,0,cy+1.35,-.1);}
   else if(type==='guardian'&&sl.z==='S'){x=s*.95;y=tY+.85;z0=-.25;add(top,boxG,dk,.5,.6,.5,x,tY+.35,z0);}
@@ -1635,7 +1635,7 @@ let HITF='';const TIERS=['Bronze','Silver','Gold','Platinum'],TMED=['🥉','🥈
 Object.assign(CFG.paints,{phantasm:{name:'Phantasm',col:0x3a3550,metal:.85,rough:.22,camo:[0x23202f,0x6a5f8a],excl:1},chrome:{name:'Chrome',col:0xd8dde4,metal:1,rough:.15,excl:1},obsidian:{name:'Obsidian',col:0x16121e,metal:.6,rough:.3,excl:1},
  royal:{name:'Royal Violet',col:0x6a3cc8,metal:.5,excl:1},crimson:{name:'Champion Crimson',col:0x9c1c28,camo:[0x5a0c14,0xd4a530],excl:1}});
 const FAMS=['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'];
-const FAMN={minigun:'Minigun',railgun:'Railgun',hornet:'Hornet',shotgun:'Shotgun',laser:'Laser',emp:'EMP',nanite:'Nanite',lockbolt:'Lockbolt',swarm:'Swarm',pulse:'Pulse',jammer:'Jammer'};
+const FAMN={minigun:'Minigun',railgun:'Railgun',hornet:'Hornet',shotgun:'Shotgun',laser:'Laser',emp:'EMP',nanite:'Nanite',lockbolt:'Lockbolt',swarm:'Swarm',pulse:'Pulse',jammer:'Jammer',mortar:'Mortar',flak:'Flak'};
 const ownFam=f=>Object.keys(CFG.weapons).some(k=>CFG.weapons[k].fam===f&&!isLocked(k));
 const ownMech=m=>!isLocked(m);const ownAb=a=>Object.keys(CFG.mechs).some(k=>CFG.mechs[k][a]&&ownMech(k));
 // daily pool: [key,target,label,coins,requirement]
@@ -2112,7 +2112,7 @@ function menuTick(dt){menuA+=dt*.35;if(LINEUP){for(const u of LINEUP){for(const 
 let gtab='mech',gsel=null,resetArm=false;
 const coinTag=()=>`<div class="coinbal">🪙 <b id="bal">${SAVE.coins}</b></div>`;
 const lockTag=k=>isLocked(k)?`<small class="lk">🔒 🪙${CFG.econ.locked[k]}</small>`:'';
-const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',swarm:'✈',pulse:'◉',jammer:'⌁'})[CFG.weapons[k].fam];
+const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',swarm:'✈',pulse:'◉',jammer:'⌁',mortar:'☄',flak:'✺'})[CFG.weapons[k].fam];
 const szTag=k=>{const z=CFG.weapons[k].size;return `<span class="szb z${z}">${z}</span>`;};let slotSel=0,pickSel=null;
 function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}${bar('TETHER',w.tether/5,w.tether+'s · +'+Math.round(w.amp*100)+'% dmg taken')}${bar('RANGE',w.range/130,w.range+' m')}${bar('RATE',.4/w.interval,(1/w.interval).toFixed(1)+' /s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} bolts · reload ${w.reload}s · tethered target slowed ${Math.round(w.tslow*100)}% and takes +${Math.round(w.amp*100)}% damage from everyone</p>`;
  if(w.emp)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max + EMP · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHAIN',w.jumps/4,'FULL CHARGE ONLY · +'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.rMax/130,w.rMin+' → '+w.rMax+' m charged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% dmg & max range in '+w.chT+'s')}${bar('WIND-UP',1-w.charge/1.5,w.charge+'s trigger delay')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
