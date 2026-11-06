@@ -1,4 +1,4 @@
-/*v39.1.1 stairs fix*/
+/*v39.2 TEST release: Siege artillery mech*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -76,6 +76,10 @@ CFG.mechs.aegis={name:'Aegis',hp:1250,speed:7.4,mass:1.25,color:0x2fb8a8,enemyCo
 CFG.mechs.wraith={name:'Wraith',hp:820,speed:8.9,mass:.85,color:0x46505e,enemyColor:0x5c3a52,ability:'CLOAK',
  desc:'Stealth infiltrator. CLOAK bends light around the frame for up to 7 s: near-invisible shimmer, gone from enemy minimaps, lock-ons and name plates, and bots lose track of you. Firing or taking hits makes the cloak flicker visible for a moment, and you can be spotted up close (6 m). EMP knocks the cloak down. Pairs with the Jammer. Two Medium arm mounts (a Small also fits either one).',
  cloak:{dur:7,cd:14,near:6,fireReveal:.8,hitReveal:.5,fireCost:.4,speedMul:1.1}};
+// v39.2: SIEGE (slow long-range artillery frame)
+CFG.mechs.siege={name:'Siege',hp:1400,speed:6.2,mass:1.45,col:2.0,color:0x7a7044,enemyColor:0x8a3a34,ability:'DEPLOY BRACE',
+ desc:'Artillery walker. Thick four-legged frame with a back-mounted HOWITZER mount (fires the Mortar: lobbed shells that arc over cover and splash) and a Medium defense arm (Flak Burst fits for close defense). Ability: DEPLOY BRACE — stand still and tap; after 1.5 s the outriggers lock down for +25% mortar damage and range. Moving breaks the brace.',
+ brace:{arm:1.5,dmg:.25,range:.25,move:1.2}};
 CFG.weapons.shotgun={name:'Scattergun',desc:'Close-range shotgun: 9 heavy pellets per blast. Devastating up close, useless far away.',
  dmg:15,pellets:9,interval:0.8,range:28,mag:6,reload:3.2,spread:0.11,speed:150,aiBurst:1,kick:0.7,jolt:0.07};
 CFG.econ={win:100,loss:25,kill:20,capture:60,duelMul:{easy:0.7,normal:1,hard:1.5},
@@ -109,9 +113,15 @@ CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of s
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
 CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: listed damage is at FULL charge (100%); an uncharged orb deals 40% and it builds to 100% over 1.6 s, then holds at MAX (orb glows blue→white with sparks and a segmented charge meter, harder shove).',fam:'pulse',size:'M',
  dmg:115,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMin:.4,kick:.4,jolt:.04,aiBurst:2};
+CFG.weapons.mortar={name:'Mortar',desc:'Howitzer shell (Siege back mount only). Lobs an arcing shell over walls and ridges that explodes in a wide splash and scorches the ground. CHARGE WEAPON: listed damage is at FULL charge (100%); an uncharged shell deals 40% and it builds to 100% over 2 s, then holds at MAX. Charge also stretches range 35→70 m (a higher, longer arc). Splash falls to 40% at the edge; force domes block blasts from outside. Deploy Brace adds +25% damage and range.',fam:'mortar',size:'M',only:'howitzer',
+ dmg:220,interval:2.4,range:70,rMin:35,rMax:70,chT:2,chMin:.4,mag:3,reload:5,spread:0,speed:40,arc:true,splash:7.5,kick:.7,jolt:.07,aiBurst:1};
+CFG.weapons.flak={name:'Flak Burst',desc:'Close-defense flak cannon. Fires a wide cone of 10 shrapnel pellets out to 18 m that shreds anything rushing the artillery line.',fam:'flak',size:'M',
+ dmg:13,pellets:10,interval:1,range:18,mag:4,reload:3.4,spread:.2,speed:120,flak:true,kick:.5,jolt:.05,aiBurst:1};
 CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a chance to JAM the target: it forces weapons into a full reload (laser / heat weapons are forced into overheat). Medium jams 2 weapons per proc. Targets get a few seconds of jam resistance after it wears off.',fam:'jammer',size:'M',
  dmg:24,interval:.6,range:62,mag:8,reload:3.2,spread:.008,speed:120,jam:.5,jamN:2,jamMul:.8,kick:.2,jolt:.02,aiBurst:3};
 VAR.jammer={S:['Jam Pistol','Light scrambler. Fast shots, small chance to jam ONE weapon.'],L:['Blackout Array','Heavy scrambler dish. Slow, but most hits jam ALL of the target\'s weapons.']};
+VAR.mortar={S:['Light Mortar','Quick-cycling mortar. 160 max damage, 6 m splash, 32→62 m, 1.6 s charge.'],L:['Heavy Howitzer','Huge siege shell. 300 max damage, 9 m splash, 38→78 m, 2.4 s charge.']};
+VAR.flak={S:['Flak Pistol','Light flak: 7 pellets out to 16 m.'],L:['Heavy Flak','Massive flak cone: 14 pellets out to 20 m.']};
 VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges from 40% to 100% damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges from 40% to 100% damage in 2 s.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
  W.dmg=+(b.dmg*q.dmg).toFixed(1);W.interval=+(b.interval*q.int).toFixed(3);W.range=Math.round(b.range*q.range);W.reload=+(b.reload*q.reload).toFixed(2);W.mag=Math.max(2,Math.round(b.mag*q.mag));
@@ -122,18 +132,20 @@ for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
  if(W.jam){const S_=z==='S';W.jam=S_?.3:.75;W.jamN=S_?1:99;W.jamMul=S_?.55:1;W.dmg=S_?10:60;W.interval=S_?.32:1.2;W.mag=S_?12:4;W.speed=S_?135:105;W.aiBurst=S_?5:1;}
  if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMin=.4;W.dmg=S_?65:205;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
+ if(W.arc){const S_=z==='S';W.dmg=S_?160:300;W.splash=S_?6:9;W.rMin=S_?32:38;W.rMax=S_?62:78;W.range=W.rMax;W.chT=S_?1.6:2.4;W.chMin=.4;W.interval=S_?2:3;W.mag=S_?4:2;W.reload=S_?4.2:6;}
+ if(W.flak){const S_=z==='S';W.pellets=S_?7:14;W.dmg=S_?10:16;W.range=S_?16:20;W.mag=S_?5:3;W.interval=S_?.8:1.25;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
-{const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
+{const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer','mortar','flak'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
 // hardpoints per mech (s = side: -1 left group, +1 right group). A slot takes its size or smaller.
 CFG.slots={guardian:[{z:'L',s:1,n:'Right arm'},{z:'L',s:-1,n:'Left arm'},{z:'S',s:1,n:'Right shoulder'},{z:'S',s:-1,n:'Left shoulder'}],
  strider:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],mender:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],phantom:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],
  locke:[{z:'M',s:1,n:'Right pod'},{z:'M',s:-1,n:'Left pod'},{z:'S',s:1,n:'Crown'}],
- skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}]};
-CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun'],phantom:['minigun','minigun'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','railgun']};
+ skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],siege:[{z:'L',s:1,n:'Back howitzer',mt:'howitzer'},{z:'M',s:-1,n:'Defense arm'}]};
+CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun'],phantom:['minigun','minigun'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','railgun'],siege:['mortar','flak']};
 // firepower: per-mech damage factor (Guardian's 4 mounts share one reactor)
-CFG.firepower={guardian:.62,strider:1,mender:1,phantom:1,locke:.85,skyhawk:1,aegis:.85,wraith:.95};
-const fits=(k,sl)=>SIZES[CFG.weapons[k].size].r<=SIZES[sl.z].r;
+CFG.firepower={guardian:.62,strider:1,mender:1,phantom:1,locke:.85,skyhawk:1,aegis:.85,wraith:.95,siege:1};
+const fits=(k,sl)=>SIZES[CFG.weapons[k].size].r<=SIZES[sl.z].r&&(!CFG.weapons[k].only||CFG.weapons[k].only===sl.mt);
 const wtOf=a=>a.reduce((t,k)=>t+SIZES[CFG.weapons[k].size].wt,0);
 // heavier loadouts slow the mech a little (relative to its stock loadout)
 const weightMul=(type,a)=>Math.max(.85,Math.min(1.08,1-.03*(wtOf(a)-wtOf(CFG.defSlots[type]))));
@@ -422,7 +434,7 @@ const ventMat=new THREE.MeshStandardMaterial({map:ventGT,metalness:.7,roughness:
 const cableMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.6,metalness:.2});
 const decalMats={};function decalMat(team,type){const k=team+type;if(decalMats[k])return decalMats[k];
  const t=tex(128,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.save();g.beginPath();g.rect(0,0,52,h);g.clip();for(let i=-4;i<10;i++){g.fillStyle=i%2?'#111':'#f0c020';g.beginPath();g.moveTo(i*14,0);g.lineTo(i*14+14,0);g.lineTo(i*14-18,h);g.lineTo(i*14-32,h);g.fill();}g.restore();
-  g.fillStyle=team==='b'?'#e8f4ff':'#ffe0d8';g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText({guardian:'G-01',strider:'S-27',mender:'M-09',phantom:'P-X',locke:'L-16',skyhawk:'SH-7',aegis:'AG-4',wraith:'WR-0'}[type],90,34);});
+  g.fillStyle=team==='b'?'#e8f4ff':'#ffe0d8';g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText({guardian:'G-01',strider:'S-27',mender:'M-09',phantom:'P-X',locke:'L-16',skyhawk:'SH-7',aegis:'AG-4',wraith:'WR-0',siege:'SG-9'}[type],90,34);});
  return decalMats[k]=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2});}
 const planeG=new THREE.PlaneGeometry(1,1),droneG=new THREE.OctahedronGeometry(.32,0),rotorG=new THREE.TorusGeometry(.38,.04,4,12),dishG=new THREE.CylinderGeometry(.45,.1,.18,10),clawG=new THREE.ConeGeometry(.12,.55,4);
 // leg specs: x/z hip offset, hx/hz foot home offset (lower-local), l1/l2 bone lengths, rev = reverse (digitigrade) knee, grp = gait group (legs in a group step together), w = thickness
@@ -435,6 +447,7 @@ const FRAMES={
  phantom:{legs:[-1,1].map((s,i)=>({x:s*.7,z:0,hx:s*.8,hz:.1,grp:i,l1:1.28,l2:1.22,w:.7})),tw:[1.7,1.05,2.1],hips:[1.5,.4,.8]},
  skyhawk:{legs:[-1,1].map((s,i)=>({x:s*.6,z:.1,hx:s*.75,hz:.2,grp:i,l1:1.05,l2:1.25,rev:1,w:.55})),tw:[1.5,1.0,2.6],hips:[1.2,.35,.8]},
  wraith:{legs:[-1,1].map((s,i)=>({x:s*.62,z:-.05,hx:s*.72,hz:.05,grp:i,l1:1.3,l2:1.38,rev:1,w:.6})),tw:[1.55,.95,2.2],hips:[1.3,.38,.75]},
+ siege:{legs:[{x:-1.25,z:1.0,hx:-1.95,hz:1.45,grp:0},{x:1.25,z:-1.0,hx:1.95,hz:-1.45,grp:0,rev:1},{x:1.25,z:1.0,hx:1.95,hz:1.45,grp:1},{x:-1.25,z:-1.0,hx:-1.95,hz:-1.45,grp:1,rev:1}].map(l=>({...l,l1:1.0,l2:1.25,w:1.5})),tw:[2.8,1.5,2.6],hips:[2.7,.7,2.3]},
  aegis:{legs:[[-1,1],[1,-1],[1,1],[-1,-1]].map(([sx,sz],i)=>({x:sx*1.0,z:sz*.9,hx:sx*1.8,hz:sz*1.5,grp:i%2,l1:1.0,l2:1.25,w:.85,rev:sz<0?1:0})),tw:[2.6,1.5,2.4],hips:[2.0,.55,1.8]}};
 const hexG=new THREE.CylinderGeometry(1,1,1,6),icoG=new THREE.IcosahedronGeometry(1,2),fanG=new THREE.BoxGeometry(1,1,1);
 function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=team==='b'?T.color:T.enemyColor;const hi=typeof settings==='undefined'||settings.gfx!=='low';
@@ -533,6 +546,13 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
   vent=add(top,boxG,ventMat,.9,.08,.6,0,tY+.01,-.8);for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2),tY-.1,0);add(pv,boxG,m,.6,.3,1.3,s*.1,.1,0,0,0,s*-.3);pads.push(pv);}
   const dc=team==='b'?0x50c8ff:0xff6a8a;domeM=new THREE.Group();domeM.position.y=1;const sm1=new THREE.Mesh(sphG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
   const sm2=new THREE.Mesh(icoG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.22,wireframe:true,depthWrite:false}));domeM.add(sm1,sm2);domeM.visible=false;g.add(domeM);}
+ else if(type==='siege'){// v39.2 artillery: armored slab hull, low cab, howitzer cradle on the back, fold-out outriggers
+  add(top,boxG,m,tw[0],tw[1],tw[2],0,cy,0);add(top,boxG,dk,tw[0]*.8,.5,.4,0,cy-.4,tw[2]/2+.15);add(top,boxG,m,1.4,.7,1.0,0,tY+.2,.65);add(top,boxG,tm.visor,1.1,.14,.05,0,tY+.3,1.16);
+  add(top,boxG,tm.stripe,tw[0]+.05,.14,tw[2]+.05,0,cy-.25,0);vent=add(top,boxG,ventMat,1.2,.1,.6,0,tY+.01,-.2);add(top,boxG,dk,1.5,.55,1.6,0,tY+.28,-.75);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2+.05),tY,.2);add(pv,boxG,m,.8,.35,1.6,s*.1,.1,0,0,0,s*-.3);pads.push(pv);}
+  const br=new THREE.Group();g.add(br);const ym=M(0xd0a020,{metal:.4,rough:.5});
+  for(const [sx,sz] of [[-1,1],[1,1],[-1,-1],[1,-1]]){const a=grp(br,sx*1.5,1.3,sz*1.3);a.rotation.order='YXZ';a.rotation.y=Math.atan2(sx,sz);a.rotation.x=.55;add(a,boxG,dk,.32,.32,2.3,0,0,1.15);add(a,boxG,ym,.8,.14,.8,0,-.12,2.3);}
+  br.visible=false;g.userData.brace=br;}
  else if(type==='wraith'){// v28 stealth frame: faceted low wedge, hooded sensor cowl with violet slit, dorsal cloak-emitter vanes, blade shoulders
   const wg=wraithGlow();add(top,boxG,m,tw[0],tw[1]*.8,tw[2],0,cy-.08,0);add(top,boxG,dk,tw[0]*.82,tw[1]*.45,tw[2]*.92,0,cy-tw[1]*.5,0);
   for(const s of[-1,1]){const f=add(top,boxG,m,.5,tw[1]*.7,tw[2]*.9,s*(tw[0]/2+.08),cy-.05,-.05,0,0,s*.38);f.userData.noArm=1;}// faceted chines
@@ -557,10 +577,11 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
  antP=new THREE.Group();antP.position.set(type==='mender'?.55:type==='locke'?.45:.6,tY+(type==='mender'?.5:.1),-.5);top.add(antP);add(antP,antG,MS.metal,1,type==='mender'?1.8:1,1,0,type==='mender'?1.1:.65,0);
  add(antP,jointG,BLINK,.25,.25,.25,0,type==='mender'?2.25:1.3,0);if(type==='mender')add(antP,dishG,MS.metal,1,1,1,0,1.5,0,.5,0,0);
  // ---- weapon hardpoints (CFG.slots order); each mount builds its own weapon model, scaled by size ----
- const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55};let coil=null;
+ const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95,flak:1.15};let coil=null;
  if(typeof slots==='string')slots=CFG.slots[type].map(()=>slots);
  CFG.slots[type].forEach((sl,i)=>{const s=sl.s,k=slots[i]||CFG.defSlots[type][i],Wd=CFG.weapons[k],wpn=Wd.fam,z=Wd.size,sc=SIZES[z].sc,big=z==='L',sm=z==='S';let x,y,z0;
-  if(type==='aegis'&&sl.z==='S'){x=0;y=tY+1.75;z0=.35;}
+  if(type==='siege'&&sl.mt){x=0;y=tY+.85;z0=-.75;}
+  else if(type==='aegis'&&sl.z==='S'){x=0;y=tY+1.75;z0=.35;}
   else if(type==='locke'&&sl.z==='S'){x=0;y=cy+1.55;z0=-.1;add(top,cylG,dk,.4,.3,.4,0,cy+1.35,-.1);}
   else if(type==='guardian'&&sl.z==='S'){x=s*.95;y=tY+.85;z0=-.25;add(top,boxG,dk,.5,.6,.5,x,tY+.35,z0);}
   else{x=s*(tw[0]/2+(type==='guardian'?.75:.35)+(big?.12:0));y=type==='strider'?.55:.7;z0=type==='guardian'?.25:0;if(type==='guardian'&&s<0)x=-tw[0]/2-.35-(big?.1:0);
@@ -603,6 +624,8 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
    add(kb,cylG,MS.metal,.12,.95,.12,0,0,.8,Math.PI/2,0,0);for(const zz of(big?[.55,.75,.95]:[.6,.85]))add(kb,torusG,cm,.85,.85,.85,0,0,zz);
    add(kb,dishG,MS.metal,1.05,1,1.05,0,0,1.3,-Math.PI/2,0,0);add(kb,sphG,cm,.12,.12,.12,0,0,1.42);
    for(const a of[0,1.57,3.14,4.71])add(kb,boxG,cm,.04,.04,.3,Math.cos(a)*.3,Math.sin(a)*.3,1.38);}
+  else if(wpn==='mortar'){add(kb,boxG,dk,.9,.7,1.2,0,0,-.1);add(kb,cylG,MS.metal,.4,1.9,.4,0,.05,.9,Math.PI/2,0,0);add(kb,cylG,dk,.52,.35,.52,0,.05,1.75,Math.PI/2,0,0);add(kb,cylG,dk,.48,.2,.48,0,.05,.35,Math.PI/2,0,0);for(const sx of[-1,1])add(kb,boxG,dk,.12,.5,1.0,sx*.52,-.1,.1);}
+  else if(wpn==='flak'){add(kb,boxG,dk,.6,.6,.8,0,0,0);for(const [xx,yy] of [[-.14,.14],[.14,.14],[-.14,-.14],[.14,-.14]]){const b2=add(kb,barrelG,MS.metal,.9,.7,.9,xx,yy,.75);b2.rotation.x=Math.PI/2;}add(kb,boxG,M(0x8a8a5a),.66,.1,.5,0,.36,0);}
   else if(wpn==='pulse'){// pulse emitter: forked prongs around a floating energy orb, stacked capacitor rings
    cm=new THREE.MeshStandardMaterial({color:0x0a3040,emissive:0x50f0ff,emissiveIntensity:1.2,roughness:.3});add(kb,boxG,dk,.6,.55,.9,0,0,-.05);
    for(const zz of(big?[.45,.7,.95]:sm?[.55]:[.5,.8]))add(kb,torusG,MS.metal,1.2,1.2,1.2,0,0,zz);
@@ -621,7 +644,7 @@ const LIGHT_B=new THREE.MeshBasicMaterial({color:0x60d0ff}),LIGHT_R=new THREE.Me
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 function turn(cur,tgt,rate,dt){const d=wrap(tgt-cur);return cur+Math.sign(d)*Math.min(Math.abs(d),rate*dt);}
 // ---------- v24: solid collisions — per-frame mech radii, mech-vs-mech push-out, muzzle/barrel vs walls, spawn clearance ----------
-const COLR={guardian:1.9,locke:1.8,aegis:1.8,mender:1.6,strider:1.5,phantom:1.45,skyhawk:1.7};
+const COLR={siege:2.0,guardian:1.9,locke:1.8,aegis:1.8,mender:1.6,strider:1.5,phantom:1.45,skyhawk:1.7};
 function colR(u){return (u&&u.T&&(u.T.col||COLR[u.type]))||1.6;}
 function inObst(p,pad=0){for(const o of obst)if(p.y<o.h-.05&&p.y>(o.y0||-1)&&Math.abs(p.x-o.x)<o.hx+pad&&Math.abs(p.z-o.z)<o.hz+pad)return o;return null;}
 // pairwise separation of overlapping mechs (cylinders, vertical overlap check so a flyer can pass overhead)
@@ -850,11 +873,11 @@ function pulseTick(u,dt){for(const w of u.ws){if(!w.W.chT)continue;const rdy=!w.
  w.pc=Math.min(1,(w.pc||0)+dt/(w.W.chT||1.6));if(w.pc>=1&&!w.pcF){w.pcF=1;if(u===P){sfx('pulseFull',{u});const mp=muzzle(u,w.gi);fx(mp,w.W.emp?1:.9,w.W.emp?0x80e0ff:0xdff8ff,{grow:3,life:.35,op:.9});}}}}
 function fireWeapon(u,w,aimPt,homing){if(NET.role==="host")netFire(u,w,aimPt,homing);return fireWeapon0(u,w,aimPt,homing);}
 function fireWeapon0(u,w,aimPt,homing){if(w.W.beam)return fireBeam(u,w,aimPt);if(w.W.emp)return chargeEmp(u,w,aimPt);if(u===P)STATS.shots++;const W=w.W,pr=u.prof;w.fireCd=W.interval*(pr?pr.fireMul:1)/(W.spin?Math.max(.3,w.spin):1);w.ammo--;
- if(W.push)SHOTCM=pulseMul(w);const gi=w.gi,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
+ if(W.push||W.arc)SHOTCM=pulseMul(w)*(W.arc&&u.braced?1+CFG.mechs.siege.brace.dmg:1);const gi=w.gi,f=muzzle(u,gi);const d=aimPt.clone().sub(f).normalize();
  const s=(W.pellets?0:W.spread)+(pr?pr.spread:0);d.x+=(Math.random()-.5)*s;d.y+=(Math.random()-.5)*s*.6;d.z+=(Math.random()-.5)*s;d.normalize();
  u.kick[gi]=Math.min(1,u.kick[gi]+W.kick);u.jolt=Math.min(.12,u.jolt+W.jolt);sfx('shot',{u,fam:W.fam,size:W.size,gi});if(W.fam==='railgun')u.ventT=.7;
  if(u===P){flashLight(f,W.fam==='railgun'?4:1.5);shake(W.jolt*2);}
- for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}SHOTCM=1;if(W.push)w.pc=0;if(w.ammo<=0)w.reload=W.reload;}
+ if(W.arc)fireArc(u,w,f,aimPt);else for(let n=0;n<(W.pellets||1);n++){const dd=n?d.clone().add(new THREE.Vector3((Math.random()-.5)*W.spread,(Math.random()-.5)*W.spread*.5,(Math.random()-.5)*W.spread)).normalize():d;shoot(f,dd,u,homing,W);}SHOTCM=1;if(W.push||W.arc)w.pc=0;if(w.ammo<=0)w.reload=W.reload;}
 function frontal(u,pos){const p=u.g.position,dx=pos.x-p.x,dz=pos.z-p.z,l=Math.hypot(dx,dz)||1;return (dx*Math.sin(u.tYaw)+dz*Math.cos(u.tYaw))/l>0.25;}
 function dropShield(u,broken){if(!u.shieldOn)return;u.shieldOn=false;u.abCd=broken?u.T.shield.cd:Math.max(u.abCd,.4);}
 function hurt(u,d,pos,src){if(NET.role==="client")return;if(u&&u.isDome)return domeHurt(u,d,pos,src);if(!u||!u.alive)return;if(u===P&&TF('god'))return;if(u.shieldOn&&u.shA>=1&&pos&&frontal(u,pos)){if(src===P)sfx('hitsh');else if(u!==P)sfx('shHit',{u});if(u===P)chEv('block',Math.min(d,Math.max(0,u.shieldHP)));u.shieldHP-=d;u.shHit=clock;if(Math.random()<.5||d>20)sparks(pos,0x80e0ff);if(u.shieldHP<=0){u.shieldHP=0;dropShield(u,true);if(u!==P)sfx('shBreak',{u});}return;}
@@ -975,7 +998,7 @@ function aiTick(u,dt){const pr=u.prof,W=u.W,p=u.g.position,eye=eyeOf(u,new THREE
  // each mount fires on its own: only when the target is inside that weapon's range
  for(const w of u.ws){const X=w.W,ok=want&&dist<(X.rMax?effR(w):X.range)*.95;if(X.spin)w.spin=ok&&!w.reload?Math.min(1,w.spin+dt/X.spin):Math.max(0,w.spin-dt);
   if(w.chg&&ap)w.aimPt=ap;w.cd-=dt;if(!w.reload&&!see&&w.ammo<X.mag*.3)w.reload=X.reload;
-  if(ok&&facing&&w.cd<=0&&!w.reload&&w.fireCd<=0&&(!X.spin||w.spin>.5)){if(w.burst<=0)w.burst=X.aiBurst;
+  if(ok&&facing&&w.cd<=0&&!w.reload&&w.fireCd<=0&&(!X.spin||w.spin>.5)&&!(X.arc&&(w.pc||0)<.85)){if(w.burst<=0)w.burst=X.aiBurst;
    if(X.emp&&t.empT>X.stun*.4&&!(t.shieldOn)){w.cd=.5;continue;}fireWeapon(u,w,ap,X.homing&&u.lockT>X.lockTime?t:null);w.burst--;if(w.burst<=0||w.reload){w.burst=0;const bp=pr.burstPause;w.cd=bp[0]+Math.random()*(bp[1]-bp[0]);}}}}
 
 // ---------- lasers (v14): continuous hitscan beam, heat instead of a magazine ----------
@@ -1289,7 +1312,7 @@ function spat(pos){if(!pos||typeof C==='undefined')return{v:1,pan:0};const dx=po
  const v=1/(1+d*d/500);const rx=Math.cos(C.rotation.y),rz=-Math.sin(C.rotation.y);return{v,pan:d>1?(dx*rx+dz*rz)/d*.7:0};}
 function gate(k,dt){const n=AC.currentTime;if(SLAST[k]&&n-SLAST[k]<dt)return false;SLAST[k]=n;return true;}
 // per-mech step character: Guardian heavier (lower clank, slower servo) but not boomy, Phantom light and bright
-const STEPC={guardian:{c:1700,s:120,th:.07,v:1},phantom:{c:3600,s:420,th:.015,v:.5},strider:{c:2800,s:300,th:.03,v:.7},mender:{c:2500,s:250,th:.035,v:.75},locke:{c:2200,s:200,th:.05,v:.85},skyhawk:{c:3300,s:380,th:.02,v:.55},aegis:{c:1900,s:160,th:.06,v:.9},wraith:{c:4200,s:520,th:.008,v:.32}};
+const STEPC={guardian:{c:1700,s:120,th:.07,v:1},phantom:{c:3600,s:420,th:.015,v:.5},strider:{c:2800,s:300,th:.03,v:.7},mender:{c:2500,s:250,th:.035,v:.75},locke:{c:2200,s:200,th:.05,v:.85},skyhawk:{c:3300,s:380,th:.02,v:.55},aegis:{c:1900,s:160,th:.06,v:.9},wraith:{c:4200,s:520,th:.008,v:.32},siege:{c:1500,s:110,th:.08,v:1.1}};
 function sfx(k,o){if(!live())return;try{sfx0(k,o||{});}catch(e){if(!sfx.err){sfx.err=1;console.warn('sfx',k,e);}}}
 function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===P;let V=mine?1:sp.v;const pan=mine?0:sp.pan;
  switch(k){
@@ -1305,8 +1328,8 @@ function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===
  case'shot':{if(!mine&&(V<.04||!gate('s'+(u?(u._sid||(u._sid=++SLAST.n||(SLAST.n=1))):0)+o.fam,.07)))return;if(mine&&!gate('ps'+o.gi,.035))return;const z=o.size==='S'?1.25:o.size==='L'?.78:1,v=V*(mine?1:.8);
   switch(o.fam){
    case'railgun':tone({type:'sawtooth',f:2000*z,f2:110,d:.35,v:.1*v,lp:5000,pan});nz({type:'highpass',f:3000,d:.15,v:.2*v,pan});break;
-   case'hornet':case'rocket':nz({type:'lowpass',f:1200*z,f2:300,a:.01,d:.35,v:.25*v,pan});tone({f:200*z,f2:80,d:.12,v:.1*v,pan});break;
-   case'shotgun':nz({type:'lowpass',f:2200*z,f2:400,d:.22,v:.45*v,pan});tone({f:110*z,f2:45,d:.1,v:.18*v,pan});break;
+   case'mortar':case'hornet':case'rocket':nz({type:'lowpass',f:1200*z,f2:300,a:.01,d:.35,v:.25*v,pan});tone({f:200*z,f2:80,d:.12,v:.1*v,pan});break;
+   case'flak':case'shotgun':nz({type:'lowpass',f:2200*z,f2:400,d:.22,v:.45*v,pan});tone({f:110*z,f2:45,d:.1,v:.18*v,pan});break;
    case'emp':nz({type:'highpass',f:3500,d:.25,v:.25*v,pan});tone({type:'square',f:1300,f2:150,d:.25,v:.07*v,pan,lp:4000});break;
    case'nanite':nz({f:3000*z,q:2,d:.07,v:.15*v,pan});tone({type:'triangle',f:1400*z,f2:900,d:.06,v:.05*v,pan});break;
    case'lockbolt':tone({type:'square',f:300*z,f2:900,d:.12,v:.06*v,pan,lp:2500});nz({f:1500,d:.08,v:.1*v,pan});break;
@@ -1395,8 +1418,8 @@ sfx0=function(k,o){smpLoad();const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mi
  case'shot':{if(!mine&&(V<.04||!gate('s2'+(u&&u._sid)+o.fam,.07)))return;if(mine&&!gate('ps2'+o.gi,.035))return;const z=o.size==='S'?1.2:o.size==='L'?.8:1,v=V*(mine?1:.8);
   switch(o.fam){
    case'railgun':ok=smp('rail',{v:.5*v,pan,rate:.75*z})&&smp('crunch1',{v:.25*v,pan,rate:1.4,dur:.25});break;
-   case'hornet':case'rocket':case'swarm':ok=smp('thrust',{v:(o.fam==='swarm'?.25:.4)*v,pan,rate:1.3*z,dur:.35});break;
-   case'shotgun':ok=smp('shotgun',{v:.6*v,pan,rate:.9*z,lp:5000});break;
+   case'mortar':case'hornet':case'rocket':case'swarm':ok=smp('thrust',{v:(o.fam==='swarm'?.25:.4)*v,pan,rate:1.3*z,dur:.35});break;
+   case'flak':case'shotgun':ok=smp('shotgun',{v:.6*v,pan,rate:.9*z,lp:5000});break;
    case'pulse':ok=smp('pulse',{v:.45*v,pan,rate:.8*z,dur:.4})&&smp('gun2',{v:.4*v,pan,rate:.6});break;
    case'emp':ok=smp('emp',{v:.4*v,pan,rate:1.2,dur:.45});break;
    case'laser':ok=smp('laser',{v:.12*v,pan,rate:1.6*z,dur:.12});break;
@@ -2000,12 +2023,14 @@ let AP0=null;function update(dt){clock+=dt;const k=inp.keys;
  for(let i=B.length-1;i>=0;i--){const b=B[i],p=b.m.position,W=b.W,sp=W.speed;let hit=false,hitU=null;
   if(b.homing&&b.homing.alive){const tp=b.homing.g.position.clone();tp.y+=3;const want=tp.sub(p).normalize();const cur=b.v.clone().normalize();cur.lerp(want,Math.min(1,W.turnRate*dt)).normalize();b.v.copy(cur).multiplyScalar(sp);b.m.lookAt(p.clone().add(b.v));}
   if((b.W.homing||b.W.seek)&&Math.random()<.6)fx(p.clone(),.45,0xb0b0b0,{life:.5,op:.45,grow:2.2});
-  const p0=p.clone(),L=W.hitscan?W.range-b.dist:Math.min(sp*dt,W.range-b.dist+.01);const dir=b.v.clone().normalize();
+  if(W.arc){b.v.y-=MORT_G*dt;if(Math.random()<.5)fx(p.clone(),.5,0x9a9a9a,{life:.6,op:.4,grow:2});}
+  const p0=p.clone(),L=W.arc?b.v.length()*dt:W.hitscan?W.range-b.dist:Math.min(sp*dt,W.range-b.dist+.01);const dir=b.v.clone().normalize();
   const sw=sweep(p0,dir,L,b.owner);if(sw){p.addScaledVector(dir,sw.t);b.dist+=sw.t;hit=true;hitU=sw.u;if(hitU&&b.src===P){STATS.hits++;hitMarkT=.18;}}else{p.addScaledVector(dir,L);b.dist+=L;}
   if(W.hitscan&&!b.beam){b.beam=1;beam(p0,p.clone(),b.owner==='b'?0x80e8ff:0xff6060);if(!hit)b.dist=W.range;}
   let mult=1;if(W.falloff&&b.dist>W.range*W.falloff)mult=1-.5*(b.dist-W.range*W.falloff)/(W.range*(1-W.falloff));
-  if(hit||b.dist>=W.range){const pos=p.clone();
-   HITF=W.fam;if(W.splash){boom(pos,hit?3:1.5,0xff7700);flashLight(pos,2);if(hitU)hurt(hitU,b.dmg,pos,b.src);for(const u of foes(b.owner)){if(u===hitU)continue;const dd=u.g.position.clone().setY(u.g.position.y+2.5).distanceTo(pos);if(dd<W.splash&&!domeSafe(u,pos,b.owner))hurt(u,b.dmg*.5*(1-dd/W.splash),pos,b.src);}}
+  if(W.arc&&!hit&&(p.y<=groundAt(p.x,p.z,p.y+.5)+.05||b.dist>900))hit=true;
+  if(hit||(!W.arc&&b.dist>=W.range)){const pos=p.clone();
+   HITF=W.fam;if(W.arc)mortarImpact(b,pos,hitU);else if(W.splash){boom(pos,hit?3:1.5,0xff7700);flashLight(pos,2);if(hitU)hurt(hitU,b.dmg,pos,b.src);for(const u of foes(b.owner)){if(u===hitU)continue;const dd=u.g.position.clone().setY(u.g.position.y+2.5).distanceTo(pos);if(dd<W.splash&&!domeSafe(u,pos,b.owner))hurt(u,b.dmg*.5*(1-dd/W.splash),pos,b.src);}}
    else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult)*(hitU.isDome&&b.cm>.6?.6/b.cm:1),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push*(.6+.8*(b.cm||1)));if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6*(1+((b.cm||1)-1)*.25),0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
    S.remove(b.m);B.splice(i,1);}}
  tickFields(dt);
@@ -2068,6 +2093,7 @@ function hud(){const W=P.W,T=P.T;hudN++;
  else if(T.dome){const D=T.dome;if(P.domeOn){af=P.domeT/D.dur;at=`FORCE DOME ${Math.max(0,P.domeT).toFixed(1)}s · ${Math.ceil(P.domeHP)} HP — tap to lower`;ac=(P.domeT<1.5||P.domeHP<D.hp*.3)&&Math.sin(clock*20)>0?'#f86':'#5ef';}else if(P.abCd>0){const br=P.domeHP<=0;af=1-P.abCd/(br?D.brokeCd:D.cd);at=`${br?'DOME BROKEN':'DOME RECHARGING'} ${P.abCd.toFixed(1)}s`;ac='#678';}else at=`DOME READY · ${D.dur}s / ${D.hp} HP`;}
  else if(T.dive){if(P.diving){at='DIVE STRIKE!';ac='#fb5';}else if(P.air&&P.g.position.y-groundAt(P.g.position.x,P.g.position.z,P.g.position.y)>2.5){if(P.abCd>0){af=1-P.abCd/T.dive.cd;at=`DIVE COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else{at='DIVE READY — aim & tap';ac='#fb5';}}else{af=1-(P.lchCd||0)/T.fly.lcd;at=P.lchCd>0?`LAUNCH ${P.lchCd.toFixed(1)}s`:'LAUNCH READY · hold FLY to hover';ac=P.lchCd>0?'#678':'#6cf';}}
  else if(T.cloak){const K=T.cloak;if(P.cloakT>0){af=P.cloakT/K.dur;at=P.revT>0?`CLOAK FLICKER ${P.cloakT.toFixed(1)}s — revealed!`:`CLOAKED ${P.cloakT.toFixed(1)}s — tap to drop`;ac=P.revT>0&&Math.sin(clock*20)>0?'#f86':'#b9f';}else if(P.abCd>0){af=1-P.abCd/K.cd;at=`CLOAK RECHARGING ${P.abCd.toFixed(1)}s`;ac='#678';}else{at='CLOAK READY';ac='#b9f';}}
+ else if(T.brace){const C=T.brace;if(P.braced){at='BRACED +25% MORTAR — moving breaks it';ac='#fc4';}else if(P.braceWant||P.braceDep){af=(P.braceT||0)/C.arm;at=`DEPLOYING BRACE ${Math.max(0,C.arm-(P.braceT||0)).toFixed(1)}s — hold still`;ac='#db6';}else{at='BRACE READY — stand still & tap';ac='#9a8';}}
  else if(T.regen){const t=clock-P.lastHit;af=P.hp>=P.max?1:Math.min(1,t/T.regen.delay);at=P.hp>=P.max?'REGEN: FULL':(af>=1?`REGENERATING +${T.regen.rate}/s`:`REGEN IN ${(T.regen.delay-t).toFixed(1)}s`);ac=af>=1?'#6f9':'#678';}
  bAB.classList.toggle('on',!!((T.shield&&P.shieldOn)||(T.dome&&P.domeOn)||P.diving));bAB.textContent=T.shield?(P.shieldOn?'LOWER':'SHIELD'):T.dome?(P.domeOn?'LOWER':'DOME'):T.dive?(P.air&&P.g.position.y-groundAt(P.g.position.x,P.g.position.z,P.g.position.y)>2.5?'DIVE':'LAUNCH'):bAB.textContent;hudAir();abBar.style.width=af*100+'%';abBar.style.background=ac;$('abt').textContent=at;ring(bAB,af,ac+'8');
  if(DESK&&(hudN&3)===0)deskPanel(at,af,ac);
@@ -2506,3 +2532,50 @@ window.__aura={on:auraOn};
  let best=null,bd=1e9;for(const q of RAMPS){if(Math.abs(q.h-gh)>1)continue;const d=Math.hypot(q.fx-p.x,q.fz-p.z)+Math.hypot(q.tx-g.x,q.tz-g.z);if(d<bd){bd=d;best=q;}}
  if(best){u.rGoal=g;u.rRamp=best;u.rStep=1;u.goal=u.rLeg=new THREE.Vector3(best.fx,0,best.fz);}return r;};}
 window.__ridge={get RAMPS(){return RAMPS},get obst(){return obst},blocked:(x,z,r,y)=>blocked(x,z,r,y),groundAt:(x,z,y)=>groundAt(x,z,y),los:(a,b)=>los(a,b)};
+
+/* ===== v39.2 SIEGE: mortar ballistics, splash, Deploy Brace, AI ===== */
+const MORT_G=30;PG.mortar=new THREE.SphereGeometry(.32,10,8);PM.mortar=new THREE.MeshBasicMaterial({color:0x2a2a24});PG.flak=PG.shotgun;PM.flak=new THREE.MeshBasicMaterial({color:0xffb070});
+function arcMaxR(u,w){const W=w.W;return (W.rMin+(W.rMax-W.rMin)*Math.min(1,w.pc||0))*(u.braced?1+CFG.mechs.siege.brace.range:1);}
+function arcClamp(u,w,a){const p=u.g.position,dx=a.x-p.x,dz=a.z-p.z,D=Math.hypot(dx,dz),m=arcMaxR(u,w);if(D<=m)return a;const x=p.x+dx/D*m,z=p.z+dz/D*m;return new THREE.Vector3(x,groundAt(x,z,60),z);}
+// ballistic launch: fixed flight time grows with distance so long shots arc high over cover; aim point is already range-clamped on the host
+function fireArc(u,w,f,aim){const W=w.W;if(NET.role!=='client'||u===P)aim=arcClamp(u,w,aim);const dx=aim.x-f.x,dz=aim.z-f.z,D=Math.max(4,Math.hypot(dx,dz)),T=.9+D/38,dy=aim.y-f.y;
+ const n0=B.length;shoot(f,new THREE.Vector3(dx,0,dz).normalize(),u,null,W);const b=B[n0];if(!b)return;b.v.set(dx/T,(dy+.5*MORT_G*T*T)/T,dz/T);b.arcT=T;
+ if(!gfxLow())for(let i=0;i<4;i++)fx(f.clone(),1.2,0xb0a890,{life:.7,op:.5,grow:3,vy:1.5});}
+// impact: falloff splash (100% centre -> 40% edge), only foes of the shooter (team / FFA rules), force domes shield units from outside blasts
+function mortarImpact(b,pos,hitU){const W=b.W,Rr=W.splash;boom(pos,4,0xff8a20);boom(pos,2.4,0xffe0a0);flashLight(pos,4);try{explodeX(pos,Rr/6);}catch(e){}
+ if(!gfxLow())for(let i=0;i<8;i++)fx(new THREE.Vector3(pos.x+(Math.random()-.5)*Rr*.6,pos.y+.5,pos.z+(Math.random()-.5)*Rr*.6),1.4,0x4a4038,{life:1.1,op:.55,grow:2.5,vy:2.5});
+ sfx('boom',{p:pos});if(P&&P.g.position.distanceTo(pos)<Rr*2.5)shake(.25);
+ if(NET.role==='client')return;if(hitU&&hitU.isDome)hurt(hitU,b.dmg,pos,b.src);
+ for(const u of foes(b.owner)){if(u.isDome)continue;const c=u.g.position.clone();c.y+=2.5;const dd=u===hitU?0:Math.max(0,c.distanceTo(pos)-1);if(dd>=Rr)continue;if(u!==hitU&&domeSafe(u,pos,b.owner))continue;
+  hurt(u,b.dmg*(1-.6*dd/Rr),pos,b.src);if(b.src===P&&u===hitU)STATS.hits++;}}
+// fire event replication: clamp the aim point on the host BEFORE it is broadcast so every client replays the same arc
+{const f0=fireWeapon;fireWeapon=function(u,w,a,h){if(w&&w.W&&w.W.arc&&a&&NET.role!=='client')a=arcClamp(u,w,a);return f0.call(this,u,w,a,h);};}
+// ---- Deploy Brace ----
+function braceTick(dt){const auth=NET.role!=='client';for(const u of U){const T=u.T;if(!T||!T.brace)continue;const C=T.brace,p=u.g.position;
+  if(auth||u===P){if(!u.alive){u.braceWant=u.braced=false;u.braceT=0;}else{const lp=u._bp||(u._bp=p.clone()),spd=dt>0?Math.hypot(p.x-lp.x,p.z-lp.z)/dt:0;lp.copy(p);
+   const mv=spd>C.move||(u===P&&(Math.abs(inp.mx)>.2||Math.abs(inp.mz)>.2));
+   if(auth){if(mv){if(u.braced){u.braced=false;u.braceWant=false;if(u===P)toast('BRACE BROKEN');sfx('denied');}u.braceT=0;}
+    else if(u.braceWant){u.braceT=Math.min(C.arm,(u.braceT||0)+dt);if(u.braceT>=C.arm&&!u.braced){u.braced=true;if(u===P)toast('BRACED: +25% mortar damage & range');sfx('shUp',{u});shake(.15);}}}}}
+  const br=u.g.userData&&u.g.userData.brace;if(br){const tgt=u.braced?1:u.braceWant||u.braceDep?Math.min(.8,(u.braceT||0)/C.arm*.8+.15):0;u.brF=(u.brF||0)+(tgt-(u.brF||0))*Math.min(1,dt*5);
+   br.visible=u.alive&&u.brF>.03;if(br.visible){br.scale.set(1,Math.max(.05,u.brF),Math.max(.05,u.brF));br.rotation.y=u.legYaw||0;}}}}
+{const a0=ability;ability=function(u){if(u&&u.T&&u.T.brace){if(!u.alive||mode!=='play')return;if(u.empT>0){if(u===P)sfx('denied');return;}
+  if(NET.role==='client'&&u===P){netSend({t:'ab'});u.braceDep=!u.braceDep;return;}
+  if(u.braced||u.braceWant){u.braced=false;u.braceWant=false;u.braceT=0;}else{u.braceWant=true;u.braceT=0;if(u===P)toast('DEPLOYING BRACE — hold still');}return;}
+ return a0.apply(this,arguments);};}
+{const p0=secPack;secPack=function(u){let b=p0(u)||0;if(u&&u.braced)b|=1<<12;if(u&&u.braceWant&&!u.braced)b|=1<<13;return b;};
+ const q0=secUnpack;secUnpack=function(u,b){q0(u,b);if(u&&u.T&&u.T.brace){u.braced=!!(b&(1<<12));u.braceDep=!!(b&(1<<13));if(NET.role==='client')u.braceT=u.braced?u.T.brace.arm:u.braceDep?(u.braceT||0)+.1:0;}};}
+{const t0=netTick;netTick=function(dt,ap){braceTick(dt);return t0(dt,ap);};}
+{const t0=abText;abText=function(m){return m&&m.brace?`stand still ${m.brace.arm}s to brace: +${Math.round(m.brace.dmg*100)}% mortar damage & range; moving breaks it`:t0(m);};}
+// ---- AI: Siege always carries a mortar on the howitzer, holds still to brace at range, fires indirect at targets a teammate can see ----
+{const s0=aiSlots;aiSlots=function(t){const a=s0(t);if(t==='siege'){a[0]=['mortar_s','mortar','mortar_l'][Math.random()*3|0];if(Math.random()<.6)a[1]=['flak','flak_s'][Math.random()*2|0];}return a;};}
+{const a0=aiTick;aiTick=function(u,dt){if(!u.T||!u.T.brace)return a0.apply(this,arguments);const p=u.g.position,t=u.tgt&&u.tgt.alive?u.tgt:null,mw=u.ws.find(w=>w.W.arc);
+  const d=t?t.g.position.distanceTo(p):1e9,mr=mw?(mw.W.rMax*(1+u.T.brace.range)):0,hold=t&&mw&&d>22&&d<mr*.95;
+  if(hold){u.goal=p.clone();u.cover=true;u.think=Math.max(u.think||0,.4);u.rGoal=null;if(!u.braceWant&&!u.braced&&Math.random()<dt*2)ability(u);}
+  else if((u.braceWant||u.braced)&&(!t||d<18||d>mr))ability(u);
+  const r=a0.apply(this,arguments);
+  if(mw&&t&&!u.see&&d>12&&d<arcMaxR(u,mw)&&(mw.pc||0)>=.85&&!mw.reload&&mw.ammo>0&&mw.fireCd<=0&&(mw.cd||0)<=0){
+   const ey=new THREE.Vector3(),spot=U.some(m=>m!==u&&m.alive&&m.team===u.team&&!m.isDome&&m.g.position.distanceTo(t.g.position)<90&&los(eyeOf(m,ey),eyeOf(t,new THREE.Vector3())));
+   if(spot){const tp=t.g.position,tof=.9+d/38;fireWeapon(u,mw,new THREE.Vector3(tp.x+t.vel.x*tof*.6,tp.y,tp.z+t.vel.z*tof*.6));mw.cd=.6;}}
+  return r;};}
+window.__siege={arcMaxR,arcClamp,mortarImpact,get B(){return B},get U(){return U}};
+try{Object.assign(TLBL,{arm:'Brace deploy time (s)',move:'Brace break speed (m/s)',rMin:'Min range (m)',rMax:'Max range (m, full charge)',splash:'Splash radius (m)',chT:'Charge time (s)',chMin:'Uncharged damage ×'});}catch(e){}
