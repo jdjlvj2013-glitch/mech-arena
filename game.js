@@ -1,4 +1,4 @@
-/*v39.2.1 TEST: Tab fires left group*/
+/*v39.2.2 TEST: compact mortar model*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -438,6 +438,7 @@ const decalMats={};function decalMat(team,type){const k=team+type;if(decalMats[k
  return decalMats[k]=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2});}
 const planeG=new THREE.PlaneGeometry(1,1),droneG=new THREE.OctahedronGeometry(.32,0),rotorG=new THREE.TorusGeometry(.38,.04,4,12),dishG=new THREE.CylinderGeometry(.45,.1,.18,10),clawG=new THREE.ConeGeometry(.12,.55,4);
 // leg specs: x/z hip offset, hx/hz foot home offset (lower-local), l1/l2 bone lengths, rev = reverse (digitigrade) knee, grp = gait group (legs in a group step together), w = thickness
+const MORT_VIS=.6;// v39.2.2: compact mortar model (visual only)
 const FRAMES={
  guardian:{legs:[{x:-1.15,z:.95,hx:-1.75,hz:1.35,grp:0},{x:1.15,z:-.95,hx:1.75,hz:-1.35,grp:0,rev:1},{x:1.15,z:.95,hx:1.75,hz:1.35,grp:1},{x:-1.15,z:-.95,hx:-1.75,hz:-1.35,grp:1,rev:1}].map(l=>({...l,l1:1.05,l2:1.3,w:1.15})),
   tw:[3.0,1.35,2.5],hips:[2.5,.6,2.2]},
@@ -577,10 +578,10 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
  antP=new THREE.Group();antP.position.set(type==='mender'?.55:type==='locke'?.45:.6,tY+(type==='mender'?.5:.1),-.5);top.add(antP);add(antP,antG,MS.metal,1,type==='mender'?1.8:1,1,0,type==='mender'?1.1:.65,0);
  add(antP,jointG,BLINK,.25,.25,.25,0,type==='mender'?2.25:1.3,0);if(type==='mender')add(antP,dishG,MS.metal,1,1,1,0,1.5,0,.5,0,0);
  // ---- weapon hardpoints (CFG.slots order); each mount builds its own weapon model, scaled by size ----
- const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95,flak:1.15};let coil=null;
+ const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95*MORT_VIS,flak:1.15};let coil=null;
  if(typeof slots==='string')slots=CFG.slots[type].map(()=>slots);
  CFG.slots[type].forEach((sl,i)=>{const s=sl.s,k=slots[i]||CFG.defSlots[type][i],Wd=CFG.weapons[k],wpn=Wd.fam,z=Wd.size,sc=SIZES[z].sc,big=z==='L',sm=z==='S';let x,y,z0;
-  if(type==='siege'&&sl.mt){x=0;y=tY+.85;z0=-.75;}
+  if(type==='siege'&&sl.mt){x=0;y=tY+.55;z0=-.95;}
   else if(type==='aegis'&&sl.z==='S'){x=0;y=tY+1.75;z0=.35;}
   else if(type==='locke'&&sl.z==='S'){x=0;y=cy+1.55;z0=-.1;add(top,cylG,dk,.4,.3,.4,0,cy+1.35,-.1);}
   else if(type==='guardian'&&sl.z==='S'){x=s*.95;y=tY+.85;z0=-.25;add(top,boxG,dk,.5,.6,.5,x,tY+.35,z0);}
@@ -624,7 +625,7 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
    add(kb,cylG,MS.metal,.12,.95,.12,0,0,.8,Math.PI/2,0,0);for(const zz of(big?[.55,.75,.95]:[.6,.85]))add(kb,torusG,cm,.85,.85,.85,0,0,zz);
    add(kb,dishG,MS.metal,1.05,1,1.05,0,0,1.3,-Math.PI/2,0,0);add(kb,sphG,cm,.12,.12,.12,0,0,1.42);
    for(const a of[0,1.57,3.14,4.71])add(kb,boxG,cm,.04,.04,.3,Math.cos(a)*.3,Math.sin(a)*.3,1.38);}
-  else if(wpn==='mortar'){add(kb,boxG,dk,.9,.7,1.2,0,0,-.1);add(kb,cylG,MS.metal,.4,1.9,.4,0,.05,.9,Math.PI/2,0,0);add(kb,cylG,dk,.52,.35,.52,0,.05,1.75,Math.PI/2,0,0);add(kb,cylG,dk,.48,.2,.48,0,.05,.35,Math.PI/2,0,0);for(const sx of[-1,1])add(kb,boxG,dk,.12,.5,1.0,sx*.52,-.1,.1);}
+  else if(wpn==='mortar'){kb.scale.multiplyScalar(MORT_VIS);add(kb,boxG,dk,.9,.7,1.2,0,0,-.1);add(kb,cylG,MS.metal,.4,1.9,.4,0,.05,.9,Math.PI/2,0,0);add(kb,cylG,dk,.52,.35,.52,0,.05,1.75,Math.PI/2,0,0);add(kb,cylG,dk,.48,.2,.48,0,.05,.35,Math.PI/2,0,0);for(const sx of[-1,1])add(kb,boxG,dk,.12,.5,1.0,sx*.52,-.1,.1);}
   else if(wpn==='flak'){add(kb,boxG,dk,.6,.6,.8,0,0,0);for(const [xx,yy] of [[-.14,.14],[.14,.14],[-.14,-.14],[.14,-.14]]){const b2=add(kb,barrelG,MS.metal,.9,.7,.9,xx,yy,.75);b2.rotation.x=Math.PI/2;}add(kb,boxG,M(0x8a8a5a),.66,.1,.5,0,.36,0);}
   else if(wpn==='pulse'){// pulse emitter: forked prongs around a floating energy orb, stacked capacitor rings
    cm=new THREE.MeshStandardMaterial({color:0x0a3040,emissive:0x50f0ff,emissiveIntensity:1.2,roughness:.3});add(kb,boxG,dk,.6,.55,.9,0,0,-.05);
