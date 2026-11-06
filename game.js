@@ -1,4 +1,4 @@
-/*v39.2 TEST release: Siege artillery mech*/
+/*v39.2.1 TEST: Tab fires left group*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -2010,7 +2010,7 @@ let AP0=null;function update(dt){clock+=dt;const k=inp.keys;
   const v=_t.set(0,0,0).addScaledVector(fwd,-mz).addScaledVector(rt,mx);const l=v.length();if(l>1)v.divideScalar(l);drive(P,v.x,v.z,dt);
   torso(P,P.yaw,dt,CFG.move.torsoK,CFG.move.torsoC);
   // FIRE = all mounts; L / R buttons (or 1 / 2 keys) fire one side's group. Each mount has its own cadence, ammo and reload.
-  const fa=inp.fire||inp.mFire||k.KeyF,fL=fa||inp.fireL||k.Digit1||k.KeyQ,fR=fa||inp.fireR||k.Digit2||k.KeyC;
+  const fa=inp.fire||inp.mFire||k.KeyF,fL=fa||inp.fireL||k.Digit1||k.KeyQ||k.Tab,fR=fa||inp.fireR||k.Digit2||k.KeyC;
   updateLock(dt);cam(0);const AP=playerAim();AP0=AP;NET.fL=fL;NET.fR=fR;aimGuns(P,AP,dt);let snapped=false;
   for(const w of P.ws){const W=w.W,on=w.s<0?fL:fR;if(W.spin)w.spin=on&&!w.reload?Math.min(1,w.spin+dt/W.spin):Math.max(0,w.spin-dt);
    if(on&&w.fireCd<=0&&w.ammo>0&&!w.reload&&(!W.spin||w.spin>.3)){if(!snapped){aimGuns(P,AP,1);snapped=true;}const locked=W.homing&&P.lockTgt&&P.lockT>=W.lockTime;fireWeapon(P,w,AP,locked?P.lockTgt:null);}}}
@@ -2198,7 +2198,7 @@ function deskPanel(at,af,ac){const pct=v=>Math.max(0,Math.min(100,v*100)).toFixe
   else{f=w.ammo/W.mag;st=w.ammo+'/'+W.mag;}
   const cd=w.fireCd>0.25&&!w.reload?` <small>CD ${w.fireCd.toFixed(1)}s</small>`:'';
   return `<div class="dw"><span class="dk">${w.s<0?'Q/1':'C/2'}</span><b>${W.name}</b><em style="color:${col}">${st}${cd}</em><i style="width:${pct(f)};background:${col}"></i></div>`;}).join('');
- $('dpanel').innerHTML=`<div class="dh">WEAPONS</div>${rows}<div class="dw da"><span class="dk">E/⇧/␣</span><b>ABILITY</b><em style="color:${ac}">${at}</em><i style="width:${pct(af)};background:${ac}"></i></div><div class="dkeys">WASD move · Mouse aim · LMB/F fire all · Q/1 left · C/2 right · R reload · E/Shift/Space/RMB ability · Esc release mouse</div>`;}
+ $('dpanel').innerHTML=`<div class="dh">WEAPONS</div>${rows}<div class="dw da"><span class="dk">E/⇧/␣</span><b>ABILITY</b><em style="color:${ac}">${at}</em><i style="width:${pct(af)};background:${ac}"></i></div><div class="dkeys">WASD move · Mouse aim · LMB/F fire all · Q/1/Tab left · C/2 right · R reload · E/Shift/Space/RMB ability · Esc release mouse</div>`;}
 function showUI(){menu.style.display=mode==='menu'?'flex':'none';$('hud').style.display=mode==='play'?'block':'none';$('msg').style.display=mode==='over'?'flex':'none';
  const t=TOUCH&&mode==='play'?'':'none';for(const id of['joy','bMG','bAB','bRL','bFL','bFR'])$(id).style.display=t;$('bFLY').style.display=t===''&&P&&P.T.fly?'':'none';$('hint').style.display=TOUCH||DESK||mode!=='play'?'none':'';document.body.classList.toggle('tch',TOUCH);$('dpanel').style.display=DESK&&mode==='play'?'block':'none';if(mode!=='play'){$('plk').style.display='none';if(document.pointerLockElement&&document.exitPointerLock)document.exitPointerLock();}document.body.classList.toggle('desk',DESK);
  if(mode==='play'){bAB.textContent=P.T.ability;bAB.classList.toggle('passive',!!P.T.regen);}}
@@ -2579,3 +2579,11 @@ function braceTick(dt){const auth=NET.role!=='client';for(const u of U){const T=
   return r;};}
 window.__siege={arcMaxR,arcClamp,mortarImpact,get B(){return B},get U(){return U}};
 try{Object.assign(TLBL,{arm:'Brace deploy time (s)',move:'Brace break speed (m/s)',rMin:'Min range (m)',rMax:'Max range (m, full charge)',splash:'Splash radius (m)',chT:'Charge time (s)',chMin:'Uncharged damage ×'});}catch(e){}
+
+/* v39.2.1: Tab = extra key for the LEFT weapon group (e.g. Siege's Flak Burst). Browser focus traversal is suppressed only during live gameplay
+   (no overlay/pause open, not typing); menus, garage and inputs keep normal Tab navigation. Held keys are cleared on blur/tab-switch so nothing sticks. */
+function tabInPlay(e){if(mode!=='play')return false;const t=e.target;if(t&&/INPUT|TEXTAREA|SELECT/.test(t.tagName||''))return false;if(t&&t.isContentEditable)return false;const ov=document.getElementById('ovl');if(ov&&ov.style.display==='block')return false;return true;}
+addEventListener('keydown',e=>{if(e.code==='Tab'&&tabInPlay(e)){e.preventDefault();}else if(e.code==='Tab')inp.keys.Tab=false;},true);
+function clearHeldKeys(){for(const k in inp.keys)inp.keys[k]=false;}
+addEventListener('blur',clearHeldKeys);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearHeldKeys();});
+window.__tabfix={tabInPlay,clearHeldKeys};
