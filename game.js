@@ -1,4 +1,4 @@
-/*v39.2.3 TEST: compact mortar + housing, weapon icons*/
+/*v39.3 TEST: universal mortar mounts + target sensor*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -113,7 +113,7 @@ CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of s
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
 CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: listed damage is at FULL charge (100%); an uncharged orb deals 40% and it builds to 100% over 1.6 s, then holds at MAX (orb glows blue→white with sparks and a segmented charge meter, harder shove).',fam:'pulse',size:'M',
  dmg:115,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMin:.4,kick:.4,jolt:.04,aiBurst:2};
-CFG.weapons.mortar={name:'Mortar',desc:'Howitzer shell (Siege back mount only). Lobs an arcing shell over walls and ridges that explodes in a wide splash and scorches the ground. CHARGE WEAPON: listed damage is at FULL charge (100%); an uncharged shell deals 40% and it builds to 100% over 2 s, then holds at MAX. Charge also stretches range 35→70 m (a higher, longer arc). Splash falls to 40% at the edge; force domes block blasts from outside. Deploy Brace adds +25% damage and range.',fam:'mortar',size:'M',only:'howitzer',
+CFG.weapons.mortar={name:'Mortar',desc:'Lobbed artillery shell; fits any mount of its size (Light Mortar = Small, Mortar = Medium, Heavy Howitzer = Large). Lobs an arcing shell over walls and ridges that explodes in a wide splash and scorches the ground. CHARGE WEAPON: listed damage is at FULL charge (100%); an uncharged shell deals 40% and it builds to 100% over 2 s, then holds at MAX. Charge also stretches range 35→70 m (a higher, longer arc). Splash falls to 40% at the edge; force domes block blasts from outside. Deploy Brace (Siege) adds +25% damage and range. TARGETING: look toward an enemy to select it (diamond marker) — mortars lob onto the selected enemy even behind cover, no line of sight needed.',fam:'mortar',size:'M',
  dmg:220,interval:2.4,range:70,rMin:35,rMax:70,chT:2,chMin:.4,mag:3,reload:5,spread:0,speed:40,arc:true,splash:7.5,kick:.7,jolt:.07,aiBurst:1};
 CFG.weapons.flak={name:'Flak Burst',desc:'Close-defense flak cannon. Fires a wide cone of 10 shrapnel pellets out to 18 m that shreds anything rushing the artillery line.',fam:'flak',size:'M',
  dmg:13,pellets:10,interval:1,range:18,mag:4,reload:3.4,spread:.2,speed:120,flak:true,kick:.5,jolt:.05,aiBurst:1};
@@ -1975,7 +1975,7 @@ function netTick(dt,AP){if(!NET.role)return;const now=performance.now();
    for(const g of MG)if(!g.c.relay)gSend(g,{t:'s',mid:NET.mid,u,e:ev,f});
    if(MG.some(g=>g.c.relay)){NET.evR.push(...ev);if(NET.evR.length>150)NET.evR.splice(0,NET.evR.length-150);if(now-NET.rT>=100&&NET.relay){NET.rT=now;try{NET.relay.send({t:'s',mid:NET.mid,u,e:NET.evR,f},'*');}catch(e){}NET.evR=[];}}else NET.evR=[];}}else NET.ev=[];}
  else if(NET.conn){if(now-NET.pT>1000){NET.pT=now;netSend({t:'p',ts:now});}
-  if(now-NET.iT>=(NET.via==='relay'?83:50)&&P){NET.iT=now;const p=P.g.position,a=AP||p;netSend({t:'i',p:[r2(p.x),r2(p.y),r2(p.z)],v:[r2(P.vel.x),r2(P.vel.y||0),r2(P.vel.z)],yaw:r2(P.yaw),ty:r2(P.tYaw||0),ly:r2(P.legYaw||0),pi:r2(P.pitch||0),a:[r2(a.x),r2(a.y),r2(a.z)],fL:P.alive&&!!NET.fL,fR:P.alive&&!!NET.fR,lk:P.lockTgt&&P.lockTgt.nid!=null&&P.lockT>=(P.W.lockTime||9)?P.lockTgt.nid:-1});}}
+  if(now-NET.iT>=(NET.via==='relay'?83:50)&&P){NET.iT=now;const p=P.g.position,a=AP||p;netSend({t:'i',p:[r2(p.x),r2(p.y),r2(p.z)],v:[r2(P.vel.x),r2(P.vel.y||0),r2(P.vel.z)],yaw:r2(P.yaw),ty:r2(P.tYaw||0),ly:r2(P.legYaw||0),pi:r2(P.pitch||0),a:[r2(a.x),r2(a.y),r2(a.z)],fL:P.alive&&!!NET.fL,fR:P.alive&&!!NET.fR,lk:P.lockTgt&&P.lockTgt.nid!=null&&P.lockT>=(P.W.lockTime||9)?P.lockTgt.nid:-1,st:P.sTgt&&P.sTgt.nid!=null?P.sTgt.nid:-1});}}
  if((NET.stT=(NET.stT||0)+dt)>.25){NET.stT=0;const host=NET.role==='host',G=NET.G;const pg=host?Math.max(0,...G.map(g=>g.ping|0)):NET.ping;netS.textContent=`🟢 ONLINE ${(NMODES[NET.mode]||{n:''}).n} · ${host?'HOST · '+(G.length+1)+' players':'GUEST'} · ${host?(G.some(g=>g.via==='relay')?'📡':'')+(G.some(g=>g.via==='p2p')?'⚡':''):(NET.via==='relay'?'📡 RELAY':'⚡ P2P')} · room ${NET.code} · ping ${pg} ms`;netS.style.color=pg>200?'#fd4':'#8f8';}}
 window.__net={fire:b=>{inp.fire=b;},face:u=>{const d=u.g.position.clone().sub(P.g.position);P.yaw=P.tYaw=Math.atan2(d.x,d.z);camYaw=P.yaw;},open:netOpen,host:netHost,join:netJoin,close:netClose,lobby:netShowLobby,edit:netEditMech,rematch:netRematch,quit:netQuitMatch,saved:netSaved,ui:netUi,pl:netPl,get NET(){return NET;}};
 setInterval(()=>{if(!NET.role)return;const now=performance.now();
@@ -2569,10 +2569,10 @@ function braceTick(dt){const auth=NET.role!=='client';for(const u of U){const T=
 {const t0=abText;abText=function(m){return m&&m.brace?`stand still ${m.brace.arm}s to brace: +${Math.round(m.brace.dmg*100)}% mortar damage & range; moving breaks it`:t0(m);};}
 // ---- AI: Siege always carries a mortar on the howitzer, holds still to brace at range, fires indirect at targets a teammate can see ----
 {const s0=aiSlots;aiSlots=function(t){const a=s0(t);if(t==='siege'){a[0]=['mortar_s','mortar','mortar_l'][Math.random()*3|0];if(Math.random()<.6)a[1]=['flak','flak_s'][Math.random()*2|0];}return a;};}
-{const a0=aiTick;aiTick=function(u,dt){if(!u.T||!u.T.brace)return a0.apply(this,arguments);const p=u.g.position,t=u.tgt&&u.tgt.alive?u.tgt:null,mw=u.ws.find(w=>w.W.arc);
-  const d=t?t.g.position.distanceTo(p):1e9,mr=mw?(mw.W.rMax*(1+u.T.brace.range)):0,hold=t&&mw&&d>22&&d<mr*.95;
+{const a0=aiTick;aiTick=function(u,dt){if(!u.T||(!u.T.brace&&!u.ws.some(w=>w.W.arc)))return a0.apply(this,arguments);const brc=!!u.T.brace;const p=u.g.position,t=u.tgt&&u.tgt.alive?u.tgt:null,mw=u.ws.find(w=>w.W.arc);
+  const d=t?t.g.position.distanceTo(p):1e9,mr=mw?(mw.W.rMax*(brc?1+u.T.brace.range:1)):0,hold=brc&&t&&mw&&d>22&&d<mr*.95;
   if(hold){u.goal=p.clone();u.cover=true;u.think=Math.max(u.think||0,.4);u.rGoal=null;if(!u.braceWant&&!u.braced&&Math.random()<dt*2)ability(u);}
-  else if((u.braceWant||u.braced)&&(!t||d<18||d>mr))ability(u);
+  else if(brc&&(u.braceWant||u.braced)&&(!t||d<18||d>mr))ability(u);
   const r=a0.apply(this,arguments);
   if(mw&&t&&!u.see&&d>12&&d<arcMaxR(u,mw)&&(mw.pc||0)>=.85&&!mw.reload&&mw.ammo>0&&mw.fireCd<=0&&(mw.cd||0)<=0){
    const ey=new THREE.Vector3(),spot=U.some(m=>m!==u&&m.alive&&m.team===u.team&&!m.isDome&&m.g.position.distanceTo(t.g.position)<90&&los(eyeOf(m,ey),eyeOf(t,new THREE.Vector3())));
@@ -2588,3 +2588,39 @@ addEventListener('keydown',e=>{if(e.code==='Tab'&&tabInPlay(e)){e.preventDefault
 function clearHeldKeys(){for(const k in inp.keys)inp.keys[k]=false;}
 addEventListener('blur',clearHeldKeys);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearHeldKeys();});
 window.__tabfix={tabInPlay,clearHeldKeys};
+
+/* ===== v39.3 TARGET SENSOR: directional enemy recognition, separate from the crosshair ground aim =====
+ Look toward an enemy: the nearest live enemy inside a small cone around screen centre and within sensor range is SELECTED (diamond bracket + name + range).
+ Line of sight is NOT required (radar-style): an enemy behind cover is still selected but marked BEHIND COVER. Stealth is respected via the existing
+ cloakHid() rule (cloaked Wraiths are only sensed when revealed or within their reveal distance). Hysteresis: a wider keep-cone + range margin and a short
+ grace period stop flicker; death, team change, cloaking or leaving range/cone (after grace) clears it. Only mortars (arc weapons) use the target: they lob
+ onto its ground position, range-clamped as before. Direct-fire weapons are unchanged (still need a physical line of fire; no homing added). */
+CFG.sensor={range:140,cone:.13,keepCone:.22,keepRange:1.1,grace:.35,occluded:true,mortarAim:true,losEvery:.2};
+let STG=null,stgT=0,stgLos=true,stgLosT=0;const _se=new THREE.Vector3(),_sp=new THREE.Vector3();
+const stEl=(()=>{const st=document.createElement('style');st.textContent=`#sTgt{position:absolute;left:0;top:0;pointer-events:none;display:none;z-index:6;transform:translate(-50%,-50%)}#sTgt .dm{width:34px;height:34px;margin:0 auto;border:2px solid #ff5a3c;transform:rotate(45deg);box-shadow:0 0 6px #000a}#sTgt.occ .dm{border-style:dashed;border-color:#ffb43c}#sTgt .tx{margin-top:6px;font:bold 11px sans-serif;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000;text-align:center;white-space:nowrap}#sTgt .tx i{font-style:normal;color:#ffb43c}#sTgt .tx em{font-style:normal;color:#8f8}#sTgt .tx u{text-decoration:none;color:#f88}@media (max-height:520px){#sTgt .dm{width:26px;height:26px}#sTgt .tx{font-size:9px}}`;document.head.appendChild(st);
+ const d=document.createElement('div');d.id='sTgt';d.innerHTML='<div class="dm"></div><div class="tx"></div>';document.body.appendChild(d);return d;})();
+function sensorEye(u,o){return o.set(u.g.position.x,u.g.position.y+3.3,u.g.position.z);}
+// shared validity rule (player selection AND host validation of a guest's claimed target)
+function sensorValid(obs,t,rangeMul=1){if(!obs||!t||!t.alive||t.isDome||t===obs||t.team===obs.team)return false;const e=sensorEye(obs,_se);
+ if(cloakHid(t,e))return false;return t.g.position.distanceTo(obs.g.position)<=CFG.sensor.range*rangeMul;}
+function sensorPick(){const C_=CFG.sensor;let best=null,bs=1e9;for(const e of foes(P.team)){const cur=e===STG;if(!sensorValid(P,e,cur?C_.keepRange:1))continue;
+  _sp.copy(e.g.position);_sp.y+=2.8;_sp.project(C);if(_sp.z>1)continue;const d=Math.hypot(_sp.x-AIMNDC.x,(_sp.y-AIMNDC.y)*(innerHeight/innerWidth)*1.4);
+  if(d>(cur?C_.keepCone:C_.cone))continue;const sc=d-(cur?.06:0)+e.g.position.distanceTo(P.g.position)/C_.range*.03;if(sc<bs){bs=sc;best=e;}}return best;}
+function sensorTick(dt){const show=mode==='play'&&P&&P.alive&&!PAUSED;if(!show){if(STG)STG=null;if(P)P.sTgt=null;stEl.style.display='none';return;}
+ if(STG&&!sensorValid(P,STG,CFG.sensor.keepRange))STG=null;// hard invalidation: dead / team / cloaked / far
+ const pick=sensorPick();if(pick&&pick!==STG){STG=pick;stgT=0;stgLosT=0;}else if(!pick&&STG){stgT+=dt;if(stgT>CFG.sensor.grace)STG=null;}else stgT=0;
+ P.sTgt=STG;if(!STG){stEl.style.display='none';return;}
+ stgLosT-=dt;if(stgLosT<=0){stgLosT=CFG.sensor.losEvery;stgLos=los(sensorEye(P,_se),sensorEye(STG,_sp));}
+ _sp.copy(STG.g.position);_sp.y+=2.8;_sp.project(C);if(_sp.z>1){stEl.style.display='none';return;}
+ stEl.style.display='block';stEl.style.left=((_sp.x+1)/2*innerWidth)+'px';stEl.style.top=((1-_sp.y)/2*innerHeight)+'px';stEl.classList.toggle('occ',!stgLos);
+ const dist=Math.round(STG.g.position.distanceTo(P.g.position)),mw=P.ws.filter(w=>w.W.arc);let mt='';
+ if(mw.length){const mr=Math.max(...mw.map(w=>arcMaxR(P,w))),mx=Math.max(...mw.map(w=>w.W.rMax*(P.T.brace?1+P.T.brace.range:1)));mt=dist<=mr?' · <em>MORTAR ✓</em>':dist<=mx?' · <i>CHARGE MORTAR</i>':' · <u>MORTAR OUT OF RANGE</u>';}
+ const nm=(STG.netName||STG.T.name||'Enemy');const html=`${nm} · ${dist} m${stgLos?'':' · <i>BEHIND COVER</i>'}${mt}`;if(stEl._h!==html){stEl._h=html;stEl.lastChild.innerHTML=html;}}
+{const t0=netTick;netTick=function(dt,ap){try{sensorTick(dt);}catch(e){}return t0(dt,ap);};}
+{const c0=clearWorld;clearWorld=function(){STG=null;stEl.style.display='none';return c0.apply(this,arguments);};}
+// mortar aim from the selected target: local player uses its own selection; the host re-validates a guest's claimed target id before using it
+function sensorAimFor(u){if(!CFG.sensor.mortarAim)return null;let t=null;
+ if(u===P)t=P.sTgt;else if(u.remote&&u.ninp&&NET.role==='host'){const i=u.ninp.st;if(Number.isInteger(i)&&i>=0&&i<NET.units.length)t=NET.units[i];}
+ if(!t||!sensorValid(u,t,CFG.sensor.keepRange))return null;const g=t.g.position;return new THREE.Vector3(g.x,g.y,g.z);}
+{const f0=fireWeapon;fireWeapon=function(u,w,a,h){if(w&&w.W&&w.W.arc&&NET.role!=='client'||(w&&w.W&&w.W.arc&&u===P)){const t=sensorAimFor(u);if(t)a=t;}return f0.call(this,u,w,a,h);};}
+window.__sensor={sensorValid,sensorPick,sensorAimFor,get STG(){return STG}};
