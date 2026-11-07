@@ -1,4 +1,4 @@
-/*v39.3 TEST: universal mortar mounts + target sensor*/
+/*v39.4 TEST: mortar range up, splash down*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -113,14 +113,14 @@ CFG.weapons.swarm={name:'Swarm Rack',desc:'Micro-missile rack. Rapid salvos of s
 VAR.swarm={S:['Swarm Pod','Light 6-cell micro-missile pod. Quick reload, small altitude bonus.'],L:['Swarm Battery','Heavy 12-cell battery. Big salvos and the biggest altitude bonus.']};
 CFG.weapons.pulse={name:'Pulse Cannon',desc:'Kinetic energy cannon. Each orb hits hard and SHOVES the target back, which pushes enemies out of your dome. Pairs with Aegis: shove attackers off your dome while it heals you. CHARGES while ready: listed damage is at FULL charge (100%); an uncharged orb deals 40% and it builds to 100% over 1.6 s, then holds at MAX (orb glows blue→white with sparks and a segmented charge meter, harder shove).',fam:'pulse',size:'M',
  dmg:115,interval:.75,range:55,mag:6,reload:3.4,spread:.01,speed:95,push:9,chT:1.6,chMin:.4,kick:.4,jolt:.04,aiBurst:2};
-CFG.weapons.mortar={name:'Mortar',desc:'Lobbed artillery shell; fits any mount of its size (Light Mortar = Small, Mortar = Medium, Heavy Howitzer = Large). Lobs an arcing shell over walls and ridges that explodes in a wide splash and scorches the ground. CHARGE WEAPON: listed damage is at FULL charge (100%); an uncharged shell deals 40% and it builds to 100% over 2 s, then holds at MAX. Charge also stretches range 35→70 m (a higher, longer arc). Splash falls to 40% at the edge; force domes block blasts from outside. Deploy Brace (Siege) adds +25% damage and range. TARGETING: look toward an enemy to select it (diamond marker) — mortars lob onto the selected enemy even behind cover, no line of sight needed.',fam:'mortar',size:'M',
- dmg:220,interval:2.4,range:70,rMin:35,rMax:70,chT:2,chMin:.4,mag:3,reload:5,spread:0,speed:40,arc:true,splash:7.5,kick:.7,jolt:.07,aiBurst:1};
+CFG.weapons.mortar={name:'Mortar',desc:'Lobbed artillery shell; fits any mount of its size (Light Mortar = Small, Mortar = Medium, Heavy Howitzer = Large). Lobs an arcing shell over walls and ridges that explodes in a wide splash and scorches the ground. CHARGE WEAPON: listed damage is at FULL charge (100%); an uncharged shell deals 40% and it builds to 100% over 2 s, then holds at MAX. Charge also stretches range 44→88 m (a higher, longer arc). Splash falls to 40% at the edge; force domes block blasts from outside. Deploy Brace (Siege) adds +25% damage and range. TARGETING: look toward an enemy to select it (diamond marker) — mortars lob onto the selected enemy even behind cover, no line of sight needed.',fam:'mortar',size:'M',
+ dmg:220,interval:2.4,range:88,rMin:44,rMax:88,chT:2,chMin:.4,mag:3,reload:5,spread:0,speed:40,arc:true,splash:5.8,kick:.7,jolt:.07,aiBurst:1};
 CFG.weapons.flak={name:'Flak Burst',desc:'Close-defense flak cannon. Fires a wide cone of 10 shrapnel pellets out to 18 m that shreds anything rushing the artillery line.',fam:'flak',size:'M',
  dmg:13,pellets:10,interval:1,range:18,mag:4,reload:3.4,spread:.2,speed:120,flak:true,kick:.5,jolt:.05,aiBurst:1};
 CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a chance to JAM the target: it forces weapons into a full reload (laser / heat weapons are forced into overheat). Medium jams 2 weapons per proc. Targets get a few seconds of jam resistance after it wears off.',fam:'jammer',size:'M',
  dmg:24,interval:.6,range:62,mag:8,reload:3.2,spread:.008,speed:120,jam:.5,jamN:2,jamMul:.8,kick:.2,jolt:.02,aiBurst:3};
 VAR.jammer={S:['Jam Pistol','Light scrambler. Fast shots, small chance to jam ONE weapon.'],L:['Blackout Array','Heavy scrambler dish. Slow, but most hits jam ALL of the target\'s weapons.']};
-VAR.mortar={S:['Light Mortar','Quick-cycling mortar. 160 max damage, 6 m splash, 32→62 m, 1.6 s charge.'],L:['Heavy Howitzer','Huge siege shell. 300 max damage, 9 m splash, 38→78 m, 2.4 s charge.']};
+VAR.mortar={S:['Light Mortar','Quick-cycling mortar. 160 max damage, 4.6 m splash, 40→78 m, 1.6 s charge.'],L:['Heavy Howitzer','Huge siege shell. 300 max damage, 7 m splash, 48→98 m, 2.4 s charge.']};
 VAR.flak={S:['Flak Pistol','Light flak: 7 pellets out to 16 m.'],L:['Heavy Flak','Massive flak cone: 14 pellets out to 20 m.']};
 VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges from 40% to 100% damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges from 40% to 100% damage in 2 s.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
@@ -132,7 +132,7 @@ for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
  if(W.jam){const S_=z==='S';W.jam=S_?.3:.75;W.jamN=S_?1:99;W.jamMul=S_?.55:1;W.dmg=S_?10:60;W.interval=S_?.32:1.2;W.mag=S_?12:4;W.speed=S_?135:105;W.aiBurst=S_?5:1;}
  if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMin=.4;W.dmg=S_?65:205;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
- if(W.arc){const S_=z==='S';W.dmg=S_?160:300;W.splash=S_?6:9;W.rMin=S_?32:38;W.rMax=S_?62:78;W.range=W.rMax;W.chT=S_?1.6:2.4;W.chMin=.4;W.interval=S_?2:3;W.mag=S_?4:2;W.reload=S_?4.2:6;}
+ if(W.arc){const S_=z==='S';W.dmg=S_?160:300;W.splash=S_?4.6:7;W.rMin=S_?40:48;W.rMax=S_?78:98;W.range=W.rMax;W.chT=S_?1.6:2.4;W.chMin=.4;W.interval=S_?2:3;W.mag=S_?4:2;W.reload=S_?4.2:6;}
  if(W.flak){const S_=z==='S';W.pellets=S_?7:14;W.dmg=S_?10:16;W.range=S_?16:20;W.mag=S_?5:3;W.interval=S_?.8:1.25;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
