@@ -1,4 +1,4 @@
-/*v39.5 TEST: Volt + plasma*/
+/*v39.5.1 TEST: Volt + plasma; no stray Hornet casing on new weapons*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -423,7 +423,7 @@ function wDet(kb,wpn,big,sm,hi,dk,lm){const mt=MS.metal,bl=wdM('blk',0x18181a,{m
   ud.anim=(w,dt,u)=>{const o=(w.reload?0:1)*(clock-(w.lastF||-9)<1.2||w.burst>0?1:0);for(const [d,sx]of doors){d.rotation.y+=(sx*o*1.4-d.rotation.y)*Math.min(1,dt*10);}};}
  else if(wpn==='pulse'){const orb=kb.children.find(c=>c.geometry===sphG);ud.keep=[orb];hose(-.3,-.2,-.4,-.25,-.1,.5);hose(.3,-.2,-.4,.25,-.1,.5);vents(.31,0,-.05,5,1);stripes(0,-.28,.2,.5);
   ud.anim=(w,dt,u)=>{if(orb){const ch=w.reload?.4:Math.max(0,1-w.fireCd/w.W.interval),pc=w.pc||0,mx=pc>=1;orb.scale.setScalar(.2*(.85+.15*ch+(mx?.05:.03)*Math.sin(clock*(6+24*pc))));const m=orb.material;if(m&&m.color){if(!orb.userData.own){orb.material=m.clone();orb.userData.own=1;}const M=orb.material;M.color.setRGB(.25+.75*pc,.75+.25*pc,1);if(M.emissive){M.emissive.setRGB(.15+.85*pc,.5+.5*pc,1);M.emissiveIntensity=.6+2.4*pc+(mx?1.2*(.5+.5*Math.sin(clock*30)):0);}}if(pc>.3&&!gfxLow()&&Math.random()<pc*dt*(mx?14:5)){const p=new THREE.Vector3();orb.getWorldPosition(p);sparks(p,mx?0xffffff:0x9ff8ff);}}};}
- else{// hornet missile pod: hinged armoured door, side rails, warning stripes
+ else if(wpn==='hornet'){// hornet missile pod: hinged armoured door, side rails, warning stripes
   const n=big?3:2,rows=sm?1:2,d=new THREE.Group();d.position.set(0,.1+.21*rows+.05,.65);kb.add(d);wAdd(d,boxG,wdM('hdoor',0x554433,{metal:.5,rough:.5}),.45*n,.04,.42*rows,0,0,-.21*rows*0);
   for(const sx of[-1,1])wAdd(kb,boxG,bl,.04,.42*rows,1.0,sx*(.225*n+.03),.1,.1);stripes(0,.1-.21*rows-.04,.66,.45*n,6);rivets(.225*n+.06,.1,-.3,.5);
   ud.anim=(w,dt,u)=>{const o=(w.reload?0:1)*(clock-(w.lastF||-9)<1.5?1:0);d.rotation.x+=(-o*1.9-d.rotation.x)*Math.min(1,dt*9);};}
