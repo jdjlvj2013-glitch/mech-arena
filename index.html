@@ -86,7 +86,7 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 #bFL{width:56px;height:56px;right:calc(128px + env(safe-area-inset-right));bottom:calc(94px + env(safe-area-inset-bottom));font-size:13px}
 #bFR{width:56px;height:56px;right:calc(62px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom));font-size:13px}
 #bRL{width:44px;height:44px;right:calc(10px + env(safe-area-inset-right));bottom:calc(122px + env(safe-area-inset-bottom))}
-#dpanel{width:260px;font-size:11px}#netS{font-size:10px!important;top:38px!important}}
+#dpanel{width:260px;font-size:11px}#netS{font-size:10px!important;top:38px!important}#cap{top:34px;width:220px;font-size:10px}#cap .cb{height:7px;margin:1px 0 3px}#capSt{font-size:9px}#hillArr{top:36%}}
 @media (max-height:500px){#netP>div{margin:auto!important;padding:12px 16px!important}#netP h2,#netP h3{margin:2px 0!important;font-size:1.1em}#netP p{margin:4px 0!important}#netCodeShow{font-size:1.8em!important}}
 @media (max-height:800px){#mc h2{margin:4px 0}.det p{margin:4px 0}}
 #teams{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px;font-weight:bold;font-size:18px;text-shadow:0 0 3px #000}
@@ -94,6 +94,10 @@ b.zS,b.zM,b.zL{padding:0 3px;border-radius:3px}
 #cap{position:absolute;top:46px;left:50%;transform:translateX(-50%);width:300px;font-size:12px;font-weight:bold;text-shadow:0 0 3px #000;display:none}
 #cap .cb{height:9px;background:#0008;border:1px solid #fff8;border-radius:4px;margin:2px 0 5px;overflow:hidden}#cap i{display:block;height:100%;width:0}
 #capE{background:#4cf}#capO{background:#f54}#cap .warn{color:#f88}
+#capSt{text-align:center;margin-top:1px;font-size:11px;letter-spacing:.3px;color:#ffe9a8}
+#hillArr{position:absolute;left:50%;top:40%;width:0;height:0;margin-left:0;display:none;pointer-events:none;z-index:6;filter:drop-shadow(0 0 3px #000)}
+#hillArr:after{content:'';display:block;position:absolute;left:-8px;top:-46px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:18px solid #ffd866}
+#hillArrN{position:absolute;left:-44px;top:-66px;width:88px;text-align:center;font:bold 11px sans-serif;color:#ffe;text-shadow:0 0 3px #000;pointer-events:none}
 #spec{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:20px;font-weight:bold;background:#000a;padding:8px 18px;border-radius:10px;display:none}
 #toast{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:13px;background:#000a;padding:4px 12px;border-radius:8px;display:none}
 #mk{font-size:20px;margin-top:10px}#mm{font-size:16px;opacity:.85;margin-top:4px;font-weight:normal}
@@ -140,9 +144,9 @@ body.desk #ammo{display:none}body.desk.tch #dpanel{right:auto;bottom:auto;left:1
 </style></head><body>
 <div id="hud"><div id="aim"></div><div id="hp"><div id="hpf"></div></div><div id="info"></div>
 <div id="ammo"><div id="gunt">GUN</div><div class="bar"><div id="gunf"></div></div><div id="abt">ABILITY</div><div class="bar"><div id="abf"></div></div></div>
-<div id="dpanel"></div><div id="plk"></div><div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
+<div id="dpanel"></div><div id="plk"></div><div id="teams"></div><canvas id="mini" width="150" height="150"></canvas><div id="mapban"></div><div id="cap"><div id="capOt">YOUR BASE</div><div class="cb"><i id="capO"></i></div><div id="capEt">ENEMY BASE</div><div class="cb"><i id="capE"></i></div><div id="capSt"></div></div><div id="hillArr"><span id="hillArrN"></span></div><div id="spec"></div><div id="toast"></div><div id="xh"></div><div id="rng"></div><div id="lock"></div>
 <div id="joy"><div id="knob"></div></div><div class="btn" id="bMG">FIRE</div><div class="btn" id="bAB">ABILITY</div><div class="btn" id="bFLY" style="display:none">FLY</div><div class="btn" id="bRL">⟳</div><div class="btn grp" id="bFL">◀ L</div><div class="btn grp" id="bFR">R ▶</div></div>
 <div id="hint">WASD move · mouse aim (click to lock) · LMB/F fire · E/Shift/Space/RMB ability · R reload</div>
 <div id="menu"><div id="mc"></div></div>
 <div id="msg"><div id="mt"></div><div id="mm"></div><small id="ml"></small><div id="mk"></div><div id="coins"></div><button class="mb" id="again">PLAY AGAIN</button><button class="mb alt" id="tomenu">MAIN MENU</button></div>
-<script type="module" src="game.js?v=39.5.1"></script></body></html>
+<script type="module" src="game.js?v=39.6"></script></body></html>
