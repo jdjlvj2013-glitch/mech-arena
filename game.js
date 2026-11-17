@@ -1,4 +1,4 @@
-/*v39.8 TEST: companions + Hive drones*/
+/*v39.9 TEST: priced Hive + companion unlocks*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -94,7 +94,8 @@ CFG.weapons.shotgun={name:'Scattergun',desc:'Close-range shotgun: 9 heavy pellet
  dmg:15,pellets:9,interval:0.8,range:28,mag:6,reload:3.2,spread:0.11,speed:150,aiBurst:1,kick:0.7,jolt:0.07};
 CFG.econ={win:100,loss:25,kill:20,capture:60,duelMul:{easy:0.7,normal:1,hard:1.5},
  upCost:[0,150,300,550,900],// cost to go from level i to i+1 (index = current level)
- locked:{phantom:800,locke:1500,skyhawk:1300,aegis:1600,wraith:1700,jammer_s:400,jammer:750,jammer_l:1150,swarm_s:450,swarm:800,swarm_l:1250,pulse_s:450,pulse:800,pulse_l:1300,lockbolt_s:550,lockbolt:900,lockbolt_l:1400,shotgun:700,minigun_l:600,railgun_s:250,railgun_l:900,hornet_s:250,hornet_l:800,shotgun_s:400,shotgun_l:1000,laser_s:450,laser:750,laser_l:1200,emp_s:500,emp:800,emp_l:1250,nanite_s:450,nanite:750,nanite_l:1150},paintCost:250,enemyScale:0.15};
+ locked:{phantom:800,locke:1500,skyhawk:1300,aegis:1600,wraith:1700,hive:1200,jammer_s:400,jammer:750,jammer_l:1150,swarm_s:450,swarm:800,swarm_l:1250,pulse_s:450,pulse:800,pulse_l:1300,lockbolt_s:550,lockbolt:900,lockbolt_l:1400,shotgun:700,minigun_l:600,railgun_s:250,railgun_l:900,hornet_s:250,hornet_l:800,shotgun_s:400,shotgun_l:1000,laser_s:450,laser:750,laser_l:1200,emp_s:500,emp:800,emp_l:1250,nanite_s:450,nanite:750,nanite_l:1150},paintCost:250,enemyScale:0.15,
+ cmp:{spring:250,echo:350,scout:350,eye:400,cell:400,spot:450,spark:500,decoy:650,medic:750,plate:800,sting:850}};
 CFG.paints={default:{name:'Factory',col:null},desert:{name:'Desert Camo',col:0xb59a68,camo:[0x8a7048,0xd8c08a]},
  arctic:{name:'Arctic Camo',col:0xdfe6ea,camo:[0x9aa7b0,0xffffff]},jungle:{name:'Jungle Camo',col:0x4c6a34,camo:[0x2b3d1f,0x7a8a4a]},
  gold:{name:'Gold',col:0xd4a530,metal:0.9},skyace:{name:'Sky Ace',col:0x7fb6e0,camo:[0x4a7fae,0xe8f2fa]},aurora:{name:'Aurora',col:0x38c9b0,metal:.7},stealth:{name:'Stealth Black',col:0x26262c,rough:0.8}};
@@ -1910,7 +1911,7 @@ function hostRx(c,how,m){if(!m||!m.t||NET.role!=='host')return;let g=NET.G.find(
  if(!g){if(c.relay&&m.t!=='bye'&&(!c.rhT||performance.now()-c.rhT>2000)){c.rhT=performance.now();try{c.send({t:'rehello'});}catch(e){}}return;}
  g.last=performance.now();hostMsg(g,m);}
 function hostMsg(g,m){const nm=g.info.name||'A player';
- if(m.t==='hello'||m.t==='me'){const fresh=m.t==='hello';g.info=Object.assign(fresh?{}:g.info,m);if(!CFG.mechs[g.info.mech])g.info.mech=Object.keys(CFG.mechs)[0];if(!CFG.sec[g.info.sa])g.info.sa='';if(!(typeof CFG.companions==='object'&&CFG.companions[g.info.cmp]))g.info.cmp=(typeof cmpDefault==='function'?cmpDefault(g.info.mech):null);
+ if(m.t==='hello'||m.t==='me'){const fresh=m.t==='hello';g.info=Object.assign(fresh?{}:g.info,m);if(!CFG.mechs[g.info.mech])g.info.mech=Object.keys(CFG.mechs)[0];if(!CFG.sec[g.info.sa])g.info.sa='';g.info.cmp=(typeof cmpAllowed==='function'?cmpAllowed(g.info.cmp,g.info.mech,g.info.cmpOwn):(typeof CFG.companions==='object'&&CFG.companions[g.info.cmp]?g.info.cmp:(typeof cmpDefault==='function'?cmpDefault(g.info.mech):null)));
   if(fresh&&!m.re){netMsgSet(`✅ <b>${esc(m.name)}</b> joined! (${NET.G.length+1}/4)`);if(g.R&&(mode==='play'||mode==='over')){botify(g.R);g.R=null;}g.inMatch=false;if(mode==='menu'&&!NET.editing)netShowLobby();}
   netBcast();netLobRender();netSave();netTryStart(false);return;}
  if(m.t==='bye'){hostDrop(g,nm+' left.');return;}
@@ -1976,7 +1977,7 @@ function netSetup(){const md=NET.mode,ffa=md==='ffa',G=liveG();NET.ffa=ffa;const
  G.forEach((g,gi)=>{const hi=g.info,it=md==='coop'?'b':(md==='duel'||ffa)?'r':(NET.tm[g.gid]==='B'?'r':'b');
   const bots=U.filter(u=>u!==P&&!u.remote&&u.team===it&&!u.isDome);const old=bots[bots.length-1];
   let slots=hi.slots;try{if(!Array.isArray(slots)||slots.length!==CFG.slots[hi.mech].length||slots.some(k=>!CFG.weapons[k]))slots=aiSlots(hi.mech);}catch(e){slots=aiSlots(hi.mech);}
-  const R=makeUnit(it,hi.mech,slots,null);R.cmp=(typeof CFG.companions==='object'&&CFG.companions[hi.cmp])?hi.cmp:(typeof cmpDefault==='function'?cmpDefault(hi.mech):hi.mech);try{applyPaint(R,hi.paint||'default');}catch(e){}
+  const R=makeUnit(it,hi.mech,slots,null);R.cmp=(typeof cmpAllowed==='function'?cmpAllowed(hi.cmp,hi.mech,hi.cmpOwn):(typeof CFG.companions==='object'&&CFG.companions[hi.cmp]?hi.cmp:(typeof cmpDefault==='function'?cmpDefault(hi.mech):hi.mech)));try{applyPaint(R,hi.paint||'default');}catch(e){}
   if(old){const idx=U.indexOf(old);spawn(R,old.g.position.x,old.g.position.z,old.yaw);U.pop();S.remove(old.g);U[idx]=R;}else{const q=xs[xi++%3];spawn(R,q[0],q[1],q[2]);}
   if(ffa)R.team='f'+(gi+1);makePlate(R,R.team===P.team);R.remote=true;R.netName=hi.name||'Pilot';R.gid=g.gid;R.sa=CFG.sec[hi.sa]?hi.sa:'';R.saBot=0;R.saCd=0;R.sx={};g.R=R;g.inMatch=true;g.paint=hi.paint;});
  NET.units=U.filter(u=>!u.isDome);NET.units.forEach((u,i)=>u.nid=i);NET.my=-1;
@@ -1988,7 +1989,7 @@ function netEndAll(win,why){const alive=U.filter(u=>u.alive&&!u.isDome),w0=alive
 {const o0=outcome;outcome=function(){if(NET.role==='host'&&NET.ffa){const al=U.filter(u=>u.alive&&!u.isDome);if(al.length<=1)return[P.alive,P.alive?'Last mech standing!':((al[0]&&al[0].netName?al[0].netName:'Nobody')+' won the free-for-all')];return null;}return o0();};}
 function netStartClient(m){NET.editing=false;netHide();if(NET.spMode==null)NET.spMode=settings.mode;NET.keep=true;clearWorld();NET.keep=false;NET.mode=m.mode;NET.mid=m.mid;NET.ffa=m.mode==='ffa';NET.seed=m.seed;settings.mode=m.smode||'team';lastMap=m.map;netRand(1,0);loadMap(m.map,m.seed);netRand(0);clock=0;endT=-1;result=null;STATS.shots=STATS.hits=STATS.kills=0;try{chStart();}catch(e){}
  const tm=t=>t===m.myT?'b':'r';NET.my=m.you;NET.myT=m.myT;
- NET.units=m.units.map((d,i)=>{const me=i===m.you;const u=makeUnit(tm(d.team),d.type,d.slots,null);u.cmp=(typeof CFG.companions==='object'&&CFG.companions[d.cmp])?d.cmp:(typeof cmpDefault==='function'?cmpDefault(d.type):d.type);if(me)applyPaint(u,paintOf(loadout.mech));else if(d.paint){try{applyPaint(u,d.paint);}catch(e){}}spawn(u,d.p[0],d.p[1],d.p[2]);u.nid=i;u.sx={};u.saCd=0;if(!me){u.max=d.max;u.hp=d.max;makePlate(u,u.team==='b');}if(d.nm&&!me)u.netName=d.nm;return u;});
+ NET.units=m.units.map((d,i)=>{const me=i===m.you;const u=makeUnit(tm(d.team),d.type,d.slots,null);u.cmp=(typeof cmpAllowed==='function'?cmpAllowed(d.cmp,d.type,me?(typeof cmpOwnList==='function'?cmpOwnList():[]):d.cmpOwn):(typeof CFG.companions==='object'&&CFG.companions[d.cmp]?d.cmp:(typeof cmpDefault==='function'?cmpDefault(d.type):d.type)));if(me)applyPaint(u,paintOf(loadout.mech));else if(d.paint){try{applyPaint(u,d.paint);}catch(e){}}spawn(u,d.p[0],d.p[1],d.p[2]);u.nid=i;u.sx={};u.saCd=0;if(!me){u.max=d.max;u.hp=d.max;makePlate(u,u.team==='b');}if(d.nm&&!me)u.netName=d.nm;return u;});
  P=NET.units[m.you];P.isPlayer=true;P.pitch=.05;camYaw=P.yaw;P.sa=saOf(loadout.mech);
  clearSpawns();netRand(1,1);buildEnvDetail();netRand(0);showBases(false);hillSetup(settings.mode==='koth');mode='play';showUI();mapBanner();drawMiniBase();try{lockAim();}catch(e){}netS.style.display='block';netUi();}
 const _nv=new THREE.Vector3(),_na=new THREE.Vector3();
@@ -2962,8 +2963,26 @@ CFG.companions={
 CFG.cmp={orbit:2.4,y:3.1,max:16};
 const CMPKEYS=Object.keys(CFG.companions);
 function cmpDefault(type){return CMPKEYS.find(k=>CFG.companions[k].mech===type)||CMPKEYS[0];}
-function cmpOf(type){const s=loadout&&loadout.cmp,k=s&&s[type];return k&&CFG.companions[k]?k:cmpDefault(type);}
-function cmpSet(type,k){if(!loadout.cmp)loadout.cmp={};loadout.cmp[type]=CFG.companions[k]?k:cmpDefault(type);saveLoadout();return loadout.cmp[type];}
+function cmpPrice(k){return (CFG.econ&&CFG.econ.cmp&&CFG.econ.cmp[k])||0;}
+function cmpOwned(k){return !!(SAVE&&Array.isArray(SAVE.unlocked)&&SAVE.unlocked.includes(k));}
+function cmpIsNative(k,type){return !!(k&&CFG.companions[k]&&CFG.companions[k].mech===type);}
+function cmpCanUse(k,type){return !!(k&&CFG.companions[k]&&(cmpIsNative(k,type)||cmpOwned(k)));}
+function cmpOwnList(){return (SAVE&&Array.isArray(SAVE.unlocked)?SAVE.unlocked:[]).filter(k=>CFG.companions[k]);}
+function cmpAllowed(kind,mech,owned){if(kind&&CFG.companions[kind]&&(CFG.companions[kind].mech===mech||(Array.isArray(owned)&&owned.includes(kind))))return kind;return cmpDefault(mech);}
+function buyCmp(k){if(!k||!CFG.companions[k]||cmpOwned(k))return false;const c=cmpPrice(k);if(!c)return false;if((SAVE.coins||0)<c)return false;SAVE.coins-=c;SAVE.unlocked=SAVE.unlocked||[];if(!SAVE.unlocked.includes(k))SAVE.unlocked.push(k);try{persist();}catch(e){}return true;}
+function cmpGrandfather(save,lo,stats){if(!save||typeof save!=='object')return false;if(!Array.isArray(save.unlocked))save.unlocked=[];const before=save.unlocked.slice();
+ const grant=k=>{if(k&&!save.unlocked.includes(k))save.unlocked.push(k);};
+ if(lo&&lo.mech==='hive')grant('hive');
+ if(stats&&stats.mechUse&&(stats.mechUse.hive|0)>0)grant('hive');
+ const cmp=(lo&&lo.cmp&&typeof lo.cmp==='object')?lo.cmp:{};
+ for(const mech of Object.keys(cmp)){const kind=cmp[mech];if(kind&&CFG.companions[kind]&&CFG.companions[kind].mech!==mech)grant(kind);}
+ return save.unlocked.length!==before.length||save.unlocked.some((k,i)=>k!==before[i]);}
+function cmpMigrateAll(){let ch=false;try{const st=(typeof PROFS!=='undefined'&&PROFS&&PROFS.list&&PROFS.cur&&PROFS.list[PROFS.cur])?PROFS.list[PROFS.cur].stats:null;
+ if(typeof SAVE!=='undefined'&&cmpGrandfather(SAVE,typeof loadout!=='undefined'?loadout:null,st))ch=true;
+ if(typeof PROFS!=='undefined'&&PROFS&&PROFS.list){for(const p of Object.values(PROFS.list)){if(cmpGrandfather(p.save=p.save||{},p.loadout||{},p.stats||{}))ch=true;}}
+ if(ch){if(typeof writeProfs==='function'&&PROFS)writeProfs();if(typeof persist==='function')persist();}}catch(e){}}
+function cmpOf(type){const s=loadout&&loadout.cmp,k=s&&s[type];return k&&cmpCanUse(k,type)?k:cmpDefault(type);}
+function cmpSet(type,k){if(!loadout.cmp)loadout.cmp={};if(!cmpCanUse(k,type))return cmpOf(type);loadout.cmp[type]=k;saveLoadout();return loadout.cmp[type];}
 function cmpCfg(u){return u&&u.cmp&&CFG.companions[u.cmp]||null;}
 function cIcon(k){return (CFG.companions[k]&&CFG.companions[k].icon)||'◆';}
 let CMP=[];
@@ -3005,10 +3024,16 @@ function cmpTryDecoy(u){if(NET.role==='client')return null;const C=cmpCfg(u);if(
 function cmpDecoyHurt(dec,d){if(!dec||!dec.alive)return;dec.hp-=d;if(dec.hp<=0){dec.alive=false;const c=CMP.find(x=>x.dec===dec);if(c)cmpDecoyKill(c);}}
 function cmpSensorMul(u){const C=cmpCfg(u);return C&&C.sensor||1;}
 function cmpAbRate(u){const C=cmpCfg(u);return (C&&C.abRate)||1;}
-function cmpPickHtml(type){const cur=type?cmpOf(type):cmpOf(loadout.mech),C=CFG.companions;
- return `<div class="cmppick" id="cmpPick"><h3>◈ COMPANION <small>— free · one per mech · any companion fits any frame · saved with your loadout</small></h3><div class="cards">`+
- CMPKEYS.map(k=>`<button data-cmp="${k}" class="card ${cur===k?'sel':''}"><div class="wi">${cIcon(k)}</div><b>${C[k].name}</b><small>${CFG.mechs[C[k].mech]?CFG.mechs[C[k].mech].name:''}</small></button>`).join('')+
- `</div><p><b>${C[cur].name}:</b> ${C[cur].desc}</p></div>`;}
+let cmpFocus=null;
+function cmpPickHtml(type){type=type||(loadout&&loadout.mech);const cur=cmpOf(type),focus=(cmpFocus&&CFG.companions[cmpFocus])?cmpFocus:cur,C=CFG.companions,mn=CFG.mechs[type]?CFG.mechs[type].name:'this mech';
+ const tag=k=>cmpIsNative(k,type)?'free on '+mn:cmpOwned(k)?'owned':'🔒 🪙'+cmpPrice(k);
+ const detail=(()=>{const X=C[focus];if(!X)return '';const nat=cmpIsNative(focus,type),own=cmpOwned(focus)||nat,price=cmpPrice(focus),eq=cur===focus;
+  let act=eq?'<p><em>Equipped.</em></p>':'';
+  if(!own){const need=price-(SAVE.coins||0);act=need<=0?`<div class="buy"><span>🔒 Unlock to use on any mech</span><button class="go" data-buycmp="${focus}">UNLOCK 🪙${price}</button></div>`:`<div class="buy"><span>🔒 Locked</span><button disabled>🪙${price} — need ${need} more</button></div>`;}
+  return `<p><b>${X.name}:</b> ${X.desc}${nat?` <small>(native — free on ${mn})</small>`:cmpOwned(focus)?' <small>(unlocked — usable on any mech)</small>':''}</p>`+act;})();
+ return `<div class="cmppick" id="cmpPick"><h3>◈ COMPANION <small>— ${mn}'s own companion is free · unlock others once (🪙) to use them on any frame</small></h3><div class="cards">`+
+ CMPKEYS.map(k=>`<button type="button" data-cmp="${k}" class="card ${cur===k?'sel':''} ${focus===k?'on':''} ${cmpCanUse(k,type)?'':'lk'}"><div class="wi">${cIcon(k)}</div><b>${C[k].name}</b><small>${CFG.mechs[C[k].mech]?CFG.mechs[C[k].mech].name:''}</small><small>${tag(k)}</small></button>`).join('')+
+ `</div>${detail}</div>`;}
 function cmpStingFire(c,dt){const C=CFG.companions.sting,u=c.owner;c.fireCd=(c.fireCd||0)-dt;if(c.fireCd>0||!u||!u.alive||(u.empT>0)||(u.jamT>0)||NET.role==='client')return;
  const R=C.range||32;let t=u.sTgt&&u.sTgt.alive&&u.sTgt.team!==u.team?u.sTgt:null,bd=1e9;
  if(!t){for(const e of U){if(!e.alive||e===u||e.team===u.team||e.isDome||e.isDrone)continue;const q=e.g.position,p=u.g.position,d=Math.hypot(q.x-p.x,q.z-p.z);if(d<R&&d<bd){t=e;bd=d;}}}
@@ -3070,10 +3095,20 @@ function cmpApply(rows){if(!Array.isArray(rows))return;const keep=new Set();
   for(const c of CMP){const dec=c.dec;if(!dec||!dec.alive||dec.team===u.team||!dec.g)continue;const q=dec.g.position,d=Math.hypot(q.x-p.x,q.z-p.z);if(d<40&&d<bd){best=dec;bd=d;}}
   if(best&&(!u.tgt||!u.tgt.alive||u.tgt===best.owner||u.tgt.isDecoy||Math.random()<.5))u.tgt=best;
   return r;};}
-{const n0=netMeMsg;netMeMsg=function(t){const m=n0(t);m.cmp=cmpOf(loadout.mech);return m;};}
+{const n0=netMeMsg;netMeMsg=function(t){const m=n0(t);m.cmp=cmpOf(loadout.mech);m.cmpOwn=cmpOwnList();return m;};}
 {const n0=netSnap;netSnap=function(m){n0.apply(this,arguments);if(m&&m.c)cmpApply(m.c);};}
 {const g0=garage;garage=function(){let h=g0.apply(this,arguments);try{if(gtab==='mech'&&gsel&&!isLocked(gsel)&&CFG.mechs[gsel])h=h.replace('<div class="row"><button data-go="title">',cmpPickHtml(gsel)+'<div class="row"><button data-go="title">');}catch(e){}return h;};}
 {const r0=renderMenu;renderMenu=function(){const r=r0.apply(this,arguments);try{if(mode==='menu'&&(menuStep==='weapon'||menuStep==='mech')&&!document.getElementById('cmpPick')){const rows=mc.querySelectorAll('.row');const last=rows[rows.length-1];if(last)last.insertAdjacentHTML('beforebegin',cmpPickHtml(loadout.mech));}}catch(e){}return r;};}
-document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('[data-cmp]');if(!b)return;e.stopPropagation();cmpSet(loadout.mech,b.dataset.cmp);try{sfx('click');}catch(_){}
+document.addEventListener('click',e=>{const buy=e.target&&e.target.closest&&e.target.closest('[data-buycmp]');
+ if(buy){e.stopPropagation();const k=buy.dataset.buycmp,C=CFG.companions[k];if(!C)return;
+  if(buyCmp(k)){cmpFocus=k;cmpSet(loadout.mech,k);try{sfx('click');toast(C.name+' unlocked — usable on any mech');}catch(_){}}
+  else{try{sfx('denied');toast(`Need 🪙${cmpPrice(k)} for ${C.name} (you have 🪙${SAVE.coins||0})`);}catch(_){}}
+  try{if(P&&mode==='menu'){P.cmp=cmpOf(loadout.mech);cmpMount(P);}}catch(_){}renderMenu();return;}
+ const b=e.target&&e.target.closest&&e.target.closest('[data-cmp]');if(!b)return;e.stopPropagation();const k=b.dataset.cmp;cmpFocus=k;
+ if(cmpCanUse(k,loadout.mech))cmpSet(loadout.mech,k);else try{sfx('click');}catch(_){}
  try{if(P&&mode==='menu'){P.cmp=cmpOf(loadout.mech);cmpMount(P);}}catch(_){}renderMenu();},true);
-window.__cmp={cmpOf,cmpSet,cmpDefault,cmpCfg,cmpMount,cmpTick,cmpPack,cmpApply,cmpTryDecoy,cmpTune,cmpSensorMul,cmpAbRate,cIcon,get CMP(){return CMP},setCMP(a){CMP=a;},KEYS:CMPKEYS};
+window.__cmp={cmpOf,cmpSet,cmpDefault,cmpCfg,cmpMount,cmpTick,cmpPack,cmpApply,cmpTryDecoy,cmpTune,cmpSensorMul,cmpAbRate,cIcon,cmpPrice,cmpOwned,cmpIsNative,cmpCanUse,cmpOwnList,cmpAllowed,buyCmp,cmpGrandfather,cmpMigrateAll,get CMP(){return CMP},setCMP(a){CMP=a;},KEYS:CMPKEYS};
+if(typeof testFill==='function'){const t0=testFill;testFill=function(){const r=t0.apply(this,arguments);try{SAVE.unlocked=[...new Set([...(SAVE.unlocked||[]),...Object.keys(CFG.econ.cmp||{})])];}catch(e){}return r;};}
+if(typeof useProf==='function'){const u0=useProf;useProf=function(id){const r=u0.apply(this,arguments);try{cmpMigrateAll();}catch(e){}return r;};}
+try{cmpMigrateAll();}catch(e){}
+
