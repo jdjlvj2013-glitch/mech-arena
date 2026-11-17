@@ -1,4 +1,4 @@
-/*v39.6 TEST: King of the Hill mode*/
+/*v39.7 TEST: Hive + attack/repair drones*/
 import * as THREE from './three.module.js';
 /*v14 lasers+shield toggle*/ // ======================= CONFIG (tune here) =======================
 const CFG={
@@ -43,6 +43,7 @@ const CFG={
   koth:{name:'King of the Hill',sub:'6 v 6',desc:'Teams fight to hold a glowing 14 m zone that moves every 60 s between outposts, the center fort and the bridges (or symmetric points on other maps). Only living mechs inside the ring count; both teams in the zone contest it and nothing scores. One team captures in 3 s (faster with up to 3 teammates), then earns 2 points/s (up to 2.7 with three). First to 100 wins, or the higher score when time runs out at 3 minutes. Wiping the other team still wins, as in other team modes — there are no mid-match respawns. Co-op and free-for-all are not used with this mode.'}},
  capture:{radius:7,time:12,perExtra:0.5,decay:0.35,bases:{b:[0,47],r:[0,-47]}},
  koth:{radius:14,claim:3,perExtra:.4,capN:3,rate:2,win:100,time:180,hold:60,warn:10,decay:.8,yTol:4.5},
+ drone:{cap:5,flakMul:3,yHover:4.5,boltR:22,boltSpd:80},
  gfx:{high:{pixelRatio:1.5,shadows:true,shadowMap:1024},low:{pixelRatio:1,shadows:false,shadowMap:512},autoFallbackFps:26,autoWindow:3},
 };
 // ==================================================================
@@ -83,6 +84,9 @@ CFG.mechs.siege={name:'Siege',hp:1400,speed:6.2,mass:1.45,col:2.0,color:0x7a7044
  desc:'Artillery walker. Thick four-legged frame with a back-mounted HOWITZER mount (fires the Mortar: lobbed shells that arc over cover and splash) and a Medium defense arm (Flak Burst fits for close defense). Ability: DEPLOY BRACE — stand still and tap; after 1.5 s the outriggers lock down for +25% mortar damage and range. Moving breaks the brace.',
  brace:{arm:1.5,dmg:.25,range:.25,move:1.2}};
 // v39.5: VOLT (mobile plasma fighter: 3 dash charges + dash shield)
+CFG.mechs.hive={name:'Hive',hp:1050,speed:8.2,mass:1.05,col:1.6,color:0xb07a24,enemyColor:0x8a3a40,ability:'REPAIR DRONE',
+ desc:'Drone carrier. Its bays launch small attack drones that hunt a selected or nearby enemy, orbit, and fire light bolts for 9 s (they can be shot down; flak shreds them, EMP destroys them, jammer silences them). At most 5 attack drones at once. Ability: send a REPAIR DRONE that follows you or a hurt teammate and heals 35 HP/s for 10 s (12 s cooldown). Two Medium arms + a Small shoulder.',
+ repairDrone:{cd:12,life:10,hp:80,rate:35,range:28,speed:24,rOrbit:3.5}};
 CFG.mechs.volt={name:'Volt',hp:900,speed:9.6,mass:.85,col:1.45,color:0x3a3f8a,enemyColor:0x8a2a6a,ability:'DASH ×3',
  desc:'Mobile plasma fighter. Holds 3 DASH CHARGES: each tap dashes in your movement direction (or facing if standing still), 0.35 s between dashes. Charges refill one at a time every 4 s. Every dash also raises a brief DASH SHIELD that absorbs up to 120 damage for 1.2 s (a new shield can start at most once every 1.5 s; it never stacks). EMP pops the shield and pauses recharging. Two Medium arms + a Small shoulder mount.',
  dash:{speed:38,dur:.3,cd:.35},vdash:{n:3,re:4,gap:.35,sh:120,shT:1.2,shCd:1.5}};
@@ -123,6 +127,8 @@ CFG.weapons.mortar={name:'Mortar',desc:'Lobbed artillery shell; fits any mount o
  dmg:220,interval:2.4,range:88,rMin:44,rMax:88,chT:2,chMin:.4,mag:3,reload:5,spread:0,speed:40,arc:true,splash:5.8,kick:.7,jolt:.07,aiBurst:1};
 CFG.weapons.flak={name:'Flak Burst',desc:'Close-defense flak cannon. Fires a wide cone of 10 shrapnel pellets out to 18 m that shreds anything rushing the artillery line.',fam:'flak',size:'M',
  dmg:13,pellets:10,interval:1,range:18,mag:4,reload:3.4,spread:.2,speed:120,flak:true,kick:.5,jolt:.05,aiBurst:1};
+CFG.weapons.drone={name:'Drone Bay',desc:'Launches 2 attack drones that hunt your sensor target (or the nearest enemy in front), orbit, and fire light 7-damage bolts. Drones last 9 s or until shot down (36 HP; flak is especially effective). At most 5 attack drones per mech. Hold fire to keep the swarm topped up.',fam:'drone',size:'M',
+ dmg:7,interval:2,range:62,mag:3,reload:4.5,spread:0,speed:22,drones:2,droneHp:36,droneLife:9,orbit:10,boltInt:.55,kick:.15,jolt:.01,aiBurst:1};
 CFG.weapons.plasma={name:'Plasma Repeater',desc:'Plasma emitter. Fires fast BURSTS of glowing violet bolts (3 per burst) that travel at ~90 m/s, then cycles the coils (shown as a short reload) before the next burst. Hold fire for continuous bursts. Strong mid-range pressure; lead moving targets.',fam:'plasma',size:'M',
  dmg:14,interval:.08,range:58,mag:3,reload:.8,spread:.012,speed:90,kick:.12,jolt:.012,aiBurst:3};
 CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a chance to JAM the target: it forces weapons into a full reload (laser / heat weapons are forced into overheat). Medium jams 2 weapons per proc. Targets get a few seconds of jam resistance after it wears off.',fam:'jammer',size:'M',
@@ -130,6 +136,7 @@ CFG.weapons.jammer={name:'Jammer',desc:'Signal-scrambler cannon. Each hit has a 
 VAR.jammer={S:['Jam Pistol','Light scrambler. Fast shots, small chance to jam ONE weapon.'],L:['Blackout Array','Heavy scrambler dish. Slow, but most hits jam ALL of the target\'s weapons.']};
 VAR.mortar={S:['Light Mortar','Quick-cycling mortar. 160 max damage, 4.6 m splash, 40→78 m, 1.6 s charge.'],L:['Heavy Howitzer','Huge siege shell. 300 max damage, 7 m splash, 48→98 m, 2.4 s charge.']};
 VAR.flak={S:['Flak Pistol','Light flak: 7 pellets out to 16 m.'],L:['Heavy Flak','Massive flak cone: 14 pellets out to 20 m.']};
+VAR.drone={S:['Stinger Bay','Launches 1 light drone: 5-damage bolts, 24 HP, 55 m, 1.6 s cycle.'],L:['Hive Battery','Launches 3 heavy drones: 9-damage bolts, 50 HP, 70 m, slower cycle.']};
 VAR.plasma={S:['Plasma Pistol','Light emitter: 2-bolt bursts, 9 damage per bolt, 48 m.'],L:['Plasma Lance','Heavy emitter: 3-bolt bursts of big 24-damage bolts, 66 m, slower cycle.']};
 VAR.pulse={S:['Pulse Pistol','Light pulse emitter. Fast orbs, small shove. Charges from 40% to 100% damage in 1.2 s.'],L:['Pulse Projector','Heavy pulse projector. Huge orb, massive shove that clears attackers off your dome. Charges from 40% to 100% damage in 2 s.']};
 for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],q=SIZES[z],W=Object.assign({},b,{name:VAR[f][z][0],desc:VAR[f][z][1],fam:f,size:z});
@@ -141,20 +148,21 @@ for(const f of Object.keys(VAR))for(const z of['S','L']){const b=CFG.weapons[f],
  if(W.seek){const S_=z==='S';W.mag=S_?6:12;W.dmg=S_?12:34;W.interval=S_?.14:.2;W.altBonus=S_?.35:.65;W.splash=S_?1.4:2.6;W.aiBurst=S_?6:8;}
  if(W.jam){const S_=z==='S';W.jam=S_?.3:.75;W.jamN=S_?1:99;W.jamMul=S_?.55:1;W.dmg=S_?10:60;W.interval=S_?.32:1.2;W.mag=S_?12:4;W.speed=S_?135:105;W.aiBurst=S_?5:1;}
  if(W.push){const S_=z==='S';W.push=S_?5:15;W.chT=S_?1.2:2;W.chMin=.4;W.dmg=S_?65:205;W.interval=S_?.5:1.15;W.mag=S_?8:4;W.speed=S_?110:80;W.aiBurst=S_?3:1;}
+ if(W.fam==='drone'){const S_=z==='S';W.drones=S_?1:3;W.dmg=S_?5:9;W.droneHp=S_?24:50;W.interval=S_?1.6:2.6;W.range=S_?55:70;W.mag=S_?4:2;W.reload=S_?3.8:5.5;W.speed=S_?24:20;W.orbit=S_?8:12;W.boltInt=S_?.5:.6;W.droneLife=9;W.aiBurst=1;}
  if(W.fam==='plasma'){const S_=z==='S';W.dmg=S_?9:24;W.mag=S_?2:3;W.interval=S_?.09:.1;W.reload=S_?.55:1.15;W.range=S_?48:66;W.speed=S_?95:85;W.aiBurst=S_?2:3;}
  if(W.arc){const S_=z==='S';W.dmg=S_?160:300;W.splash=S_?4.6:7;W.rMin=S_?40:48;W.rMax=S_?78:98;W.range=W.rMax;W.chT=S_?1.6:2.4;W.chMin=.4;W.interval=S_?2:3;W.mag=S_?4:2;W.reload=S_?4.2:6;}
  if(W.flak){const S_=z==='S';W.pellets=S_?7:14;W.dmg=S_?10:16;W.range=S_?16:20;W.mag=S_?5:3;W.interval=S_?.8:1.25;}
  CFG.weapons[f+'_'+z.toLowerCase()]=W;}
 // stable display order: family, then S/M/L
-{const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer','mortar','flak','plasma'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
+{const o={};for(const f of['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer','mortar','flak','plasma','drone'])for(const k of[f+'_s',f,f+'_l'])o[k]=CFG.weapons[k];CFG.weapons=o;}
 // hardpoints per mech (s = side: -1 left group, +1 right group). A slot takes its size or smaller.
 CFG.slots={guardian:[{z:'L',s:1,n:'Right arm'},{z:'L',s:-1,n:'Left arm'},{z:'S',s:1,n:'Right shoulder'},{z:'S',s:-1,n:'Left shoulder'}],
  strider:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],mender:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],phantom:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],
  locke:[{z:'M',s:1,n:'Right pod'},{z:'M',s:-1,n:'Left pod'},{z:'S',s:1,n:'Crown'}],
- skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],siege:[{z:'L',s:1,n:'Back howitzer',mt:'howitzer'},{z:'M',s:-1,n:'Defense arm'}],volt:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Shoulder'}]};
-CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun'],phantom:['minigun','minigun'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','railgun'],siege:['mortar','flak'],volt:['plasma','plasma','plasma_s']};
+ skyhawk:[{z:'M',s:1,n:'Right wing'},{z:'M',s:-1,n:'Left wing'}],aegis:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Emitter crown'}],wraith:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'}],siege:[{z:'L',s:1,n:'Back howitzer',mt:'howitzer'},{z:'M',s:-1,n:'Defense arm'}],volt:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Shoulder'}],hive:[{z:'M',s:1,n:'Right arm'},{z:'M',s:-1,n:'Left arm'},{z:'S',s:1,n:'Shoulder bay'}]};
+CFG.defSlots={guardian:['minigun','minigun','minigun_s','minigun_s'],strider:['minigun','minigun'],mender:['minigun','minigun'],phantom:['minigun','minigun'],locke:['lockbolt','minigun','minigun_s'],skyhawk:['swarm','minigun'],aegis:['pulse','minigun','minigun_s'],wraith:['jammer','railgun'],siege:['mortar','flak'],volt:['plasma','plasma','plasma_s'],hive:['drone','drone','drone_s']};
 // firepower: per-mech damage factor (Guardian's 4 mounts share one reactor)
-CFG.firepower={guardian:.62,strider:1,mender:1,phantom:1,locke:.85,skyhawk:1,aegis:.85,wraith:.95,siege:1,volt:1};
+CFG.firepower={guardian:.62,strider:1,mender:1,phantom:1,locke:.85,skyhawk:1,aegis:.85,wraith:.95,siege:1,volt:1,hive:1};
 const fits=(k,sl)=>SIZES[CFG.weapons[k].size].r<=SIZES[sl.z].r&&(!CFG.weapons[k].only||CFG.weapons[k].only===sl.mt);
 const wtOf=a=>a.reduce((t,k)=>t+SIZES[CFG.weapons[k].size].wt,0);
 // heavier loadouts slow the mech a little (relative to its stock loadout)
@@ -425,6 +433,7 @@ function wDet(kb,wpn,big,sm,hi,dk,lm){const mt=MS.metal,bl=wdM('blk',0x18181a,{m
   ud.anim=(w,dt,u)=>{const o=(w.reload?0:1)*(clock-(w.lastF||-9)<1.2||w.burst>0?1:0);for(const [d,sx]of doors){d.rotation.y+=(sx*o*1.4-d.rotation.y)*Math.min(1,dt*10);}};}
  else if(wpn==='pulse'){const orb=kb.children.find(c=>c.geometry===sphG);ud.keep=[orb];hose(-.3,-.2,-.4,-.25,-.1,.5);hose(.3,-.2,-.4,.25,-.1,.5);vents(.31,0,-.05,5,1);stripes(0,-.28,.2,.5);
   ud.anim=(w,dt,u)=>{if(orb){const ch=w.reload?.4:Math.max(0,1-w.fireCd/w.W.interval),pc=w.pc||0,mx=pc>=1;orb.scale.setScalar(.2*(.85+.15*ch+(mx?.05:.03)*Math.sin(clock*(6+24*pc))));const m=orb.material;if(m&&m.color){if(!orb.userData.own){orb.material=m.clone();orb.userData.own=1;}const M=orb.material;M.color.setRGB(.25+.75*pc,.75+.25*pc,1);if(M.emissive){M.emissive.setRGB(.15+.85*pc,.5+.5*pc,1);M.emissiveIntensity=.6+2.4*pc+(mx?1.2*(.5+.5*Math.sin(clock*30)):0);}}if(pc>.3&&!gfxLow()&&Math.random()<pc*dt*(mx?14:5)){const p=new THREE.Vector3();orb.getWorldPosition(p);sparks(p,mx?0xffffff:0x9ff8ff);}}};}
+ else if(wpn==='drone'){/* v39.7: amber cell lights only — no pod frame */wAdd(kb,boxG,yl,.08,.08,.02,0,.28,.2);wAdd(kb,boxG,yl,.08,.08,.02,-.16,.28,.2);wAdd(kb,boxG,yl,.08,.08,.02,.16,.28,.2);wAdd(kb,cylG,bl,.05,.2,.05,.28,.15,-.1);}
  else if(wpn==='hornet'){// hornet missile pod: hinged armoured door, side rails, warning stripes
   const n=big?3:2,rows=sm?1:2,d=new THREE.Group();d.position.set(0,.1+.21*rows+.05,.65);kb.add(d);wAdd(d,boxG,wdM('hdoor',0x554433,{metal:.5,rough:.5}),.45*n,.04,.42*rows,0,0,-.21*rows*0);
   for(const sx of[-1,1])wAdd(kb,boxG,bl,.04,.42*rows,1.0,sx*(.225*n+.03),.1,.1);stripes(0,.1-.21*rows-.04,.66,.45*n,6);rivets(.225*n+.06,.1,-.3,.5);
@@ -444,7 +453,7 @@ const ventMat=new THREE.MeshStandardMaterial({map:ventGT,metalness:.7,roughness:
 const cableMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.6,metalness:.2});
 const decalMats={};function decalMat(team,type){const k=team+type;if(decalMats[k])return decalMats[k];
  const t=tex(128,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.save();g.beginPath();g.rect(0,0,52,h);g.clip();for(let i=-4;i<10;i++){g.fillStyle=i%2?'#111':'#f0c020';g.beginPath();g.moveTo(i*14,0);g.lineTo(i*14+14,0);g.lineTo(i*14-18,h);g.lineTo(i*14-32,h);g.fill();}g.restore();
-  g.fillStyle=team==='b'?'#e8f4ff':'#ffe0d8';g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText({guardian:'G-01',strider:'S-27',mender:'M-09',phantom:'P-X',locke:'L-16',skyhawk:'SH-7',aegis:'AG-4',wraith:'WR-0',siege:'SG-9',volt:'VT-3'}[type],90,34);});
+  g.fillStyle=team==='b'?'#e8f4ff':'#ffe0d8';g.font='bold 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText({guardian:'G-01',strider:'S-27',mender:'M-09',phantom:'P-X',locke:'L-16',skyhawk:'SH-7',aegis:'AG-4',wraith:'WR-0',siege:'SG-9',volt:'VT-3',hive:'HV-4'}[type],90,34);});
  return decalMats[k]=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2});}
 const planeG=new THREE.PlaneGeometry(1,1),droneG=new THREE.OctahedronGeometry(.32,0),rotorG=new THREE.TorusGeometry(.38,.04,4,12),dishG=new THREE.CylinderGeometry(.45,.1,.18,10),clawG=new THREE.ConeGeometry(.12,.55,4);
 // leg specs: x/z hip offset, hx/hz foot home offset (lower-local), l1/l2 bone lengths, rev = reverse (digitigrade) knee, grp = gait group (legs in a group step together), w = thickness
@@ -458,6 +467,7 @@ const FRAMES={
  phantom:{legs:[-1,1].map((s,i)=>({x:s*.7,z:0,hx:s*.8,hz:.1,grp:i,l1:1.28,l2:1.22,w:.7})),tw:[1.7,1.05,2.1],hips:[1.5,.4,.8]},
  skyhawk:{legs:[-1,1].map((s,i)=>({x:s*.6,z:.1,hx:s*.75,hz:.2,grp:i,l1:1.05,l2:1.25,rev:1,w:.55})),tw:[1.5,1.0,2.6],hips:[1.2,.35,.8]},
  wraith:{legs:[-1,1].map((s,i)=>({x:s*.62,z:-.05,hx:s*.72,hz:.05,grp:i,l1:1.3,l2:1.38,rev:1,w:.6})),tw:[1.55,.95,2.2],hips:[1.3,.38,.75]},
+ hive:{legs:[-1,1].map((s,i)=>({x:s*.7,z:0,hx:s*.82,hz:.1,grp:i,l1:1.15,l2:1.3,w:.65})),tw:[1.7,1.0,1.9],hips:[1.3,.4,.8]},
  volt:{legs:[-1,1].map((s,i)=>({x:s*.62,z:0,hx:s*.74,hz:.08,grp:i,l1:1.05,l2:1.4,rev:1,w:.6})),tw:[1.6,.95,1.8],hips:[1.25,.38,.75]},
  siege:{legs:[{x:-1.25,z:1.0,hx:-1.95,hz:1.45,grp:0},{x:1.25,z:-1.0,hx:1.95,hz:-1.45,grp:0,rev:1},{x:1.25,z:1.0,hx:1.95,hz:1.45,grp:1},{x:-1.25,z:-1.0,hx:-1.95,hz:-1.45,grp:1,rev:1}].map(l=>({...l,l1:1.0,l2:1.25,w:1.5})),tw:[2.8,1.5,2.6],hips:[2.7,.7,2.3]},
  aegis:{legs:[[-1,1],[1,-1],[1,1],[-1,-1]].map(([sx,sz],i)=>({x:sx*1.0,z:sz*.9,hx:sx*1.8,hz:sz*1.5,grp:i%2,l1:1.0,l2:1.25,w:.85,rev:sz<0?1:0})),tw:[2.6,1.5,2.4],hips:[2.0,.55,1.8]}};
@@ -558,6 +568,13 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
   vent=add(top,boxG,ventMat,.9,.08,.6,0,tY+.01,-.8);for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2),tY-.1,0);add(pv,boxG,m,.6,.3,1.3,s*.1,.1,0,0,0,s*-.3);pads.push(pv);}
   const dc=team==='b'?0x50c8ff:0xff6a8a;domeM=new THREE.Group();domeM.position.y=1;const sm1=new THREE.Mesh(sphG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
   const sm2=new THREE.Mesh(icoG,new THREE.MeshBasicMaterial({color:dc,transparent:true,opacity:.22,wireframe:true,depthWrite:false}));domeM.add(sm1,sm2);domeM.visible=false;g.add(domeM);}
+ else if(type==='hive'){// v39.7 drone carrier: compact bronze body, low cab, glowing amber hex cells on a rear hive pod
+  const am=new THREE.MeshBasicMaterial({color:0xffb040});add(top,boxG,m,tw[0],tw[1]*.9,tw[2],0,cy,0);
+  add(top,boxG,dk,tw[0]*.75,.5,tw[2]*.75,0,cy-tw[1]*.15,-.35);
+  for(const [x,z] of[[-.28,-.35],[.28,-.35],[0,-.6],[-.28,-.85],[.28,-.85]])add(top,cylG,am,.1,.05,.1,x,tY+.12,z,Math.PI/2,0,0);
+  add(top,boxG,tm.visor,.7,.16,.4,0,tY-.02,.55,-.25,0,0);add(top,boxG,tm.stripe,tw[0]+.03,.08,tw[2]+.03,0,cy-.15,0);
+  vent=add(top,boxG,ventMat,.5,.06,.3,0,tY+.02,-.95);
+  for(const s of[-1,1]){const pv=grp(top,s*(tw[0]/2),tY-.12,.15);add(pv,boxG,m,.38,.16,.85,s*.05,.04,0,0,0,s*-.3);pads.push(pv);}}
  else if(type==='volt'){// v39.5 plasma fighter: slim low wedge, glowing violet spine, small canopy, twin dash thrusters
   const pg=new THREE.MeshBasicMaterial({color:0xb070ff});add(top,boxG,m,tw[0],tw[1]*.85,tw[2],0,cy-.05,0);add(top,boxG,dk,tw[0]*.8,.3,tw[2]*.9,0,cy-tw[1]*.45,0);
   add(top,boxG,tm.visor,.7,.2,.5,0,tY-.02,.45,-.3,0,0);add(top,boxG,pg,.12,.08,tw[2]*.85,0,tY+.02,-.1);for(const z of[-.5,.1])add(top,boxG,pg,.5,.05,.05,0,tY+.02,z);
@@ -596,10 +613,11 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
  antP=new THREE.Group();antP.position.set(type==='mender'?.55:type==='locke'?.45:.6,tY+(type==='mender'?.5:.1),-.5);top.add(antP);add(antP,antG,MS.metal,1,type==='mender'?1.8:1,1,0,type==='mender'?1.1:.65,0);
  add(antP,jointG,BLINK,.25,.25,.25,0,type==='mender'?2.25:1.3,0);if(type==='mender')add(antP,dishG,MS.metal,1,1,1,0,1.5,0,.5,0,0);
  // ---- weapon hardpoints (CFG.slots order); each mount builds its own weapon model, scaled by size ----
- const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95,flak:1.15,plasma:1.45};let coil=null;
+ const guns=[],flash=[],spinners=[],kickers=[];const MZ={minigun:2.0,railgun:3.0,hornet:.9,shotgun:1.7,laser:2.2,emp:.0,nanite:1.75,lockbolt:1.9,swarm:.75,pulse:1.75,jammer:1.55,mortar:1.95,flak:1.15,plasma:1.45,drone:.85};let coil=null;
  if(typeof slots==='string')slots=CFG.slots[type].map(()=>slots);
  CFG.slots[type].forEach((sl,i)=>{const s=sl.s,k=slots[i]||CFG.defSlots[type][i],Wd=CFG.weapons[k],wpn=Wd.fam,z=Wd.size,sc=SIZES[z].sc,big=z==='L',sm=z==='S';let x,y,z0;
-  if(type==='volt'&&sl.z==='S'){x=.35;y=tY+.35;z0=-.25;}
+  if(type==='hive'&&sl.z==='S'){x=.4;y=tY+.4;z0=-.45;}
+  else if(type==='volt'&&sl.z==='S'){x=.35;y=tY+.35;z0=-.25;}
   else if(type==='siege'&&sl.mt){x=0;y=tY+.35;z0=-1.0;}
   else if(type==='aegis'&&sl.z==='S'){x=0;y=tY+1.75;z0=.35;}
   else if(type==='locke'&&sl.z==='S'){x=0;y=cy+1.55;z0=-.1;add(top,cylG,dk,.4,.3,.4,0,cy+1.35,-.1);}
@@ -644,6 +662,7 @@ function mech(team,type,slots){const T=CFG.mechs[type],F=FRAMES[type];const col=
    add(kb,cylG,MS.metal,.12,.95,.12,0,0,.8,Math.PI/2,0,0);for(const zz of(big?[.55,.75,.95]:[.6,.85]))add(kb,torusG,cm,.85,.85,.85,0,0,zz);
    add(kb,dishG,MS.metal,1.05,1,1.05,0,0,1.3,-Math.PI/2,0,0);add(kb,sphG,cm,.12,.12,.12,0,0,1.42);
    for(const a of[0,1.57,3.14,4.71])add(kb,boxG,cm,.04,.04,.3,Math.cos(a)*.3,Math.sin(a)*.3,1.38);}
+  else if(wpn==='drone'){const ac=new THREE.MeshBasicMaterial({color:0xffb040});add(kb,boxG,dk,.55,.32,.7,0,0,0);add(kb,boxG,dk,.6,.1,.5,0,.22,-.05);const cells=sm?[[0,0]]:big?[[-.18,.08],[.18,.08],[0,-.08],[-.18,-.08],[.18,-.08]]:[[-.14,0],[.14,0],[0,-.1]];for(const [xx,yy] of cells)add(kb,cylG,ac,.07,.07,.07,xx,yy,.38,Math.PI/2,0,0);}
   else if(wpn==='plasma'){const pc=new THREE.MeshBasicMaterial({color:0xc080ff});add(kb,boxG,dk,.42,.42,.8,0,0,0);add(kb,cylG,MS.metal,.16,1.1,.16,0,0,.85,Math.PI/2,0,0);for(const zz of(big?[.55,.85,1.15]:sm?[.7]:[.6,1.0]))add(kb,torusG,pc,.7,.7,.7,0,0,zz);add(kb,sphG,pc,.11,.11,.11,0,0,1.42);}
   else if(wpn==='mortar'){kb.scale.multiplyScalar(MORT_VIS);add(kb,boxG,dk,.9,.7,1.2,0,0,-.1);add(kb,cylG,MS.metal,.4,1.9,.4,0,.05,.9,Math.PI/2,0,0);add(kb,cylG,dk,.52,.35,.52,0,.05,1.75,Math.PI/2,0,0);add(kb,cylG,dk,.48,.2,.48,0,.05,.35,Math.PI/2,0,0);for(const sx of[-1,1])add(kb,boxG,dk,.12,.5,1.0,sx*.52,-.1,.1);}
   else if(wpn==='flak'){add(kb,boxG,dk,.6,.6,.8,0,0,0);for(const [xx,yy] of [[-.14,.14],[.14,.14],[-.14,-.14],[.14,-.14]]){const b2=add(kb,barrelG,MS.metal,.9,.7,.9,xx,yy,.75);b2.rotation.x=Math.PI/2;}add(kb,boxG,M(0x8a8a5a),.66,.1,.5,0,.36,0);}
@@ -665,7 +684,7 @@ const LIGHT_B=new THREE.MeshBasicMaterial({color:0x60d0ff}),LIGHT_R=new THREE.Me
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 function turn(cur,tgt,rate,dt){const d=wrap(tgt-cur);return cur+Math.sign(d)*Math.min(Math.abs(d),rate*dt);}
 // ---------- v24: solid collisions — per-frame mech radii, mech-vs-mech push-out, muzzle/barrel vs walls, spawn clearance ----------
-const COLR={volt:1.45,siege:2.0,guardian:1.9,locke:1.8,aegis:1.8,mender:1.6,strider:1.5,phantom:1.45,skyhawk:1.7};
+const COLR={hive:1.6,volt:1.45,siege:2.0,guardian:1.9,locke:1.8,aegis:1.8,mender:1.6,strider:1.5,phantom:1.45,skyhawk:1.7};
 function colR(u){return (u&&u.T&&(u.T.col||COLR[u.type]))||1.6;}
 function inObst(p,pad=0){for(const o of obst)if(p.y<o.h-.05&&p.y>(o.y0||-1)&&Math.abs(p.x-o.x)<o.hx+pad&&Math.abs(p.z-o.z)<o.hz+pad)return o;return null;}
 // pairwise separation of overlapping mechs (cylinders, vertical overlap check so a flyer can pass overhead)
@@ -1333,7 +1352,7 @@ function spat(pos){if(!pos||typeof C==='undefined')return{v:1,pan:0};const dx=po
  const v=1/(1+d*d/500);const rx=Math.cos(C.rotation.y),rz=-Math.sin(C.rotation.y);return{v,pan:d>1?(dx*rx+dz*rz)/d*.7:0};}
 function gate(k,dt){const n=AC.currentTime;if(SLAST[k]&&n-SLAST[k]<dt)return false;SLAST[k]=n;return true;}
 // per-mech step character: Guardian heavier (lower clank, slower servo) but not boomy, Phantom light and bright
-const STEPC={guardian:{c:1700,s:120,th:.07,v:1},phantom:{c:3600,s:420,th:.015,v:.5},strider:{c:2800,s:300,th:.03,v:.7},mender:{c:2500,s:250,th:.035,v:.75},locke:{c:2200,s:200,th:.05,v:.85},skyhawk:{c:3300,s:380,th:.02,v:.55},aegis:{c:1900,s:160,th:.06,v:.9},wraith:{c:4200,s:520,th:.008,v:.32},siege:{c:1500,s:110,th:.08,v:1.1},volt:{c:3000,s:340,th:.02,v:.6}};
+const STEPC={guardian:{c:1700,s:120,th:.07,v:1},phantom:{c:3600,s:420,th:.015,v:.5},strider:{c:2800,s:300,th:.03,v:.7},mender:{c:2500,s:250,th:.035,v:.75},locke:{c:2200,s:200,th:.05,v:.85},skyhawk:{c:3300,s:380,th:.02,v:.55},aegis:{c:1900,s:160,th:.06,v:.9},wraith:{c:4200,s:520,th:.008,v:.32},siege:{c:1500,s:110,th:.08,v:1.1},volt:{c:3000,s:340,th:.02,v:.6},hive:{c:2300,s:220,th:.035,v:.75}};
 function sfx(k,o){if(!live())return;try{sfx0(k,o||{});}catch(e){if(!sfx.err){sfx.err=1;console.warn('sfx',k,e);}}}
 function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===P;let V=mine?1:sp.v;const pan=mine?0:sp.pan;
  switch(k){
@@ -1353,6 +1372,7 @@ function sfx0(k,o){const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mine=u&&u===
    case'flak':case'shotgun':nz({type:'lowpass',f:2200*z,f2:400,d:.22,v:.45*v,pan});tone({f:110*z,f2:45,d:.1,v:.18*v,pan});break;
    case'emp':nz({type:'highpass',f:3500,d:.25,v:.25*v,pan});tone({type:'square',f:1300,f2:150,d:.25,v:.07*v,pan,lp:4000});break;
    case'nanite':nz({f:3000*z,q:2,d:.07,v:.15*v,pan});tone({type:'triangle',f:1400*z,f2:900,d:.06,v:.05*v,pan});break;
+   case'drone':tone({type:'sawtooth',f:420*z,f2:180,d:.16,v:.05*v,pan,lp:1800});nz({f:800,d:.08,v:.06*v,pan});break;
    case'plasma':case'lockbolt':tone({type:'square',f:300*z,f2:900,d:.12,v:.06*v,pan,lp:2500});nz({f:1500,d:.08,v:.1*v,pan});break;
    case'swarm':nz({type:'bandpass',f:rj(2600*z),q:1.2,a:.005,d:.16,v:.2*v,pan});tone({type:'sawtooth',f:520*z,f2:1300*z,d:.09,v:.035*v,lp:2600,pan});break;
    case'jammer':tone({type:'square',f:560*z,f2:170,d:.15,v:.06*v,pan,lp:2600});tone({type:'sawtooth',f:1400*z,f2:700,d:.1,v:.035*v,pan,lp:3200});nz({f:3200,q:5,d:.09,v:.08*v,pan});break;
@@ -1439,7 +1459,7 @@ sfx0=function(k,o){smpLoad();const u=o.u,sp=spat(o.p||(u&&u.g&&u.g.position)),mi
  case'shot':{if(!mine&&(V<.04||!gate('s2'+(u&&u._sid)+o.fam,.07)))return;if(mine&&!gate('ps2'+o.gi,.035))return;const z=o.size==='S'?1.2:o.size==='L'?.8:1,v=V*(mine?1:.8);
   switch(o.fam){
    case'railgun':ok=smp('rail',{v:.5*v,pan,rate:.75*z})&&smp('crunch1',{v:.25*v,pan,rate:1.4,dur:.25});break;
-   case'mortar':case'hornet':case'rocket':case'swarm':ok=smp('thrust',{v:(o.fam==='swarm'?.25:.4)*v,pan,rate:1.3*z,dur:.35});break;
+   case'mortar':case'hornet':case'rocket':case'swarm':case'drone':ok=smp('thrust',{v:(o.fam==='swarm'?.25:.4)*v,pan,rate:1.3*z,dur:.35});break;
    case'flak':case'shotgun':ok=smp('shotgun',{v:.6*v,pan,rate:.9*z,lp:5000});break;
    case'pulse':ok=smp('pulse',{v:.45*v,pan,rate:.8*z,dur:.4})&&smp('gun2',{v:.4*v,pan,rate:.6});break;
    case'emp':ok=smp('emp',{v:.4*v,pan,rate:1.2,dur:.45});break;
@@ -1655,7 +1675,7 @@ let HITF='';const TIERS=['Bronze','Silver','Gold','Platinum'],TMED=['🥉','🥈
 Object.assign(CFG.paints,{phantasm:{name:'Phantasm',col:0x3a3550,metal:.85,rough:.22,camo:[0x23202f,0x6a5f8a],excl:1},chrome:{name:'Chrome',col:0xd8dde4,metal:1,rough:.15,excl:1},obsidian:{name:'Obsidian',col:0x16121e,metal:.6,rough:.3,excl:1},
  royal:{name:'Royal Violet',col:0x6a3cc8,metal:.5,excl:1},crimson:{name:'Champion Crimson',col:0x9c1c28,camo:[0x5a0c14,0xd4a530],excl:1}});
 const FAMS=['minigun','railgun','hornet','shotgun','laser','emp','nanite','lockbolt','swarm','pulse','jammer'];
-const FAMN={minigun:'Minigun',railgun:'Railgun',hornet:'Hornet',shotgun:'Shotgun',laser:'Laser',emp:'EMP',nanite:'Nanite',lockbolt:'Lockbolt',swarm:'Swarm',pulse:'Pulse',jammer:'Jammer',mortar:'Mortar',flak:'Flak',plasma:'Plasma'};
+const FAMN={minigun:'Minigun',railgun:'Railgun',hornet:'Hornet',shotgun:'Shotgun',laser:'Laser',emp:'EMP',nanite:'Nanite',lockbolt:'Lockbolt',swarm:'Swarm',pulse:'Pulse',jammer:'Jammer',mortar:'Mortar',flak:'Flak',plasma:'Plasma',drone:'Drone Bay'};
 const ownFam=f=>Object.keys(CFG.weapons).some(k=>CFG.weapons[k].fam===f&&!isLocked(k));
 const ownMech=m=>!isLocked(m);const ownAb=a=>Object.keys(CFG.mechs).some(k=>CFG.mechs[k][a]&&ownMech(k));
 // daily pool: [key,target,label,coins,requirement]
@@ -1992,8 +2012,8 @@ function netSnapUnits(AP){return NET.units.map(u=>{const p=u.g.position,a=u===P?
 function netTick(dt,AP){if(!NET.role)return;const now=performance.now();
  if(NET.role==='host'){const MG=NET.G.filter(g=>g.inMatch&&g.R&&g.c&&g.c.open);
   if(MG.length){const per=MG.length>=3?80:66;if(now-NET.sT>=per){NET.sT=now;const u=netSnapUnits(AP),f=secFieldsPack(),ev=NET.ev;NET.ev=[];
-   for(const g of MG)if(!g.c.relay)gSend(g,{t:'s',mid:NET.mid,u,e:ev,f,k:hillPack()});
-   if(MG.some(g=>g.c.relay)){NET.evR.push(...ev);if(NET.evR.length>150)NET.evR.splice(0,NET.evR.length-150);if(now-NET.rT>=100&&NET.relay){NET.rT=now;try{NET.relay.send({t:'s',mid:NET.mid,u,e:NET.evR,f,k:hillPack()},'*');}catch(e){}NET.evR=[];}}else NET.evR=[];}}else NET.ev=[];}
+   for(const g of MG)if(!g.c.relay)gSend(g,{t:'s',mid:NET.mid,u,e:ev,f,k:hillPack(),d:dronePack()});
+   if(MG.some(g=>g.c.relay)){NET.evR.push(...ev);if(NET.evR.length>150)NET.evR.splice(0,NET.evR.length-150);if(now-NET.rT>=100&&NET.relay){NET.rT=now;try{NET.relay.send({t:'s',mid:NET.mid,u,e:NET.evR,f,k:hillPack(),d:dronePack()},'*');}catch(e){}NET.evR=[];}}else NET.evR=[];}}else NET.ev=[];}
  else if(NET.conn){if(now-NET.pT>1000){NET.pT=now;netSend({t:'p',ts:now});}
   if(now-NET.iT>=(NET.via==='relay'?83:50)&&P){NET.iT=now;const p=P.g.position,a=AP||p;netSend({t:'i',p:[r2(p.x),r2(p.y),r2(p.z)],v:[r2(P.vel.x),r2(P.vel.y||0),r2(P.vel.z)],yaw:r2(P.yaw),ty:r2(P.tYaw||0),ly:r2(P.legYaw||0),pi:r2(P.pitch||0),a:[r2(a.x),r2(a.y),r2(a.z)],fL:P.alive&&!!NET.fL,fR:P.alive&&!!NET.fR,lk:P.lockTgt&&P.lockTgt.nid!=null&&P.lockT>=(P.W.lockTime||9)?P.lockTgt.nid:-1,st:P.sTgt&&P.sTgt.nid!=null?P.sTgt.nid:-1});}}
  if((NET.stT=(NET.stT||0)+dt)>.25){NET.stT=0;const host=NET.role==='host',G=NET.G;const pg=host?Math.max(0,...G.map(g=>g.ping|0)):NET.ping;netS.textContent=`🟢 ONLINE ${(NMODES[NET.mode]||{n:''}).n} · ${host?'HOST · '+(G.length+1)+' players':'GUEST'} · ${host?(G.some(g=>g.via==='relay')?'📡':'')+(G.some(g=>g.via==='p2p')?'⚡':''):(NET.via==='relay'?'📡 RELAY':'⚡ P2P')} · room ${NET.code} · ping ${pg} ms`;netS.style.color=pg>200?'#fd4':'#8f8';}}
@@ -2056,7 +2076,7 @@ let AP0=null;function update(dt){clock+=dt;const k=inp.keys;
    else if(hit){if(hitU){hurt(hitU,b.dmg*Math.max(.5,mult)*(hitU.isDome&&b.cm>.6?.6/b.cm:1),pos,b.src);if(W.dot)naniteHit(hitU,W,b.src,b.dmg);if(W.tether)tetherHit(hitU,W,b.src);if(W.push)pushU(hitU,b.v,W.push*(.6+.8*(b.cm||1)));if(W.jam)jamHit(hitU,W,b.src);}if(W.jam)fx(pos,1.3,0xffc020,{grow:2.4,life:.3,op:.8});if(W.push)fx(pos,1.6*(1+((b.cm||1)-1)*.25),0x60f0ff,{grow:3,life:.3,op:.7});if(W.tether)fx(pos,1.3,0xc090ff,{grow:2.5,life:.35});if(W.dot){fx(pos,1,0x50ff80,{grow:2,life:.3});}else if(!hitU&&!gfxLow())fx(pos,1.2,0x9a927e,{grow:2,life:.5,op:.45,vy:1.5});if(W.fam==='plasma')fx(pos,1.3,0xb060ff,{grow:2.4,life:.28,op:.85});const rg=W===CFG.weapons.railgun;boom(pos,rg?1.2:.5,rg?0x80e8ff:0xffdd55);sparks(pos);}
    S.remove(b.m);B.splice(i,1);}}
  tickFields(dt);
- if(settings.mode==='base')tickBases(dt);if(settings.mode==='koth')hillTick(dt);
+ if(settings.mode==='base')tickBases(dt);if(settings.mode==='koth')hillTick(dt);droneTick(dt);
  if(!P.alive&&(!SPEC||!SPEC.alive))SPEC=mates('b')[0]||SPEC;
  if(NC){}else if(endT<0){const o=outcome();if(o){result=o;endT=clock+1.6;}}else if(clock>=endT){end(result[0],result[1]);return;}
  netTick(dt,AP0);sndWatch(dt);hud();}
@@ -2111,6 +2131,7 @@ function hud(){const W=P.W,T=P.T;hudN++;
  let af=1,at='',ac='#6cf';
  if(T.shield){af=P.shieldHP/T.shield.hp;if(P.shieldOn){at=P.shA>=1?`SHIELD RAISED ${Math.ceil(P.shieldHP)} HP — tap to lower`:'RAISING SHIELD…';ac='#3df';}else if(P.abCd>0){af=1-P.abCd/T.shield.cd;at=`SHIELD BROKEN ${P.abCd.toFixed(1)}s`;ac='#678';}else if(P.shieldHP<T.shield.hp*T.shield.min){at=`SHIELD RECHARGING ${Math.round(af*100)}%`;ac='#678';}else at=P.shA>0?'LOWERING…':`SHIELD READY ${Math.round(af*100)}%`;}
  else if(T.lockdown){if(P.abCd>0){af=1-P.abCd/T.lockdown.cd;at=`LOCKDOWN RECHARGING ${P.abCd.toFixed(1)}s`;ac='#678';}else{at='LOCKDOWN READY — aim & tap';ac='#b8f';}}
+ else if(T.repairDrone){const live=typeof DRN!=='undefined'&&DRN.some(d=>d.alive&&d.kind==='rep'&&d.owner===P);if(P.abCd>0){af=1-P.abCd/T.repairDrone.cd;at=`REPAIR DRONE ${P.abCd.toFixed(1)}s`;ac='#678';}else if(live){af=1;at='REPAIR DRONE ACTIVE';ac='#6f8';}else{at='REPAIR DRONE READY';ac='#8f6';}}
  else if(T.vdash){const V=T.vdash,n=P.vdN??V.n;af=n>=V.n?1:(P.vdRe||0)/V.re;at=`DASH ${'◆'.repeat(n)}${'◇'.repeat(V.n-n)}${n<V.n?` +1 in ${Math.max(0,V.re-(P.vdRe||0)).toFixed(1)}s`:''}${P.vshT>0?` · SHIELD ${Math.ceil(P.vsh||0)}`:''}${P.empT>0?' · EMP: recharge paused':''}`;ac=P.vshT>0?'#c8f':n>0?'#b9f':'#678';}
  else if(T.dash){if(P.abCd>0){af=1-P.abCd/T.dash.cd;at=`DASH COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='DASH READY';}
  else if(T.jump){if(P.abCd>0){af=1-P.abCd/T.jump.cd;at=`JUMP COOLDOWN ${P.abCd.toFixed(1)}s`;ac='#678';}else at='JUMP READY';}
@@ -2135,7 +2156,7 @@ function menuTick(dt){menuA+=dt*.35;if(LINEUP){for(const u of LINEUP){for(const 
 let gtab='mech',gsel=null,resetArm=false;
 const coinTag=()=>`<div class="coinbal">🪙 <b id="bal">${SAVE.coins}</b></div>`;
 const lockTag=k=>isLocked(k)?`<small class="lk">🔒 🪙${CFG.econ.locked[k]}</small>`:'';
-const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',plasma:'✦',swarm:'✈',pulse:'◉',jammer:'⌁',mortar:'☄',flak:'✺'})[CFG.weapons[k].fam];
+const wIcon=k=>({minigun:'⁂',railgun:'━',hornet:'➹',shotgun:'⋰',laser:'≋',emp:'ϟ',nanite:'⚕',lockbolt:'⚷',plasma:'✦',drone:'⬡',swarm:'✈',pulse:'◉',jammer:'⌁',mortar:'☄',flak:'✺'})[CFG.weapons[k].fam];
 const szTag=k=>{const z=CFG.weapons[k].size;return `<span class="szb z${z}">${z}</span>`;};let slotSel=0,pickSel=null;
 function wStats(w){if(w.tether)return `${bar('DAMAGE',w.dmg/150,w.dmg+' /bolt')}${bar('TETHER',w.tether/5,w.tether+'s · +'+Math.round(w.amp*100)+'% dmg taken')}${bar('RANGE',w.range/130,w.range+' m')}${bar('RATE',.4/w.interval,(1/w.interval).toFixed(1)+' /s')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} bolts · reload ${w.reload}s · tethered target slowed ${Math.round(w.tslow*100)}% and takes +${Math.round(w.amp*100)}% damage from everyone</p>`;
  if(w.emp)return `${bar('DAMAGE',w.dmg/250,w.dmg+' max + EMP · '+Math.round(w.dmg*w.chMin)+' uncharged')}${bar('CHAIN',w.jumps/4,'FULL CHARGE ONLY · +'+w.jumps+' jumps · '+w.chainR+' m · '+Math.round(w.chainFall*100)+'%/jump')}${bar('STUN',w.stun/5,w.stun+'s disable · '+Math.round((1-w.slow)*100)+'% slow')}${bar('RANGE',w.rMax/130,w.rMin+' → '+w.rMax+' m charged')}${bar('CHARGE',1-w.chT/2.5,Math.round(w.chMin*100)+'% → 100% dmg & max range in '+w.chT+'s')}${bar('WIND-UP',1-w.charge/1.5,w.charge+'s trigger delay')}<p class="ab">${SIZES[w.size].name} · weight ${SIZES[w.size].wt} · ${w.mag} shots · ${w.interval}s between · reload ${w.reload}s · chain lightning arcs to nearby enemies in line of sight (not cloaked) · disables shield, jump, dash and regen</p>`;
@@ -2705,7 +2726,7 @@ function hillSitesFor(key,a){// deterministic named sites; a is the live half-ex
   add('West',-a*.45,0,0);
  }
  return sites;}
-function hillIn(u,z,R,yTol){if(!u||!u.alive||u.air||u.isDome||!z)return false;
+function hillIn(u,z,R,yTol){if(!u||!u.alive||u.air||u.isDome||u.isDrone||!z)return false;
  return Math.hypot(u.g.position.x-z.x,u.g.position.z-z.z)<R&&Math.abs((u.g.position.y||0)-(z.y||0))<(yTol??4.5);}
 function hillCount(z){const K=CFG.koth,R=K.radius,T=K.yTol;let nb=0,nr=0;
  for(const u of U){if(!hillIn(u,z,R,T))continue;if(u.team==='b')nb++;else if(u.team==='r')nr++;}return {nb,nr};}
@@ -2811,3 +2832,116 @@ function hillAI(u,dt){if(!hillOn()||!u||!u.alive||u.remote||u===P)return;const z
 {const c0=clearWorld;clearWorld=function(){if(HILL){if(HILL.g){S.remove(HILL.g);HILL.g=null;}if(HILL.nextG){S.remove(HILL.nextG);HILL.nextG=null;}HILL.on=false;}if($('hillArr'))$('hillArr').style.display='none';return c0.apply(this,arguments);};}
 {const a0=aiTick;aiTick=function(u,dt){if(settings.mode==='koth')hillAI(u,dt);return a0.apply(this,arguments);};}
 window.__koth={hillSitesFor,hillIn,hillCount,hillScale,hillPack,hillApply,hillSnap,hillSetup,hillTick,hillRotate,get HILL(){return HILL},setHILL(h){HILL=h;}};
+
+/* ===== v39.7 HIVE: attack drones + repair drone, host-authoritative ===== */
+let DRN=[],droneSeq=0;
+PG.dronebolt=new THREE.SphereGeometry(.1,6,5);PM.dronebolt=new THREE.MeshBasicMaterial({color:0xffc060});
+const _dgeoB=new THREE.SphereGeometry(.28,6,5),_dgeoC=new THREE.SphereGeometry(.14,6,5),_dgeoW=new THREE.BoxGeometry(.5,.04,.22);
+function droneModel(kind,sz){const g=new THREE.Group(),atk=kind!=='rep',col=atk?0xffb040:0x70ff90;
+ const body=new THREE.Mesh(_dgeoB,new THREE.MeshBasicMaterial({color:atk?0x4a3a18:0x2a5a30}));
+ const core=new THREE.Mesh(_dgeoC,new THREE.MeshBasicMaterial({color:col}));core.position.y=.06;
+ const w1=new THREE.Mesh(_dgeoW,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.7,depthWrite:false}));w1.position.x=-.32;
+ const w2=w1.clone();w2.position.x=.32;g.add(body,core,w1,w2);g.scale.setScalar(sz==='L'?1.15:sz==='S'?.8:1);return g;}
+function dronePickTgt(u,range){if(!u)return null;
+ const st=(u===P?(typeof STG!=='undefined'&&STG)||u.sTgt:u.sTgt||u.tgt);
+ if(st&&st.alive&&!st.isDome&&!st.isDrone&&st.team!==u.team&&st!==u&&!(typeof cloakHid==='function'&&cloakHid(st,u.g.position)))return st;
+ let best=null,bd=1e9;const R=range||70,p=u.g.position,sy=Math.sin(u.tYaw||0),cy=Math.cos(u.tYaw||0);
+ for(const e of U){if(!e.alive||e===u||e.team===u.team||e.isDome||e.isDrone)continue;if(typeof cloakHid==='function'&&cloakHid(e,p))continue;
+  const q=e.g.position,d=Math.hypot(q.x-p.x,q.z-p.z);if(d>R||d>=bd)continue;
+  if(((q.x-p.x)*sy+(q.z-p.z)*cy)/(d||1)>0.15){best=e;bd=d;}}return best;}
+function droneAliveAtk(u){let n=0;for(const d of DRN)if(d.alive&&d.kind==='atk'&&d.owner===u)n++;return n;}
+function droneSpawn(owner,kind,W,pos,tgt,i,n){const id=++droneSeq,hp=kind==='rep'?((owner.T&&owner.T.repairDrone&&owner.T.repairDrone.hp)||80):(W&&W.droneHp||36);
+ const life=kind==='rep'?((owner.T&&owner.T.repairDrone&&owner.T.repairDrone.life)||10):(W&&W.droneLife||9);
+ const g=droneModel(kind,W&&W.size);const p=g.position;
+ p.set(pos.x,(pos.y||0)+1.2+Math.random()*.3,pos.z);if(n>1)p.x+=(i-(n-1)/2)*1.15;S.add(g);
+ const d={id,owner,team:owner.team,kind,size:(W&&W.size)||'M',W,hp,max:hp,life,g,alive:true,isDrone:true,tgt,fireCd:.15+Math.random()*.2,jamT:0,empT:0,orbitA:Math.random()*6,nid:id};
+ DRN.push(d);return d;}
+function launchDrones(u,w){const W=w.W,pr=u.prof,cap=CFG.drone.cap,have=droneAliveAtk(u),want=W.drones||1,n=Math.min(want,Math.max(0,cap-have));
+ if(n<=0){if(u===P)try{sfx('denied');}catch(e){}return;}
+ w.fireCd=W.interval*(pr?pr.fireMul:1);w.ammo--;if(u===P)STATS.shots++;
+ if(NET.role==='client'){if(w.ammo<=0)w.reload=W.reload;try{sfx('shot',{u,fam:'drone',size:W.size,gi:w.gi});}catch(e){}return;}
+ const tgt=dronePickTgt(u,W.range);let f;try{f=muzzle(u,w.gi);}catch(e){f=u.g.position.clone?u.g.position.clone():{x:u.g.position.x,y:u.g.position.y+2,z:u.g.position.z};}
+ if(f.clone)f=f.clone();else f={x:f.x,y:f.y,z:f.z};
+ for(let i=0;i<n;i++)droneSpawn(u,'atk',W,f,tgt,i,n);
+ try{sfx('shot',{u,fam:'drone',size:W.size,gi:w.gi});if(u===P)shake(.05);}catch(e){}
+ if(w.ammo<=0)w.reload=W.reload;}
+function launchRepair(u){const R=u.T&&u.T.repairDrone;if(!R)return;
+ for(let i=DRN.length-1;i>=0;i--)if(DRN[i].alive&&DRN[i].kind==='rep'&&DRN[i].owner===u){droneKill(DRN[i]);droneRemove(DRN[i],i);}
+ if(NET.role==='client')return;
+ const p=u.g.position,pos={x:p.x,y:(p.y||0)+3,z:p.z};
+ droneSpawn(u,'rep',{size:'S',droneHp:R.hp,droneLife:R.life,speed:R.speed,orbit:R.rOrbit},pos,u,0,1);
+ try{sfx('sa_regen',{u});}catch(e){try{sfx('shot',{u,fam:'drone',size:'S'});}catch(e2){}}}
+function droneKill(d){if(!d||!d.alive)return;d.alive=false;d.hp=0;try{const p=d.g.position;fx(p.clone?p.clone():p,.8,d.kind==='rep'?0x80ff90:0xffb040,{grow:2,life:.3,op:.7});}catch(e){}}
+function droneRemove(d,i){try{if(d.g)S.remove(d.g);}catch(e){}if(i==null)i=DRN.indexOf(d);if(i>=0)DRN.splice(i,1);}
+function droneHurt(d,dmg,pos,src){if(NET.role==='client'||!d||!d.alive||!(dmg>0))return;
+ if(typeof HITF!=='undefined'&&HITF==='flak')dmg*=(CFG.drone.flakMul||3);
+ d.hp-=dmg;try{if(pos&&Math.random()<.6)fx(pos.clone?pos.clone():pos,.4,0xffe080,{life:.2,op:.7});}catch(e){}
+ if(d.hp<=0)droneKill(d);}
+function droneSweep(o,d,L,owner,best){if(typeof DRN==='undefined'||!DRN.length)return best;
+ for(const dr of DRN){if(!dr.alive||dr.team===owner)continue;const q=dr.g.position,r=.55;
+  try{_mn.set(q.x-r,q.y-.15,q.z-r);_mx.set(q.x+r,q.y+.85,q.z+r);const t=rayBox(o,d,_mn,_mx,L);if(t>=0&&(!best||t<best.t))best={t,u:dr};}catch(e){}}
+ return best;}
+function droneFire(d){if(!d.tgt||!d.owner)return;const Wd={fam:'dronebolt',dmg:d.W&&d.W.dmg||7,speed:CFG.drone.boltSpd,range:CFG.drone.boltR,spread:.02,kick:0,jolt:0,size:d.size};
+ const from=d.g.position.clone?d.g.position.clone():new THREE.Vector3(d.g.position.x,d.g.position.y,d.g.position.z);from.y+=.1;
+ const q=d.tgt.g.position,dir=new THREE.Vector3(q.x-from.x,(q.y+2.4)-from.y,q.z-from.z).normalize();
+ try{shoot(from,dir,d.owner,d.tgt,Wd);}catch(e){}}
+function droneTickAtk(d,dt){
+ if(!d.tgt||!d.tgt.alive||d.tgt.team===d.team||d.tgt.isDome||d.tgt.isDrone)d.tgt=d.owner&&d.owner.alive?dronePickTgt(d.owner,(d.W&&d.W.range)||70):null;
+ const p=d.g.position;let tx=p.x,ty=p.y,tz=p.z;
+ if(d.tgt){d.orbitA+=dt*1.6;const R=d.W&&d.W.orbit||10,q=d.tgt.g.position;tx=q.x+Math.sin(d.orbitA)*R;tz=q.z+Math.cos(d.orbitA)*R;ty=(q.y||0)+CFG.drone.yHover;}
+ else if(d.owner&&d.owner.alive){const q=d.owner.g.position,yaw=d.owner.tYaw||0;tx=q.x+Math.sin(yaw)*8;tz=q.z+Math.cos(yaw)*8;ty=(q.y||0)+CFG.drone.yHover;}
+ const spd=(d.W&&d.W.speed)||22,dx=tx-p.x,dy=ty-p.y,dz=tz-p.z,L=Math.hypot(dx,dy,dz)||1;
+ let nx=p.x+dx/L*spd*dt,ny=p.y+dy/L*spd*dt,nz=p.z+dz/L*spd*dt;
+ if(typeof blocked==='function'&&blocked(nx,nz,.4,ny)){ny=Math.min(ny+8*dt,(d.tgt&&d.tgt.g?d.tgt.g.position.y:ny)+10);if(blocked(nx,nz,.4,ny)){nx=p.x;nz=p.z;}}
+ const lim=(typeof A==='number'?A:80)-2;nx=Math.max(-lim,Math.min(lim,nx));nz=Math.max(-lim,Math.min(lim,nz));p.x=nx;p.y=ny;p.z=nz;
+ try{if(d.g.lookAt)d.g.lookAt(tx,ty,tz);}catch(e){}
+ d.fireCd=Math.max(0,(d.fireCd||0)-dt);
+ if(d.tgt&&d.jamT<=0&&d.empT<=0&&d.fireCd<=0){const q=d.tgt.g.position;if(Math.hypot(q.x-p.x,q.z-p.z)<=CFG.drone.boltR+4){d.fireCd=d.W&&d.W.boltInt||.55;droneFire(d);}}
+}
+function droneTickRep(d,dt){const R=d.owner&&d.owner.T&&d.owner.T.repairDrone;if(!R){droneKill(d);return;}
+ let t=d.owner,best=2;if(d.owner&&d.owner.alive){const o=d.owner.g.position;
+  for(const u of U){if(!u.alive||u.team!==d.team||u.isDome||u.isDrone||u.hp>=u.max)continue;const dist=Math.hypot(u.g.position.x-o.x,u.g.position.z-o.z);if(dist<=R.range&&u.hp/u.max<best){best=u.hp/u.max;t=u;}}}
+ d.tgt=t;const q=(t&&t.alive?t.g.position:d.g.position);d.orbitA+=dt*2;
+ const tx=q.x+Math.sin(d.orbitA)*R.rOrbit,tz=q.z+Math.cos(d.orbitA)*R.rOrbit,ty=(q.y||0)+3,p=d.g.position,spd=R.speed;
+ const dx=tx-p.x,dy=ty-p.y,dz=tz-p.z,L=Math.hypot(dx,dy,dz)||1;p.x+=dx/L*spd*dt;p.y+=dy/L*spd*dt;p.z+=dz/L*spd*dt;
+ if(t&&t.alive&&d.jamT<=0&&d.empT<=0){const dist=Math.hypot(t.g.position.x-p.x,t.g.position.z-p.z);
+  if(dist<6&&t.hp<t.max){t.hp=Math.min(t.max,t.hp+R.rate*dt);if(Math.random()<dt*5)try{const qp=t.g.position;fx(new THREE.Vector3(qp.x,qp.y+2,qp.z),.3,'#6f9',{vy:2,life:.4});}catch(e){}}}
+}
+function droneTick(dt){if(typeof DRN==='undefined')return;const auth=NET.role!=='client';
+ for(let i=DRN.length-1;i>=0;i--){const d=DRN[i];if(!d.alive){droneRemove(d,i);continue;}
+  if(auth){d.life-=dt;d.jamT=Math.max(0,(d.jamT||0)-dt);d.empT=Math.max(0,(d.empT||0)-dt);
+   if(d.life<=0||d.hp<=0||d.empT>0){droneKill(d);droneRemove(d,i);continue;}
+   if(d.kind==='rep')droneTickRep(d,dt);else droneTickAtk(d,dt);}
+  else if(d.net){const p=d.g.position,k=1-Math.exp(-10*dt);p.x+=(d.net[0]-p.x)*k;p.y+=(d.net[1]-p.y)*k;p.z+=(d.net[2]-p.z)*k;}
+  if(d.g&&d.g.children&&d.g.children[2]){const s=.7+.3*Math.sin((typeof clock==='number'?clock:0)*8+d.id);d.g.children[2].rotation&& (d.g.children[2].rotation.z=s);}}
+}
+function dronePack(){if(NET.role==='client'||!DRN.length)return null;
+ return DRN.filter(d=>d.alive).slice(0,80).map(d=>{const p=d.g.position;return[d.id,+p.x.toFixed(2),+p.y.toFixed(2),+p.z.toFixed(2),Math.max(0,d.hp)|0,d.kind==='rep'?1:0,d.size==='S'?0:d.size==='L'?2:1,d.owner&&d.owner.nid!=null?d.owner.nid:-1,+d.life.toFixed(1),d.jamT>0?1:0];});}
+function droneApply(arr){if(!Array.isArray(arr)||arr.length>80)return;const seen=new Set(),lim=(typeof A==='number'?A:200)+30;
+ for(const row of arr){if(!Array.isArray(row)||row.length<9)continue;
+  let[id,x,y,z,hp,kind,sz,on,life,jam]=row;id=id|0;if(id<=0||id>1e7)continue;
+  x=+x;y=+y;z=+z;if(!isFinite(x)||!isFinite(y)||!isFinite(z)||Math.abs(x)>lim||Math.abs(z)>lim||y<-2||y>40)continue;
+  hp=Math.max(0,Math.min(200,hp|0));kind=kind===1?'rep':'atk';sz=sz===0?'S':sz===2?'L':'M';life=Math.max(0,Math.min(20,+life||0));jam=jam?1:0;seen.add(id);
+  let d=DRN.find(q=>q.id===id);
+  if(!d){const owner=(typeof NET!=='undefined'&&NET.units&&on>=0)?NET.units[on]:null;const g=droneModel(kind,sz);
+   g.position.set(x,y,z);S.add(g);
+   d={id,owner,team:owner?owner.team:'n',kind,size:sz,W:{size:sz,dmg:7,speed:22,orbit:10,boltInt:.55,droneHp:hp,droneLife:life},hp,max:hp,life,g,alive:true,isDrone:true,tgt:null,fireCd:0,jamT:jam?1:0,empT:0,orbitA:0,nid:id,net:[x,y,z]};DRN.push(d);}
+  else{d.net=[x,y,z];d.hp=hp;d.life=life;d.jamT=jam?Math.max(d.jamT||0,.2):0;if(hp<=0)d.alive=false;}}
+ for(let i=DRN.length-1;i>=0;i--)if(!seen.has(DRN[i].id)){DRN[i].alive=false;droneRemove(DRN[i],i);}}
+{const f0=fireWeapon0;fireWeapon0=function(u,w,aimPt,homing){if(w&&w.W&&w.W.fam==='drone')return launchDrones(u,w,aimPt);return f0.apply(this,arguments);};}
+{const a0=ability;ability=function(u){if(u&&u.T&&u.T.repairDrone){if(!u.alive||mode!=='play')return;
+  if(u.empT>0||(u.abCd||0)>0){if(u===P)try{sfx('denied');}catch(e){}return;}
+  if(NET.role==='client'&&u===P){u.abCd=u.T.repairDrone.cd;try{netSend({t:'ab'});}catch(e){}return;}
+  launchRepair(u);u.abCd=u.T.repairDrone.cd;if(u===P)try{chEv('abil',1);}catch(e){}return;}
+ return a0.apply(this,arguments);};}
+{const h0=hurt;hurt=function(u,d,pos,src){if(u&&u.isDrone)return droneHurt(u,d,pos,src);return h0.apply(this,arguments);};}
+{const e0=empHit;empHit=function(t,W,src){if(t&&t.isDrone){t.empT=.2;droneKill(t);return;}return e0.apply(this,arguments);};}
+{const j0=jamHit;jamHit=function(t,W,src){if(t&&t.isDrone){if(t.alive)t.jamT=Math.max(t.jamT||0,2.5);return true;}return j0.apply(this,arguments);};}
+{const s0=sweep;sweep=function(o,d,L,owner){return droneSweep(o,d,L,owner,s0.apply(this,arguments));};}
+{const n0=netSnap;netSnap=function(m){n0.apply(this,arguments);if(m&&m.d)droneApply(m.d);};}
+{const c0=clearWorld;clearWorld=function(){for(let i=DRN.length-1;i>=0;i--)droneRemove(DRN[i],i);DRN.length=0;droneSeq=0;return c0.apply(this,arguments);};}
+{const t0=abText;abText=function(m){return m&&m.repairDrone?`Repair drone heals ${m.repairDrone.rate} HP/s for ${m.repairDrone.life}s (${m.repairDrone.cd}s cooldown)`:t0(m);};}
+{const a0=aiTick;aiTick=function(u,dt){const r=a0.apply(this,arguments);
+ if(u&&u.T&&u.T.repairDrone&&u.alive&&!u.remote&&(u.abCd||0)<=0&&!(u.empT>0)){const low=u.hp<u.max*.7;let ally=false;if(!low)for(const x of U){if(x!==u&&x.alive&&x.team===u.team&&!x.isDome&&x.hp<x.max*.6){ally=true;break;}}
+  if(low||ally)try{ability(u);}catch(e){}}return r;};}
+window.__drone={launchDrones,launchRepair,droneSpawn,droneTick,droneHurt,droneKill,dronePickTgt,dronePack,droneApply,droneAliveAtk,droneSweep,get DRN(){return DRN},setDRN(a){DRN=a;},setSeq(n){droneSeq=n;}};
